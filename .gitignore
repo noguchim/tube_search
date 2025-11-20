@@ -1,0 +1,44 @@
+# Flutter/Dart/Pub
+**/doc/api/
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.png
+*.log
+
+# Android
+**/android/**/local.properties
+**/android/.gradle
+**/android/captures/
+**/android/app/**/profile
+**/android/app/**/debug
+**/android/app/**/release
+
+# iOS
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+**/macos/Flutter/ephemeral/**
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Xcode
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Runner.xcworkspace/xcuserdata/
+
+# Web
+**/build/web/
+
+# VSCode
+.vscode/
+
+# IntelliJ
+*.iml
+.idea/
+
+# Others
+.DS_Store
