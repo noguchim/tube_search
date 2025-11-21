@@ -39,8 +39,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   late final List<Widget> _screens = [
     PopularVideosScreen(onScrollChanged: _onScrollChanged),
-    // push test
-    GenreScreen(),
+    GenreScreen(onScrollChanged: _onScrollChanged),
     const SettingsScreen(),
   ];
 
