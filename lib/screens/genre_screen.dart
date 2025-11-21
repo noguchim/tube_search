@@ -1,6 +1,8 @@
+// lib/screens/genre_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+
 import '../services/youtube_api_service.dart';
 import '../data/genre_groups.dart';
 import 'genre_videos_screen.dart';
@@ -16,7 +18,6 @@ class GenreScreen extends StatefulWidget {
 
 class _GenreScreenState extends State<GenreScreen>
     with SingleTickerProviderStateMixin {
-
   final YouTubeApiService _apiService = YouTubeApiService();
 
   final ScrollController _scrollController = ScrollController();
@@ -31,6 +32,9 @@ class _GenreScreenState extends State<GenreScreen>
 
   /// 🔥 初回だけ “持ち上がり” を実行
   bool _isFirstTap = true;
+
+  /// 🔥 サジェストをタップして検索結果に遷移中かどうか
+  bool _isSearchingFromSuggest = false;
 
   /// 🔥 アニメーション（scale + shadow）
   late AnimationController _tapAnim;
@@ -54,7 +58,6 @@ class _GenreScreenState extends State<GenreScreen>
       CurvedAnimation(parent: _tapAnim, curve: Curves.easeOut),
     );
   }
-
 
   @override
   void dispose() {
@@ -133,7 +136,7 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 検索フォーム（浮き上がり付き）
+  // 🔍 検索フォーム（浮き上がり＋右端ミニローダー）
   // ----------------------------------------------------
   Widget _buildSearchField() {
     return Container(
@@ -147,6 +150,7 @@ class _GenreScreenState extends State<GenreScreen>
               elevation: _shadowAnim.value,
               borderRadius: BorderRadius.circular(14),
               child: Stack(
+                alignment: Alignment.centerRight,
                 children: [
                   // TextField 本体
                   Container(
@@ -167,6 +171,17 @@ class _GenreScreenState extends State<GenreScreen>
                     ),
                   ),
 
+                  // 🔄 サジェスト→遷移中の小さなローダー
+                  if (_isSearchingFromSuggest)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+
                   // 🔥 上部をキャッチする透明のタップレイヤー
                   Positioned.fill(
                     child: GestureDetector(
@@ -183,18 +198,21 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  // ----------------------------------------------------
+  // 🔥 グループセクション
+  // ----------------------------------------------------
   Widget _buildGroupSection(GenreGroup group) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // グループタイトル
+          // グループタイトル（上広め / 下きつめ）
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Icon(group.icon, color: group.color),
+                Icon(group.icon, color: group.color, size: 22),
                 const SizedBox(width: 8),
                 Text(
                   group.name,
@@ -239,9 +257,9 @@ class _GenreScreenState extends State<GenreScreen>
                         context,
                         MaterialPageRoute(
                           builder: (_) => GenreVideosScreen(
-                            categoryId: baseCatId,   // 公式カテゴリID
-                            categoryTitle: cat.name, // 表示名
-                            keyword: cat.query,      // 追加 ← 新パラメータ
+                            categoryId: baseCatId, // 公式カテゴリID
+                            categoryTitle: cat.name,
+                            keyword: cat.query, // 追加キーワード
                           ),
                         ),
                       );
@@ -277,7 +295,7 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 サジェスト
+  // 🔍 サジェスト一覧
   // ----------------------------------------------------
   Widget _buildSuggestions() {
     if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
@@ -310,10 +328,44 @@ class _GenreScreenState extends State<GenreScreen>
               dense: true,
               leading: const Icon(Icons.search, size: 20),
               title: Text(s),
-              onTap: () {
-                _searchCtrl.text = s;
+              onTap: () async {
+                // ① デバウンス停止
+                _debounce?.cancel();
+
+                final kw = s;
+
+                // ② 選択内容を入力欄に反映して見せる
+                _searchCtrl.text = kw;
                 _focusNode.unfocus();
-                setState(() => _suggestions = []);
+
+                // ③ サジェストを閉じてミニローダーON
+                setState(() {
+                  _suggestions = [];
+                  _isSearchingFromSuggest = true;
+                });
+
+                // ④ UXのため 0.25秒だけ“選んだ感”を見せる
+                await Future.delayed(const Duration(milliseconds: 1000));
+
+                if (!mounted) return;
+
+                // ⑤ 結果画面へ遷移（キーワード検索モード）
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GenreVideosScreen(
+                      categoryId: '0', // 特別扱い用ダミーID
+                      categoryTitle: kw,
+                      keyword: kw,
+                    ),
+                  ),
+                );
+
+                // ⑥ 戻ってきたらローダーOFF
+                if (!mounted) return;
+                setState(() {
+                  _isSearchingFromSuggest = false;
+                });
               },
             ),
           ),
@@ -353,15 +405,15 @@ class _GenreScreenState extends State<GenreScreen>
             ),
           ),
 
-          SliverToBoxAdapter(
+          const SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
                 "検索して探す",
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF475569), // 少し淡い
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
                 ),
               ),
             ),
@@ -373,26 +425,26 @@ class _GenreScreenState extends State<GenreScreen>
           // 🔍サジェスト
           SliverToBoxAdapter(child: _buildSuggestions()),
 
-          SliverToBoxAdapter(
+          const SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Text(
                 "ジャンルから探す",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B), // 濃いめ
+                  color: Color(0xFF1E293B),
                 ),
               ),
             ),
           ),
 
-          // 🔥🔥🔥ココに genreGroups を描画🔥🔥🔥
+          // 🔥 ジャンルグループ一覧
           SliverList(
             delegate: SliverChildBuilderDelegate(
                   (context, groupIndex) {
                 final group = genreGroups[groupIndex];
-                return _buildGroupSection(group); // ← ここで表示！
+                return _buildGroupSection(group);
               },
               childCount: genreGroups.length,
             ),

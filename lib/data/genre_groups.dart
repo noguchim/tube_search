@@ -67,7 +67,6 @@ const genreGroups = <GenreGroup>[
       GenreCategory(id: 1104, name: "パチスロ", isOfficial: false, query: "パチスロ"),
       GenreCategory(id: 24, name: "エンターテイメント", isOfficial: true, query: "Entertainment"),
       GenreCategory(id: 23, name: "コメディ", isOfficial: true, query: "Comedy"),
-      GenreCategory(id: 30, name: "映画", isOfficial: true, query: "Movie"),
     ],
   ),
 
@@ -80,7 +79,7 @@ const genreGroups = <GenreGroup>[
     color: Color(0xFF1E88E5),
     icon: Icons.home_filled,
     items: [
-      GenreCategory(id: 1201, name: "ファミリー・キッズ", isOfficial: false, query: "family kids"),
+      GenreCategory(id: 1201, name: "ファミリー・キッズ", isOfficial: false, query: "ファミリー キッズ"),
       GenreCategory(id: 1202, name: "料理・グルメ", isOfficial: false, query: "料理 グルメ 食べ歩き"),
       GenreCategory(id: 1203, name: "美容", isOfficial: false, query: "美容"),
       GenreCategory(id: 1204, name: "ファッション", isOfficial: false, query: "ファッション"),
@@ -99,8 +98,7 @@ const genreGroups = <GenreGroup>[
     icon: Icons.psychology_alt,
     items: [
       GenreCategory(id: 25, name: "ニュース", isOfficial: true, query: "News"),
-      GenreCategory(id: 28, name: "科学 & 技術", isOfficial: true, query: "Science Technology"),
-      GenreCategory(id: 27, name: "教育", isOfficial: true, query: "Education"),
+      GenreCategory(id: 28, name: "科学 & 技術", isOfficial: true, query: "科学 技術"),
     ],
   ),
 
@@ -129,9 +127,8 @@ const genreGroups = <GenreGroup>[
     color: Color(0xFF455A64),
     icon: Icons.apps,
     items: [
-      GenreCategory(id: 19, name: "旅行 & イベント", isOfficial: true, query: "Travel Events"),
-      GenreCategory(id: 2, name: "自動車・乗り物", isOfficial: true, query: "Autos Vehicles"),
-      GenreCategory(id: 1501, name: "DIY", isOfficial: false, query: "DIY"),
+      GenreCategory(id: 2, name: "自動車・乗り物", isOfficial: true, query: "自動車 乗り物"),
+      GenreCategory(id: 1501, name: "DIY", isOfficial: false, query: "DIY 作り方"),
     ],
   ),
 ];

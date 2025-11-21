@@ -13,6 +13,7 @@ dependencies:
   intl: ^0.18.0
   webview_flutter: ^4.4.1
   # 👆 他の依存関係をここに書く
+  logger: ^2.0.2
 
 flutter:
   uses-material-design: true
