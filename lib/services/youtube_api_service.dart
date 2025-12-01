@@ -1,10 +1,12 @@
 // lib/services/youtube_api_service.dart
 
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+//import '../utils/app_logger.dart';
+import 'package:tube_search/utils/app_logger.dart';
 
 import '../models/youtube_video.dart';
-import '../utils/app_logger.dart';
 
 class YouTubeApiService {
   YouTubeApiService();
@@ -16,9 +18,9 @@ class YouTubeApiService {
   // 🔧 内部 GET 共通処理（logger 対応）
   // ------------------------------------------------------------
   Future<Map<String, dynamic>> _getJson(
-      Uri uri, {
-        bool debugRaw = false,
-      }) async {
+    Uri uri, {
+    bool debugRaw = false,
+  }) async {
     // 🔹 リクエストURL
     if (debugRaw) {
       logger.i('🛰️ [YouTube API Request] $uri');
@@ -64,7 +66,8 @@ class YouTubeApiService {
       queryParameters['videoCategoryId'] = videoCategoryId;
     }
 
-    final uri = Uri.https(_baseAuthority, '/youtube/v3/videos', queryParameters);
+    final uri =
+        Uri.https(_baseAuthority, '/youtube/v3/videos', queryParameters);
 
     logger.i('🔥 fetchPopularVideos() called '
         'category=$videoCategoryId region=$regionCode');
@@ -116,16 +119,17 @@ class YouTubeApiService {
   // 3️⃣ カテゴリ + キーワード検索
   // ============================================================
   Future<List<YouTubeVideo>> searchVideosByCategoryAndKeyword(
-      String categoryId,
-      String keyword, {
-        int maxResults = 50,
-        String regionCode = 'JP',
-        bool debugRaw = false,
-      }) async {
+    String categoryId,
+    String keyword, {
+    int maxResults = 50,
+    String regionCode = 'JP',
+    bool debugRaw = false,
+  }) async {
     // 🔥 スペース対策
     keyword = keyword.trim();
 
-    logger.i('🔎 searchVideosByCategoryAndKeyword(cat:$categoryId, key:"$keyword")');
+    logger.i(
+        '🔎 searchVideosByCategoryAndKeyword(cat:$categoryId, key:"$keyword")');
 
     final uri = Uri.https(
       _baseAuthority,
@@ -172,7 +176,7 @@ class YouTubeApiService {
     if (trimmed.isEmpty) {
       logger.w(
         'searchWithStats called with empty keyword. '
-            'Falling back to fetchPopularVideos(categoryId=$categoryId)',
+        'Falling back to fetchPopularVideos(categoryId=$categoryId)',
       );
       return fetchPopularVideos(
         regionCode: regionCode,
@@ -199,7 +203,8 @@ class YouTubeApiService {
     }
 
     // ID のみ取り出し
-    final ids = searchResults.map((v) => v.id).where((id) => id.isNotEmpty).toList();
+    final ids =
+        searchResults.map((v) => v.id).where((id) => id.isNotEmpty).toList();
     if (ids.isEmpty) {
       logger.w('searchWithStats: no valid videoIds from search results');
       return [];
@@ -226,7 +231,7 @@ class YouTubeApiService {
 
     logger.i(
       '📊 searchWithStats: videos API returned ${items.length} items '
-          'for ${ids.length} requested ids',
+      'for ${ids.length} requested ids',
     );
 
     final result = items
@@ -240,9 +245,9 @@ class YouTubeApiService {
 
   /// 🔥 動画IDをまとめて取得し statistics(viewCount) を得る
   Future<List<YouTubeVideo>> fetchVideosByIds(
-      String videoIds, {
-        bool debugRaw = false,
-      }) async {
+    String videoIds, {
+    bool debugRaw = false,
+  }) async {
     final uri = Uri.https(
       'www.googleapis.com',
       '/youtube/v3/videos',
@@ -263,11 +268,11 @@ class YouTubeApiService {
   }
 
   Future<List<YouTubeVideo>> searchVideosByKeyword(
-      String keyword, {
-        int maxResults = 50,
-        String regionCode = 'JP',
-        bool debugRaw = false,
-      }) async {
+    String keyword, {
+    int maxResults = 50,
+    String regionCode = 'JP',
+    bool debugRaw = false,
+  }) async {
     final uri = Uri.https(
       _baseAuthority,
       '/youtube/v3/search',

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../services/youtube_api_service.dart';
-import '../widgets/video_list_tile.dart';
-import '../widgets/custom_app_bar.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../services/favorites_service.dart';
+import '../services/youtube_api_service.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/video_list_tile.dart';
 
 class PopularVideosScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
@@ -55,7 +58,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   Future<List<Map<String, dynamic>>> _fetchVideos() async {
     final videos = await _apiService.fetchPopularVideos();
 
-    // モデル → Map（すべて String に統一）
     final mapped = videos.map((v) {
       return {
         'id': v.id,
@@ -63,29 +65,26 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
         'thumbnailUrl': v.thumbnailUrl,
         'channelTitle': v.channelTitle,
         'publishedAt': v.publishedAt?.toIso8601String(),
-        'viewCount': (v.viewCount ?? 0).toString(), // ← String に統一（超重要）
+        'viewCount': (v.viewCount ?? 0).toString(),
       };
     }).toList();
 
-    // 再生数で降順ソート（ランキングの index と合わせる）
+    // 再生数で降順ソート
     mapped.sort((a, b) {
       final viewA = int.tryParse(a['viewCount'] ?? '0') ?? 0;
       final viewB = int.tryParse(b['viewCount'] ?? '0') ?? 0;
-      return viewB.compareTo(viewA); // 降順
+      return viewB.compareTo(viewA);
     });
 
     setState(() => _fetchedAt = DateTime.now());
     return mapped;
   }
 
-
   Future<void> _refreshVideos() async {
     setState(() => _isRefreshing = true);
 
     try {
       final videos = await _apiService.fetchPopularVideos();
-
-      // List<YouTubeVideo> → Map（すべて String に統一）
       final mapped = videos.map((v) {
         return {
           'id': v.id,
@@ -93,11 +92,10 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           'thumbnailUrl': v.thumbnailUrl,
           'channelTitle': v.channelTitle,
           'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': (v.viewCount ?? 0).toString(), // ← 超重要
+          'viewCount': (v.viewCount ?? 0).toString(),
         };
       }).toList();
 
-      // 再生数で降順ソート（人気順に正しく並べる）
       mapped.sort((a, b) {
         final viewA = int.tryParse(a['viewCount'] ?? '0') ?? 0;
         final viewB = int.tryParse(b['viewCount'] ?? '0') ?? 0;
@@ -108,7 +106,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
         _futureVideos = Future.value(mapped);
         _fetchedAt = DateTime.now();
       });
-
     } finally {
       setState(() => _isRefreshing = false);
     }
@@ -124,8 +121,11 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
+    // ★ Favorite 状態変化を購読して同期
+    context.watch<FavoritesService>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _futureVideos,
         builder: (context, snapshot) {
@@ -138,12 +138,12 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           }
 
           final videos = snapshot.data!;
+
           return RefreshIndicator(
             onRefresh: _refreshVideos,
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                /// 🪩 メタリックAppBar（共通コンポーネント使用）
                 SliverAppBar(
                   floating: true,
                   snap: true,
@@ -155,16 +155,16 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                     showRefreshButton: true,
                     isRefreshing: _isRefreshing,
                     onRefreshPressed: _refreshVideos,
-                    showInfoButton: true, // ✅ 追加
+                    showInfoButton: true,
                     infoMessage:
-                    'YouTube急上昇ランキング（日本国内・トレンド反映） ${_formatFetchedAt()}',
+                        'YouTube急上昇ランキング（日本国内・トレンド反映） ${_formatFetchedAt()}',
                   ),
                 ),
 
-                /// 🎥 動画リスト
+                // --- 動画リスト ---
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                        (context, index) => VideoListTile(
+                    (context, index) => VideoListTile(
                       video: videos[index],
                       rank: index + 1,
                     ),

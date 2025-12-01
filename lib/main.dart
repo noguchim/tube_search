@@ -1,14 +1,36 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'config/screen_titles.dart';
-import 'theme/app_theme.dart';
-import 'screens/splash_screen.dart';
-import 'screens/popular_videos_screen.dart';
-import 'screens/genre_screen.dart';
-import 'screens/settings_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tube_search/services/favorites_service.dart';
+
+import 'config/screen_titles.dart';
+import 'providers/theme_provider.dart'; // ★ NEW 追加
+import 'screens/favorites_screen.dart';
+import 'screens/genre_screen.dart';
+import 'screens/popular_videos_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/splash_screen.dart';
+import 'theme/app_theme.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ★ 初期ロード済のお気に入りサービスを作成
+  final fav = FavoritesService();
+  await fav.loadFavorites();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: fav),
+        // ★ FavoritesService
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // ★ ThemeProvider 追加
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,10 +38,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ★ ThemeProvider を監視
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'TUBE+',
-      theme: appTheme,
+      theme: appLightTheme,
+      // ★ Light
+      darkTheme: appDarkTheme,
+      // ★ Dark
+      themeMode: themeProvider.themeMode,
+      // ★ ON/OFF 自動反映
       home: const SplashScreen(),
     );
   }
@@ -35,11 +65,14 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   bool _isScrollingDown = false;
-  bool glassMode = true;
+
+  final GlobalKey<FavoritesScreenState> _favKey =
+      GlobalKey<FavoritesScreenState>();
 
   late final List<Widget> _screens = [
     PopularVideosScreen(onScrollChanged: _onScrollChanged),
     GenreScreen(onScrollChanged: _onScrollChanged),
+    FavoritesScreen(key: _favKey),
     const SettingsScreen(),
   ];
 
@@ -68,12 +101,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-
       body: Stack(
         children: [
           Positioned.fill(child: _buildBackground()),
-
-          // ★ 画面キャッシュ完全復活（超重要）
           Positioned.fill(
             child: IndexedStack(
               index: _selectedIndex,
@@ -82,7 +112,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ],
       ),
-
       bottomNavigationBar: AnimatedOpacity(
         opacity: _isScrollingDown ? 0.0 : 1.0,
         duration: const Duration(milliseconds: 250),
@@ -92,6 +121,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             selectedIndex: _selectedIndex,
             onTabSelected: (index) {
               setState(() => _selectedIndex = index);
+
+              if (index == 2) {
+                _favKey.currentState?.reload();
+              }
             },
           ),
         ),
@@ -112,32 +145,55 @@ class GlassDockNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ---------------------------------------------------------
+    // 🎨 Light / Dark 背景グラデーション
+    // ---------------------------------------------------------
+    final List<Color> bgGradient = isDark
+        ? [
+            const Color(0xCC111111),
+            const Color(0xB31A1A1A),
+            const Color(0x991A1A1A),
+          ]
+        : [
+            const Color(0xE6FFFFFF),
+            const Color(0xCCE5E8EC),
+            const Color(0x99D0D4D9),
+          ];
+
+    final Color bgColor = isDark
+        ? const Color(0xFF111111).withOpacity(0.85)
+        : const Color(0xFFF9FAFB).withOpacity(0.85);
+
+    final Color borderColor =
+        isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.7);
+
+    final Color shadowColor =
+        isDark ? Colors.black.withOpacity(0.4) : Colors.black.withOpacity(0.07);
+
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xE6FFFFFF),
-                Color(0xCCE5E8EC),
-                Color(0x99D0D4D9),
-              ],
+              colors: bgGradient,
             ),
-            color: const Color(0xFFF9FAFB).withValues(alpha: 0.85),
+            color: bgColor,
             border: Border(
               top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: borderColor,
                 width: 0.8,
               ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
+                color: shadowColor,
                 blurRadius: 12,
                 offset: const Offset(0, -2),
               ),
@@ -148,7 +204,8 @@ class GlassDockNavigationBar extends StatelessWidget {
             children: [
               _buildTab(context, 0, Icons.local_fire_department_rounded),
               _buildTab(context, 1, Icons.category_rounded),
-              _buildTab(context, 2, Icons.settings_rounded),
+              _buildTab(context, 2, Icons.favorite_rounded),
+              _buildTab(context, 3, Icons.settings_rounded),
             ],
           ),
         ),
@@ -156,14 +213,23 @@ class GlassDockNavigationBar extends StatelessWidget {
     );
   }
 
+  // ---------------------------------------------------------
+  // 🔥 タブ描画
+  // ---------------------------------------------------------
   Widget _buildTab(BuildContext context, int index, IconData icon) {
     final bool isActive = selectedIndex == index;
-    final Color primary = Theme.of(context).colorScheme.primary;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // ラベル文字
+    final Color primary = Theme.of(context).colorScheme.primary;
+    final Color inactiveIcon =
+        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+    final Color inactiveText =
+        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+
     final labels = [
       ScreenTitles.navLabels['home'],
       ScreenTitles.navLabels['genre'],
+      "お気に入り",
       ScreenTitles.navLabels['settings'],
     ];
 
@@ -174,34 +240,42 @@ class GlassDockNavigationBar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // --- 上段：アイコン + バブル ---
+            // ---------------------------------------------
+            // 🔵 Active バブル（光の玉 + 背景）
+            // ---------------------------------------------
             SizedBox(
-              height: 30, // ← アイコン24pxに合わせて少しだけ拡大
+              height: 30,
               child: Stack(
                 alignment: Alignment.center,
                 clipBehavior: Clip.none,
                 children: [
-                  // ● バブル本体（30px）
                   if (isActive)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(15),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                         child: Container(
-                          width: 30,   // ← 24px 用に拡大
+                          width: 30,
                           height: 30,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
                             gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withValues(alpha: 0.42),
-                                Colors.white.withValues(alpha: 0.14),
-                              ],
+                              colors: isDark
+                                  ? [
+                                      Colors.white.withOpacity(0.25),
+                                      Colors.white.withOpacity(0.05),
+                                    ]
+                                  : [
+                                      Colors.white.withOpacity(0.42),
+                                      Colors.white.withOpacity(0.14),
+                                    ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.55),
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.30)
+                                  : Colors.white.withOpacity(0.55),
                               width: 1.0,
                             ),
                           ),
@@ -209,7 +283,6 @@ class GlassDockNavigationBar extends StatelessWidget {
                       ),
                     ),
 
-                  // ● 下グロー（22px）
                   if (isActive)
                     Positioned(
                       bottom: 2,
@@ -221,7 +294,7 @@ class GlassDockNavigationBar extends StatelessWidget {
                           gradient: RadialGradient(
                             radius: 0.85,
                             colors: [
-                              Theme.of(context).colorScheme.primary.withValues(alpha: 0.20),
+                              primary.withOpacity(0.22),
                               Colors.transparent,
                             ],
                           ),
@@ -229,7 +302,6 @@ class GlassDockNavigationBar extends StatelessWidget {
                       ),
                     ),
 
-                  // ● 上ハイライト（14px）
                   if (isActive)
                     Positioned(
                       top: 1.4,
@@ -241,20 +313,25 @@ class GlassDockNavigationBar extends StatelessWidget {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.75),
-                              Colors.white.withValues(alpha: 0.0),
-                            ],
+                            colors: isDark
+                                ? [
+                                    Colors.white.withOpacity(0.60),
+                                    Colors.white.withOpacity(0.0),
+                                  ]
+                                : [
+                                    Colors.white.withOpacity(0.75),
+                                    Colors.white.withOpacity(0.0),
+                                  ],
                           ),
                         ),
                       ),
                     ),
 
-                  // ● アイコン（24px / 18px）
+                  // アイコン
                   Icon(
                     icon,
-                    size: isActive ? 24 : 18, // ← ここだけ大きくする！
-                    color: isActive ? primary : Colors.grey.shade700,
+                    size: isActive ? 24 : 18,
+                    color: isActive ? primary : inactiveIcon,
                   ),
                 ],
               ),
@@ -262,21 +339,15 @@ class GlassDockNavigationBar extends StatelessWidget {
 
             const SizedBox(height: 2),
 
-            // --- 下段：ラベル ---
+            // ---------------------------------------------
+            // 🏷 ラベル
+            // ---------------------------------------------
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? primary : Colors.grey.shade700,
-                shadows: isActive
-                    ? [
-                  Shadow(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    blurRadius: 5,
-                  ),
-                ]
-                    : [],
+                color: isActive ? primary : inactiveText,
               ),
               child: Text(labels[index] ?? ''),
             ),
@@ -286,5 +357,3 @@ class GlassDockNavigationBar extends StatelessWidget {
     );
   }
 }
-
-

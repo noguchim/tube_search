@@ -1,10 +1,12 @@
 // lib/screens/genre_screen.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 
-import '../services/youtube_api_service.dart';
 import '../data/genre_groups.dart';
+import '../services/youtube_api_service.dart';
+import '../widgets/custom_app_bar.dart'; // ★ 追加（共通ガラスAppBar）
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -30,13 +32,9 @@ class _GenreScreenState extends State<GenreScreen>
 
   bool _isScrollingDown = false;
 
-  /// 🔥 初回だけ “持ち上がり” を実行
   bool _isFirstTap = true;
-
-  /// 🔥 サジェストをタップして検索結果に遷移中かどうか
   bool _isSearchingFromSuggest = false;
 
-  /// 🔥 アニメーション（scale + shadow）
   late AnimationController _tapAnim;
   late Animation<double> _scaleAnim;
   late Animation<double> _shadowAnim;
@@ -111,32 +109,25 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔥 検索バータップ → 浮き上がり → 遅延吸収 → キーボード
+  // 🔥 検索フォームタップ
   // ----------------------------------------------------
   Future<void> _onTapSearchField() async {
     if (_isFirstTap) {
       _isFirstTap = false;
 
-      // ① アニメーション開始
       _tapAnim.forward();
-
-      // ② iOS のキーボード遅延を吸収（自然）
       await Future.delayed(const Duration(milliseconds: 280));
-
-      // ③ キーボードフォーカス
       _focusNode.requestFocus();
-
-      // ④ 戻す（キーボード起動後なので自然に見える）
       await Future.delayed(const Duration(milliseconds: 150));
+
       if (mounted) _tapAnim.reverse();
     } else {
-      // 2回目以降は普通にフォーカス
       _focusNode.requestFocus();
     }
   }
 
   // ----------------------------------------------------
-  // 🔍 検索フォーム（浮き上がり＋右端ミニローダー）
+  // 🔍 検索フォームUI
   // ----------------------------------------------------
   Widget _buildSearchField() {
     return Container(
@@ -152,7 +143,6 @@ class _GenreScreenState extends State<GenreScreen>
               child: Stack(
                 alignment: Alignment.centerRight,
                 children: [
-                  // TextField 本体
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -170,8 +160,6 @@ class _GenreScreenState extends State<GenreScreen>
                       ),
                     ),
                   ),
-
-                  // 🔄 サジェスト→遷移中の小さなローダー
                   if (_isSearchingFromSuggest)
                     const Padding(
                       padding: EdgeInsets.only(right: 12),
@@ -181,8 +169,6 @@ class _GenreScreenState extends State<GenreScreen>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-
-                  // 🔥 上部をキャッチする透明のタップレイヤー
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -199,7 +185,7 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔥 グループセクション
+  // 🔥 グループセクションUI
   // ----------------------------------------------------
   Widget _buildGroupSection(GenreGroup group) {
     return Container(
@@ -207,7 +193,6 @@ class _GenreScreenState extends State<GenreScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // グループタイトル（上広め / 下きつめ）
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
@@ -224,10 +209,7 @@ class _GenreScreenState extends State<GenreScreen>
               ],
             ),
           ),
-
           const SizedBox(height: 10),
-
-          // 🔥 グループ内カテゴリ一覧（タップで動画画面へ）
           ...group.items.map((cat) {
             return Container(
               margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -237,11 +219,10 @@ class _GenreScreenState extends State<GenreScreen>
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
-                    final groupId = group.groupId; // 例: G01
+                    final groupId = group.groupId;
                     final baseCatId = baseCategoryIds[groupId]!.toString();
 
                     if (cat.isOfficial) {
-                      // 公式カテゴリ → 公式IDでそのまま遷移
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -252,14 +233,13 @@ class _GenreScreenState extends State<GenreScreen>
                         ),
                       );
                     } else {
-                      // 独自カテゴリ → ベースカテゴリID + query
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => GenreVideosScreen(
-                            categoryId: baseCatId, // 公式カテゴリID
+                            categoryId: baseCatId,
                             categoryTitle: cat.name,
-                            keyword: cat.query, // 追加キーワード
+                            keyword: cat.query,
                           ),
                         ),
                       );
@@ -324,44 +304,37 @@ class _GenreScreenState extends State<GenreScreen>
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ..._suggestions.map(
-                (s) => ListTile(
+            (s) => ListTile(
               dense: true,
               leading: const Icon(Icons.search, size: 20),
               title: Text(s),
               onTap: () async {
-                // ① デバウンス停止
                 _debounce?.cancel();
 
                 final kw = s;
-
-                // ② 選択内容を入力欄に反映して見せる
                 _searchCtrl.text = kw;
                 _focusNode.unfocus();
 
-                // ③ サジェストを閉じてミニローダーON
                 setState(() {
                   _suggestions = [];
                   _isSearchingFromSuggest = true;
                 });
 
-                // ④ UXのため 0.25秒だけ“選んだ感”を見せる
-                await Future.delayed(const Duration(milliseconds: 1000));
+                await Future.delayed(const Duration(milliseconds: 300));
 
                 if (!mounted) return;
 
-                // ⑤ 結果画面へ遷移（キーワード検索モード）
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => GenreVideosScreen(
-                      categoryId: '0', // 特別扱い用ダミーID
+                      categoryId: '0',
                       categoryTitle: kw,
                       keyword: kw,
                     ),
                   ),
                 );
 
-                // ⑥ 戻ってきたらローダーOFF
                 if (!mounted) return;
                 setState(() {
                   _isSearchingFromSuggest = false;
@@ -375,7 +348,7 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🧩 全体 UI
+  // 🧩 本体描画
   // ----------------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -384,27 +357,20 @@ class _GenreScreenState extends State<GenreScreen>
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
+          /// 🪩 共通ガラスAppBar（ここを置換した）
           const SliverAppBar(
             floating: true,
             snap: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
             expandedHeight: 82,
-            flexibleSpace: Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 30),
-                child: Text(
-                  "ジャンル別人気",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF334155),
-                  ),
-                ),
-              ),
+            flexibleSpace: CustomGlassAppBar(
+              title: "ジャンル別人気",
+              showRefreshButton: false,
             ),
           ),
 
+          // 🔍 見出し
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -419,10 +385,7 @@ class _GenreScreenState extends State<GenreScreen>
             ),
           ),
 
-          // 🔍検索フォーム
           SliverToBoxAdapter(child: _buildSearchField()),
-
-          // 🔍サジェスト
           SliverToBoxAdapter(child: _buildSuggestions()),
 
           const SliverToBoxAdapter(
@@ -439,18 +402,14 @@ class _GenreScreenState extends State<GenreScreen>
             ),
           ),
 
-          // 🔥 ジャンルグループ一覧
+          /// 🔥 グループ一覧
           SliverList(
             delegate: SliverChildBuilderDelegate(
-                  (context, groupIndex) {
-                final group = genreGroups[groupIndex];
-                return _buildGroupSection(group);
-              },
+              (context, idx) => _buildGroupSection(genreGroups[idx]),
               childCount: genreGroups.length,
             ),
           ),
 
-          // 最後の余白
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),

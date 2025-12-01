@@ -1,3 +1,4 @@
+// lib/widgets/custom_app_bar.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
@@ -23,33 +24,51 @@ class CustomGlassAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // -----------------------------------------------------
+    // 🎨 Light / Dark 用の背景色グラデーション
+    // -----------------------------------------------------
+    final List<Color> bgGradient = isDark
+        ? [
+            const Color(0xCC1A1A1A),
+            const Color(0xB31A1A1A),
+            const Color(0x991A1A1A),
+          ]
+        : [
+            const Color(0xE6FFFFFF),
+            const Color(0xCCE5E8EC),
+            const Color(0x99D0D4D9),
+          ];
+
+    final Color bgColor = isDark
+        ? const Color(0xFF1A1A1A).withOpacity(0.85)
+        : const Color(0xFFF9FAFB).withOpacity(0.75);
 
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 🪩 背景ブラー＋グラデーション
+          // 🪩 背景ブラー（Glass）
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xE6FFFFFF),
-                      Color(0xCCE5E8EC),
-                      Color(0x99D0D4D9),
-                    ],
+                    colors: bgGradient,
                   ),
-                  color: const Color(0xFFF9FAFB).withValues(alpha: 0.8),
+                  color: bgColor,
                 ),
               ),
             ),
           ),
 
-          // コンテンツ
+          // -----------------------------------------------------
+          // 🧩 コンテンツ
+          // -----------------------------------------------------
           SafeArea(
             bottom: false,
             child: Padding(
@@ -62,46 +81,39 @@ class CustomGlassAppBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  /// 🎬 ロゴ
+                  // -----------------------------------------------------
+                  // 🎬 ロゴ（単色：Light=黒、Dark=白）
+                  // -----------------------------------------------------
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: ShaderMask(
-                      shaderCallback: (bounds) {
-                        return const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFFB5B9BE),
-                            Color(0xFF646A70),
-                            Color(0xFF3C4045),
-                          ],
-                        ).createShader(bounds);
-                      },
-                      blendMode: BlendMode.srcIn,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.play_arrow_rounded,
-                              size: 19, color: Colors.white),
-                          SizedBox(width: 5),
-                          Text(
-                            'TUBE+',
-                            style: TextStyle(
-                              fontFamily: 'SF Pro Display',
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
-                              letterSpacing: 0.6,
-                              color: Colors.white,
-                            ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.play_arrow_rounded,
+                          size: 19,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'TUBE+',
+                          style: TextStyle(
+                            fontFamily: 'SF Pro Display',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            letterSpacing: 0.6,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 2),
 
-                  /// 📺 タイトル＋Info＋更新ボタン
+                  // -----------------------------------------------------
+                  // 📺 タイトル＋Info＋更新ボタン
+                  // -----------------------------------------------------
                   SizedBox(
                     height: 28,
                     child: Stack(
@@ -118,8 +130,10 @@ class CustomGlassAppBar extends StatelessWidget {
                                   title,
                                   textAlign: TextAlign.center,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF0F172A),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
                                     fontWeight: FontWeight.w900,
                                     fontSize: 21,
                                     height: 1.0,
@@ -128,7 +142,7 @@ class CustomGlassAppBar extends StatelessWidget {
                                 ),
                               ),
 
-                              // ℹ️ Infoボタン（タップで吹き出し）
+                              // ℹ️ Infoボタン
                               if (showInfoButton)
                                 _InfoButton(
                                   message: infoMessage ??
@@ -146,22 +160,25 @@ class CustomGlassAppBar extends StatelessWidget {
                             child: IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onPressed:
-                              isRefreshing ? null : onRefreshPressed,
+                              onPressed: isRefreshing ? null : onRefreshPressed,
                               iconSize: 28,
                               icon: isRefreshing
-                                  ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.8,
-                                  color: Color(0xFF475569),
-                                ),
-                              )
-                                  : const Icon(
-                                Icons.refresh_rounded,
-                                color: Color(0xFF1E293B),
-                              ),
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.8,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF475569),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.refresh_rounded,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF1E293B),
+                                    ),
                               tooltip: '最新の情報を取得',
                             ),
                           ),
@@ -173,22 +190,28 @@ class CustomGlassAppBar extends StatelessWidget {
             ),
           ),
 
-          // ✨ 下端ハイライト
+          // ✨ 下端ハイライト（Light/Dark共通）
           Positioned(
             bottom: -1,
             left: 0,
             right: 0,
             child: Container(
               height: 1,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFFFFFF),
-                    Color(0x66FFFFFF),
-                    Color(0x00FFFFFF),
-                  ],
+                  colors: isDark
+                      ? [
+                          Colors.white24,
+                          Colors.white10,
+                          Colors.transparent,
+                        ]
+                      : [
+                          Colors.white,
+                          Colors.white60,
+                          Colors.transparent,
+                        ],
                 ),
               ),
             ),
@@ -199,8 +222,14 @@ class CustomGlassAppBar extends StatelessWidget {
   }
 }
 
+//
+// ===========================================================
+// 🔥 Infoボタン（Tooltip） 〜 Light / Dark 完全対応版
+// ===========================================================
+//
 class _InfoButton extends StatefulWidget {
   final String message;
+
   const _InfoButton({required this.message});
 
   @override
@@ -249,6 +278,8 @@ class _InfoButtonState extends State<_InfoButton>
   }
 
   void _showTooltip(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final renderBox = context.findRenderObject() as RenderBox;
     final Offset buttonGlobalPos = renderBox.localToGlobal(Offset.zero);
     final Size buttonSize = renderBox.size;
@@ -257,17 +288,17 @@ class _InfoButtonState extends State<_InfoButton>
     const double verticalGap = 8;
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final double screenCenterX = screenWidth / 2; // ✅ 画面中央固定
+    final double screenCenterX = screenWidth / 2;
 
-    // 🎯 横位置（中央固定）
     final double tooltipLeft = (screenCenterX - tooltipWidth / 2)
-        .clamp(8.0, screenWidth - tooltipWidth - 8.0);
+        .clamp(8, screenWidth - tooltipWidth - 8)
+        .toDouble();
 
-    // 🎯 縦位置（infoボタンの下）
-    final double tooltipTop = buttonGlobalPos.dy + buttonSize.height + verticalGap;
+    final double tooltipTop =
+        buttonGlobalPos.dy + buttonSize.height + verticalGap;
 
     _overlay = OverlayEntry(
-      builder: (context) => Positioned(
+      builder: (_) => Positioned(
         top: tooltipTop,
         left: tooltipLeft,
         child: Material(
@@ -279,13 +310,15 @@ class _InfoButtonState extends State<_InfoButton>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 🔺 上向き三角（吹き出しの上側に付ける）
+                  // 🔺 三角
                   Align(
                     alignment: Alignment.center,
                     child: CustomPaint(
                       size: const Size(16, 8),
                       painter: _UpTrianglePainter(
-                        color: Colors.grey.shade800.withValues(alpha: 0.95),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.95)
+                            : Colors.grey.shade800.withOpacity(0.95),
                       ),
                     ),
                   ),
@@ -295,11 +328,13 @@ class _InfoButtonState extends State<_InfoButton>
                     width: tooltipWidth,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade800.withValues(alpha: 0.95),
+                      color: isDark
+                          ? Colors.white.withOpacity(0.95)
+                          : Colors.grey.shade800.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
+                          color: Colors.black.withOpacity(0.12),
                           blurRadius: 6,
                           offset: const Offset(0, 3),
                         ),
@@ -307,9 +342,8 @@ class _InfoButtonState extends State<_InfoButton>
                     ),
                     child: Text(
                       widget.message,
-                      textAlign: TextAlign.start,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isDark ? Colors.black87 : Colors.white,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -323,11 +357,10 @@ class _InfoButtonState extends State<_InfoButton>
       ),
     );
 
-    // ✅ rootOverlay: false → AppBar座標基準でズレなし
     Overlay.of(context).insert(_overlay!);
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 5), () async {
+    Future.delayed(const Duration(seconds: 4), () async {
       if (mounted && _overlay != null) {
         await _controller.reverse();
         _hideTooltip();
@@ -342,6 +375,8 @@ class _InfoButtonState extends State<_InfoButton>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -353,25 +388,17 @@ class _InfoButtonState extends State<_InfoButton>
         onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.only(left: 6.0),
+          margin: const EdgeInsets.only(left: 6),
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color:
-            _isPressed ? const Color(0xFFD9E2EC) : Colors.transparent,
-            boxShadow: _isPressed
-                ? [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ]
-                : [],
+            color: _isPressed
+                ? (isDark ? Colors.white12 : Colors.black12)
+                : Colors.transparent,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.info_outline_rounded,
-            color: Color(0xFF475569),
+            color: isDark ? Colors.white70 : const Color(0xFF475569),
             size: 20,
           ),
         ),
@@ -382,6 +409,7 @@ class _InfoButtonState extends State<_InfoButton>
 
 class _UpTrianglePainter extends CustomPainter {
   final Color color;
+
   const _UpTrianglePainter({required this.color});
 
   @override
