@@ -14,7 +14,6 @@ class VideoListTile extends StatelessWidget {
     required this.rank,
   });
 
-  // ⭐ 再生数 → 万・億表記
   String _formatViewCount(String value) {
     final num? number = num.tryParse(value);
     if (number == null) return '0回視聴';
@@ -33,55 +32,48 @@ class VideoListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    /// Providerの状態を購読
     final fav = context.watch<FavoritesService>();
 
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // 🎨 カード色・枠線は Theme 側を基準としつつ、より視認性を上げる BorderSide を追加
+    final cardColor = theme.cardTheme.color ?? (isDark ? Colors.white10 : Colors.white);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(
+        color: isDark
+            ? Colors.white.withOpacity(0.07)       // ← 0.05 → 0.07 に調整
+            : Colors.black.withOpacity(0.05),
+        width: 1,
+      ),
+    );
+
+    final elevation = theme.cardTheme.elevation ?? 0;
 
     final id = video['id'] ?? "";
     final title = video['title'] ?? '';
     final thumbnail = video['thumbnailUrl'] ?? '';
     final channel = video['channelTitle'] ?? '';
     final viewText = _formatViewCount((video['viewCount'] ?? '0').toString());
-
     final isFav = fav.isFavoriteSync(id);
-
-    // ----------------------------------------------------------
-    // 🎨 Light / Dark による色切り替え
-    // ----------------------------------------------------------
-    final Color cardColor = isDark ? const Color(0xFF1F1F1F) : Colors.white;
-    final Color shadowColor =
-        isDark ? Colors.black.withOpacity(0.25) : Colors.grey.withOpacity(0.25);
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF1F1F1F);
-    final Color channelColor = isDark ? Colors.grey.shade300 : Colors.black87;
-    final Color favOffColor =
-        isDark ? Colors.grey.shade300 : Colors.grey.shade500;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VideoPlayerScreen(video: video),
-            ),
-          );
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor,
-                blurRadius: 6,
-                offset: const Offset(0, 3),
+      child: Material(
+        color: cardColor,
+        shape: shape,
+        elevation: elevation,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VideoPlayerScreen(video: video),
               ),
-            ],
-          ),
-          clipBehavior: Clip.hardEdge,
+            );
+          },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -95,7 +87,8 @@ class VideoListTile extends StatelessWidget {
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                          color: isDark ? Colors.grey[800] : Colors.grey[300]),
+                        color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      ),
                     ),
                   ),
                   Positioned(
@@ -108,7 +101,7 @@ class VideoListTile extends StatelessWidget {
 
               // ---------------- 情報部分 ----------------
               Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -120,7 +113,7 @@ class VideoListTile extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: titleColor,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
 
@@ -132,13 +125,13 @@ class VideoListTile extends StatelessWidget {
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         fontSize: 13,
-                        color: channelColor,
+                        color: isDark ? Colors.white70 : Colors.black54, // ← 改善
                       ),
                     ),
 
                     const SizedBox(height: 10),
 
-                    // ❤️ と視聴数
+                    // ❤️ + 再生数
                     Row(
                       children: [
                         GestureDetector(
@@ -152,12 +145,18 @@ class VideoListTile extends StatelessWidget {
                               isFav
                                   ? Icons.favorite_rounded
                                   : Icons.favorite_border_rounded,
-                              color: isFav ? Colors.red : favOffColor,
+                              color: isFav
+                                  ? Colors.red
+                                  : (isDark
+                                  ? Colors.white70
+                                  : Colors.grey.shade600),
                               size: isFav ? 28 : 33,
                             ),
                           ),
                         ),
+
                         const SizedBox(width: 16),
+
                         Expanded(
                           child: Text(
                             viewText,
@@ -165,7 +164,7 @@ class VideoListTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 23,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: theme.colorScheme.primary,
                             ),
                           ),
                         ),
@@ -181,7 +180,7 @@ class VideoListTile extends StatelessWidget {
     );
   }
 
-  // ⭐ ランクバッジ（Light/Dark対応）
+  /// Rankバッジ（よりガラスUIに寄せた改善版）
   Widget _buildRankBadge(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
     final rank = this.rank;
@@ -191,21 +190,21 @@ class VideoListTile extends StatelessWidget {
     Border? border;
 
     if (rank == 1) {
-      // 1位はブランドカラーで統一
+      // 1位はブランドカラー
       baseColor = theme.colorScheme.primary;
       textColor = Colors.white;
       border = null;
     } else if (rank == 2 || rank == 3) {
-      // 2〜3位は白ベース（Darkは少し暗めに）
+      // 2位・3位 → 白透明 0.10 のガラス風
       baseColor = isDark ? const Color(0xFF333333) : Colors.white;
       textColor = theme.colorScheme.primary;
       border = Border.all(color: theme.colorScheme.primary, width: 1.2);
     } else {
-      // 4位以降は目立ちすぎないように
+      // 4位以降 → 白透明 0.12（少し濃いめ）
       baseColor = isDark ? const Color(0xFF3A3A3A) : Colors.white;
       textColor = isDark ? Colors.white : Colors.black87;
       border = Border.all(
-        color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+        color: isDark ? Colors.white24 : Colors.black26,
         width: 1.2,
       );
     }

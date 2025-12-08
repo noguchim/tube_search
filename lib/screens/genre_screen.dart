@@ -1,12 +1,12 @@
 // lib/screens/genre_screen.dart
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../data/genre_groups.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/custom_app_bar.dart'; // ★ 追加（共通ガラスAppBar）
+
+import '../widgets/custom_glass_app_bar.dart';
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -108,9 +108,6 @@ class _GenreScreenState extends State<GenreScreen>
     });
   }
 
-  // ----------------------------------------------------
-  // 🔥 検索フォームタップ
-  // ----------------------------------------------------
   Future<void> _onTapSearchField() async {
     if (_isFirstTap) {
       _isFirstTap = false;
@@ -119,7 +116,6 @@ class _GenreScreenState extends State<GenreScreen>
       await Future.delayed(const Duration(milliseconds: 280));
       _focusNode.requestFocus();
       await Future.delayed(const Duration(milliseconds: 150));
-
       if (mounted) _tapAnim.reverse();
     } else {
       _focusNode.requestFocus();
@@ -127,9 +123,17 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 検索フォームUI
+  // 🔍 検索フォーム（Dark対応）
   // ----------------------------------------------------
   Widget _buildSearchField() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // 🍎 Apple系：検索バーはカードより明るい透明レイヤー
+    final Color searchBg = isDark
+        ? Colors.white.withOpacity(0.12)   // ← 12〜16% がApple標準
+        : Colors.black.withOpacity(0.05);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: AnimatedBuilder(
@@ -138,28 +142,50 @@ class _GenreScreenState extends State<GenreScreen>
           return Transform.scale(
             scale: _scaleAnim.value,
             child: Material(
-              elevation: _shadowAnim.value,
+              elevation: 0, // ← Appleの検索バーは影0
               borderRadius: BorderRadius.circular(14),
+              color: Colors.transparent, // ← Material自体に色をつけない
               child: Stack(
                 alignment: Alignment.centerRight,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: searchBg, // ← Apple検索バーの透明感
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.10) // 輪郭の光
+                            : Colors.black.withOpacity(0.08),
+                      ),
                     ),
                     child: TextField(
                       controller: _searchCtrl,
                       focusNode: _focusNode,
                       onChanged: _onSearchChanged,
-                      decoration: const InputDecoration(
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.90)
+                            : Colors.black87,
+                      ),
+                      decoration: InputDecoration(
                         border: InputBorder.none,
-                        icon: Icon(Icons.search, color: Color(0xFF475569)),
+                        icon: Icon(
+                          Icons.search,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF475569),
+                        ),
                         hintText: "検索ワードを入力...",
+                        hintStyle: TextStyle(
+                          color: isDark
+                              ? Colors.white60
+                              : Colors.black54,
+                        ),
                       ),
                     ),
                   ),
+
                   if (_isSearchingFromSuggest)
                     const Padding(
                       padding: EdgeInsets.only(right: 12),
@@ -169,6 +195,8 @@ class _GenreScreenState extends State<GenreScreen>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
+
+                  // ← 検索バータップ拡張
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -185,14 +213,106 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔥 グループセクションUI
+  // 🔍 サジェスト一覧（Dark対応）
+  // ----------------------------------------------------
+  Widget _buildSuggestions() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+
+    if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.4)
+                : Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (_isLoadingSuggest)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ..._suggestions.map(
+                (s) => ListTile(
+              dense: true,
+              leading: Icon(
+                Icons.search,
+                size: 20,
+                color: isDark ? Colors.white70 : Colors.grey[700],
+              ),
+              title: Text(
+                s,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              onTap: () async {
+                _debounce?.cancel();
+
+                final kw = s;
+                _searchCtrl.text = kw;
+                _focusNode.unfocus();
+
+                setState(() {
+                  _suggestions = [];
+                  _isSearchingFromSuggest = true;
+                });
+
+                await Future.delayed(const Duration(milliseconds: 300));
+
+                if (!mounted) return;
+
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GenreVideosScreen(
+                      categoryId: '0',
+                      categoryTitle: kw,
+                      keyword: kw,
+                    ),
+                  ),
+                );
+
+                if (!mounted) return;
+
+                setState(() {
+                  _isSearchingFromSuggest = false;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------
+  // 🔥 グループセクション（Dark対応）
   // ----------------------------------------------------
   Widget _buildGroupSection(GenreGroup group) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 見出し
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
@@ -201,19 +321,23 @@ class _GenreScreenState extends State<GenreScreen>
                 const SizedBox(width: 8),
                 Text(
                   group.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 10),
+
+          // 各カテゴリ
           ...group.items.map((cat) {
             return Container(
               margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: Material(
+                color: cardColor,
                 elevation: 2,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
@@ -249,19 +373,28 @@ class _GenreScreenState extends State<GenreScreen>
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        const Icon(Icons.label,
-                            size: 22, color: Color(0xFF607D8B)),
+                        Icon(
+                          Icons.label,
+                          size: 22,
+                          color:
+                          isDark ? Colors.white70 : const Color(0xFF607D8B),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             cat.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: Colors.grey[500]),
+                        Icon(
+                          Icons.chevron_right,
+                          color:
+                          isDark ? Colors.white54 : Colors.grey[500],
+                        ),
                       ],
                     ),
                   ),
@@ -275,111 +408,38 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 サジェスト一覧
-  // ----------------------------------------------------
-  Widget _buildSuggestions() {
-    if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          if (_isLoadingSuggest)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ..._suggestions.map(
-            (s) => ListTile(
-              dense: true,
-              leading: const Icon(Icons.search, size: 20),
-              title: Text(s),
-              onTap: () async {
-                _debounce?.cancel();
-
-                final kw = s;
-                _searchCtrl.text = kw;
-                _focusNode.unfocus();
-
-                setState(() {
-                  _suggestions = [];
-                  _isSearchingFromSuggest = true;
-                });
-
-                await Future.delayed(const Duration(milliseconds: 300));
-
-                if (!mounted) return;
-
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GenreVideosScreen(
-                      categoryId: '0',
-                      categoryTitle: kw,
-                      keyword: kw,
-                    ),
-                  ),
-                );
-
-                if (!mounted) return;
-                setState(() {
-                  _isSearchingFromSuggest = false;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ----------------------------------------------------
-  // 🧩 本体描画
+  // 🧩 本体（Darkテーマ背景対応）
   // ----------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F6),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          /// 🪩 共通ガラスAppBar（ここを置換した）
           const SliverAppBar(
             floating: true,
             snap: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 82,
-            flexibleSpace: CustomGlassAppBar(
-              title: "ジャンル別人気",
-              showRefreshButton: false,
+            expandedHeight: 65,
+            flexibleSpace: const CustomGlassAppBar(
+              title: 'ジャンル別人気',
             ),
           ),
 
-          // 🔍 見出し
-          const SliverToBoxAdapter(
+          // --- 見出し ---
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
                 "検索して探す",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -388,24 +448,23 @@ class _GenreScreenState extends State<GenreScreen>
           SliverToBoxAdapter(child: _buildSearchField()),
           SliverToBoxAdapter(child: _buildSuggestions()),
 
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Text(
                 "ジャンルから探す",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
           ),
 
-          /// 🔥 グループ一覧
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, idx) => _buildGroupSection(genreGroups[idx]),
+                  (context, idx) => _buildGroupSection(genreGroups[idx]),
               childCount: genreGroups.length,
             ),
           ),

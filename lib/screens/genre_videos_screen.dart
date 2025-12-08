@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/youtube_api_service.dart';
 import '../widgets/video_list_tile.dart';
-import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_glass_app_bar.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
   final String categoryTitle;
-  final String? keyword; // ← ここ重要（独自カテゴリ用）
+  final String? keyword;
   final ValueChanged<bool>? onScrollChanged;
 
   const GenreVideosScreen({
@@ -59,77 +59,68 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     }
   }
 
-  String shortTitle(String t) {
-    return t.length > 8 ? '${t.substring(0, 8)}…' : t;
-  }
+  String shortTitle(String t) =>
+      t.length > 8 ? '${t.substring(0, 8)}…' : t;
 
-  /// 🎥 指定ジャンル or キーワードの動画取得
+  // ---------------------------------------------------------
+  // ✨ ジャンル or キーワード動画取得
+  // ---------------------------------------------------------
   Future<List<Map<String, dynamic>>> _fetchVideos() async {
-    final String? kw = widget.keyword;
+    final kw = widget.keyword;
 
-    // ----------------------------------------------------
-    // ① 🔍 キーワード検索の場合 → Search API（categoryId 付けない）
-    // ----------------------------------------------------
     if (kw != null && kw.trim().isNotEmpty) {
-      final searchResults = await _apiService.searchVideosByKeyword(
+      final search = await _apiService.searchVideosByKeyword(
         kw,
         maxResults: 50,
-        debugRaw: true,
       );
 
-      if (searchResults.isEmpty) return [];
+      if (search.isEmpty) return [];
 
-      // ID 並列取得して viewCount 補完
-      final ids = searchResults.map((v) => v.id).join(',');
+      final ids = search.map((v) => v.id).join(',');
+      final detail = await _apiService.fetchVideosByIds(ids);
 
-      final detailedList = await _apiService.fetchVideosByIds(
-        ids,
-        debugRaw: true,
-      );
-
-      final videos = detailedList.map((v) {
-        return {
-          'id': v.id,
-          'title': v.title,
-          'thumbnailUrl': v.thumbnailUrl,
-          'channelTitle': v.channelTitle,
-          'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': v.viewCount ?? 0,
-        };
-      }).toList();
-
-      videos.sort((a, b) {
-        return ((b['viewCount'] ?? 0) as int)
-            .compareTo((a['viewCount'] ?? 0) as int);
-      });
-
-      setState(() => _fetchedAt = DateTime.now());
-      return videos;
-    }
-
-    // ----------------------------------------------------
-    // ② 🏆 カテゴリ人気動画（Popular API）
-    // ----------------------------------------------------
-    final popularList = await _apiService.fetchPopularVideos(
-      videoCategoryId: widget.categoryId,
-      maxResults: 50,
-      debugRaw: true,
-    );
-
-    final videos = popularList.map((v) {
-      return {
+      final videos = detail
+          .map((v) => {
         'id': v.id,
         'title': v.title,
         'thumbnailUrl': v.thumbnailUrl,
         'channelTitle': v.channelTitle,
         'publishedAt': v.publishedAt?.toIso8601String(),
         'viewCount': v.viewCount ?? 0,
-      };
-    }).toList();
+      })
+          .toList();
+
+      videos.sort((a, b) {
+        final va = (a['viewCount'] ?? 0) as int;
+        final vb = (b['viewCount'] ?? 0) as int;
+        return vb.compareTo(va);
+      });
+
+      setState(() => _fetchedAt = DateTime.now());
+      return videos;
+    }
+
+    // Popular API
+    final list = await _apiService.fetchPopularVideos(
+      videoCategoryId: widget.categoryId,
+      maxResults: 50,
+    );
+
+    final videos = list
+        .map((v) => {
+      'id': v.id,
+      'title': v.title,
+      'thumbnailUrl': v.thumbnailUrl,
+      'channelTitle': v.channelTitle,
+      'publishedAt': v.publishedAt?.toIso8601String(),
+      'viewCount': v.viewCount ?? 0,
+    })
+        .toList();
 
     videos.sort((a, b) {
-      return ((b['viewCount'] ?? 0) as int)
-          .compareTo((a['viewCount'] ?? 0) as int);
+      final va = (a['viewCount'] ?? 0) as int;
+      final vb = (b['viewCount'] ?? 0) as int;
+      return vb.compareTo(va);
     });
 
     setState(() => _fetchedAt = DateTime.now());
@@ -140,9 +131,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     setState(() => _isRefreshing = true);
     try {
       final data = await _fetchVideos();
-      setState(() {
-        _futureVideos = Future.value(data);
-      });
+      setState(() => _futureVideos = Future.value(data));
     } finally {
       setState(() => _isRefreshing = false);
     }
@@ -155,36 +144,51 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onSurface = theme.colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F6),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
+          // =====================================================
+          // 🔥 本体 FutureBuilder
+          // =====================================================
           FutureBuilder<List<Map<String, dynamic>>>(
             future: _futureVideos,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) {
-                return Center(child: Text("エラー: ${snapshot.error}"));
+              if (snap.hasError) {
+                return Center(child: Text("エラー: ${snap.error}"));
               }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text("動画が見つかりません"));
+              if (!snap.hasData || snap.data!.isEmpty) {
+                return Center(
+                  child: Text(
+                    "動画が見つかりません",
+                    style: TextStyle(color: onSurface.withOpacity(0.8)),
+                  ),
+                );
               }
 
-              final videos = snapshot.data!;
+              final videos = snap.data!;
 
               return RefreshIndicator(
                 onRefresh: _refreshVideos,
                 child: CustomScrollView(
                   controller: _scrollController,
                   slivers: [
+                    // ---------------------------------------------------------
+                    // Glass AppBar（戻るボタンはここに含めない）
+                    // ---------------------------------------------------------
                     SliverAppBar(
                       floating: true,
                       snap: true,
                       elevation: 0,
                       backgroundColor: Colors.transparent,
-                      expandedHeight: 85,
+                      expandedHeight: 65,
                       automaticallyImplyLeading: false,
                       flexibleSpace: CustomGlassAppBar(
                         title: '人気：${shortTitle(widget.categoryTitle)}',
@@ -194,23 +198,30 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                       ),
                     ),
 
+                    // ---------------------------------------------------------
+                    // 更新時間バー
+                    // ---------------------------------------------------------
                     if (_fetchedAt != null)
                       SliverToBoxAdapter(
                         child: Container(
-                          color: const Color(0xFFE4E8EC),
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.04)
+                                : const Color(0xFFE4E8EC),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              const Icon(Icons.access_time,
-                                  size: 14, color: Color(0xFF475569)),
+                              Icon(Icons.access_time,
+                                  size: 14,
+                                  color: onSurface.withOpacity(0.7)),
                               const SizedBox(width: 4),
                               Text(
                                 _formatFetchedAt(),
-                                style: const TextStyle(
-                                  color: Color(0xFF475569),
+                                style: TextStyle(
+                                  color: onSurface.withOpacity(0.8),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -220,33 +231,41 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                         ),
                       ),
 
+                    // ---------------------------------------------------------
+                    // リスト
+                    // ---------------------------------------------------------
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                            (context, i) => VideoListTile(
-                          video: videos[i],
-                          rank: i + 1,
-                        ),
+                            (context, i) =>
+                            VideoListTile(video: videos[i], rank: i + 1),
                         childCount: videos.length,
                       ),
                     ),
 
                     const SliverToBoxAdapter(
-                        child: SafeArea(top: false, child: SizedBox(height: 0))),
+                      child: SafeArea(top: false, child: SizedBox(height: 0)),
+                    ),
                   ],
                 ),
               );
             },
           ),
 
-          /// 左上の戻るボタン
+          // =====================================================
+          // 🔙 戻るボタン（CustomGlassAppBar外で独自配置）
+          // =====================================================
           Positioned(
-            top: MediaQuery.of(context).padding.top + 22,
-            left: 10,
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 8,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded,
-                  color: Color(0xFF1E293B)),
-              iconSize: 26,
+              icon: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: onSurface,
+                size: 22,
+              ),
               onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ),
         ],

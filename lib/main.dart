@@ -1,32 +1,37 @@
+// lib/main.dart
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tube_search/services/favorites_service.dart';
 
-import 'config/screen_titles.dart';
-import 'providers/theme_provider.dart'; // ★ NEW 追加
-import 'screens/favorites_screen.dart';
-import 'screens/genre_screen.dart';
-import 'screens/popular_videos_screen.dart';
-import 'screens/settings_screen.dart';
+import 'services/favorites_service.dart';
+import 'providers/theme_provider.dart';
+
 import 'screens/splash_screen.dart';
+import 'screens/popular_videos_screen.dart';
+import 'screens/genre_screen.dart';
+import 'screens/favorites_screen.dart';
+import 'screens/settings_screen.dart';
+
 import 'theme/app_theme.dart';
+import 'config/screen_titles.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ★ 初期ロード済のお気に入りサービスを作成
-  final fav = FavoritesService();
-  await fav.loadFavorites();
+  final favorites = FavoritesService();
+  await favorites.loadFavorites();
+
+  // ★ ThemeProvider を先に生成
+  final themeProvider = ThemeProvider();
+
+  // ★ 保存済みテーマをロード（ここが最重要）
+  await themeProvider.loadTheme();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: fav),
-        // ★ FavoritesService
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        // ★ ThemeProvider 追加
+        ChangeNotifierProvider.value(value: favorites),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
       child: const MyApp(),
     ),
@@ -38,23 +43,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ★ ThemeProvider を監視
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'TUBE+',
+
+      // 🍀 Light / Dark テーマを適用
       theme: appLightTheme,
-      // ★ Light
       darkTheme: appDarkTheme,
-      // ★ Dark
-      themeMode: themeProvider.themeMode,
-      // ★ ON/OFF 自動反映
+      themeMode: themeProvider.themeMode, // ← Provider で切替
+
       home: const SplashScreen(),
     );
   }
 }
 
+
+/// ----------------------------------------------------------------
+/// 🧭 BottomNavigation 管理画面（背景のダーク対応を改善済み）
+/// ----------------------------------------------------------------
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -67,7 +75,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   bool _isScrollingDown = false;
 
   final GlobalKey<FavoritesScreenState> _favKey =
-      GlobalKey<FavoritesScreenState>();
+  GlobalKey<FavoritesScreenState>();
 
   late final List<Widget> _screens = [
     PopularVideosScreen(onScrollChanged: _onScrollChanged),
@@ -82,15 +90,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  Widget _buildBackground() {
+  /// 🔥 ダークテーマ対応の背景
+  Widget _buildBackground(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFE2E8F0),
-            Color(0xFFF8FAFC),
+          colors: isDark
+              ? [
+            const Color(0xFF0F0F0F),
+            const Color(0xFF1A1A1A),
+          ]
+              : [
+            const Color(0xFFE2E8F0),
+            const Color(0xFFF8FAFC),
           ],
         ),
       ),
@@ -103,7 +120,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          Positioned.fill(child: _buildBackground()),
+          Positioned.fill(child: _buildBackground(context)),
           Positioned.fill(
             child: IndexedStack(
               index: _selectedIndex,
@@ -112,6 +129,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ],
       ),
+
+      // 🍀 BottomNav フェード
       bottomNavigationBar: AnimatedOpacity(
         opacity: _isScrollingDown ? 0.0 : 1.0,
         duration: const Duration(milliseconds: 250),
@@ -121,10 +140,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             selectedIndex: _selectedIndex,
             onTabSelected: (index) {
               setState(() => _selectedIndex = index);
-
-              if (index == 2) {
-                _favKey.currentState?.reload();
-              }
+              if (index == 2) _favKey.currentState?.reload();
             },
           ),
         ),

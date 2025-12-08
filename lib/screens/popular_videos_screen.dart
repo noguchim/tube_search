@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../services/favorites_service.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_glass_app_bar.dart';
 import '../widgets/video_list_tile.dart';
 
 class PopularVideosScreen extends StatefulWidget {
@@ -149,16 +149,15 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                   snap: true,
                   elevation: 0,
                   backgroundColor: Colors.transparent,
-                  expandedHeight: 82,
+                  expandedHeight: 65,
                   flexibleSpace: CustomGlassAppBar(
                     title: '人気急上昇',
                     showRefreshButton: true,
-                    isRefreshing: _isRefreshing,
-                    onRefreshPressed: _refreshVideos,
+                    isRefreshing: false,
                     showInfoButton: true,
-                    infoMessage:
-                        'YouTube急上昇ランキング（日本国内・トレンド反映） ${_formatFetchedAt()}',
+                    onRefreshPressed: _refreshVideos,
                   ),
+
                 ),
 
                 // --- 動画リスト ---

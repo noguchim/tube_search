@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
-  final Map<String, dynamic> video; // 一覧から受け取る全データ
+  final Map<String, dynamic> video;
 
   const VideoPlayerScreen({
     super.key,
     required this.video,
   });
 
-  /// 🧠 WebView 事前ウォームアップ
+  /// 🧠 WebView 事前ウォームアップ（Drop されていたため復活）
   static Future<void> preloadController() async {
     try {
       final controller = WebViewController()
@@ -31,7 +31,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    // YouTube動画読み込み
+
+    // 🎬 YouTube動画読み込み
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..loadRequest(
@@ -41,18 +42,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      // ✅ AppBar（テーマカラー適用・タイトル非表示）
+      backgroundColor: theme.scaffoldBackgroundColor,
+
+      // ---------------------------------------------------------
+      // 🎯 シンプルな通常 AppBar（透明にしない・重ねない）
+      // ---------------------------------------------------------
       appBar: AppBar(
-        title: const SizedBox.shrink(),
-        backgroundColor: primaryColor,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: isDark ? const Color(0xFF111111) : Colors.white,
+        elevation: 0.4,
+        automaticallyImplyLeading: false, // ← デフォルト戻るは使わない
+
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new, // iOS風「<」
+            size: 20,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
 
-      // ✅ WebViewのみ（全画面）
+      // ---------------------------------------------------------
+      // 🎬 WebView：全画面
+      // ---------------------------------------------------------
       body: WebViewWidget(controller: _controller),
     );
   }

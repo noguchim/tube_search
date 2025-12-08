@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
-import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_glass_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -25,9 +25,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     _initLoad();
   }
 
-  // -------------------------------------------------------------
-  // 初期ロード
-  // -------------------------------------------------------------
   Future<void> _initLoad() async {
     final fav = context.read<FavoritesService>();
     await fav.loadFavorites();
@@ -41,9 +38,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  // -------------------------------------------------------------
-  // 外部から reload 呼ばれたとき
-  // -------------------------------------------------------------
   Future<void> reload() async {
     final fav = context.read<FavoritesService>();
     await fav.loadFavorites();
@@ -58,41 +52,40 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _showDeleteDialog(Map<String, dynamic> video) async {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) {
         return AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-
-          // YouTube 風：シンプル・クリーン
-          title: const Text(
+          title: Text(
             "お気に入りから削除しますか？",
-            style: TextStyle(fontSize: 15),
+            style: TextStyle(fontSize: 15, color: onSurface),
           ),
-
           content: Text(
             "「${video["title"]}」をお気に入りから削除します。",
-            style: const TextStyle(fontSize: 14, height: 1.5),
+            style: TextStyle(fontSize: 14, height: 1.5, color: onSurface),
           ),
-
           actions: [
             TextButton(
-              child: const Text(
+              child: Text(
                 "キャンセル",
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14, color: onSurface),
               ),
               onPressed: () => Navigator.pop(context),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: theme.colorScheme.primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               ),
               child: const Text(
                 "削除",
@@ -103,8 +96,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 await fav.toggle(video["id"], video);
 
                 if (mounted) {
-                  Navigator.pop(context); // ダイアログを閉じる
-                  await reload(); // リスト更新
+                  Navigator.pop(context);
+                  await reload();
                 }
               },
             ),
@@ -114,14 +107,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  // -------------------------------------------------------------
-  // 削除処理（確認あり）
-  // -------------------------------------------------------------
   Future<void> _tryDelete(Map<String, dynamic> video) async {
     final prefs = await SharedPreferences.getInstance();
     final skip = prefs.getBool(_prefSkipDeleteConfirm) ?? false;
 
-    // ★ 確認なしモードなら即削除
     if (skip) {
       final fav = context.read<FavoritesService>();
       await fav.toggle(video["id"], video);
@@ -129,142 +118,148 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       return;
     }
 
-    // ★ 通常 → ダイアログ表示
     await _showDeleteDialog(video);
   }
 
+  // -------------------------------------------------------------
+  // 空UI（Light / Dark 対応版に全面改修）
+  // -------------------------------------------------------------
   Widget _buildEmptyFavoritesUI() {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "お気に入りがありません",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                height: 1.5,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF646A70),
-              ),
-            ),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onSurface = theme.colorScheme.onSurface;
+    final cardColor =
+        theme.cardTheme.color ?? (isDark ? const Color(0xFF1E1E1E) : Colors.white);
 
-            const SizedBox(height: 6),
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 30), // AppBar 下の余白調整（必要に応じて調整可）
 
-            Text(
-              "🖤タップでお気に入りに追加！",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFF646A70),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ★ ポップなミニ動画カード（少し小さめ）
-            AnimatedScale(
-              scale: 1.00,
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutBack,
-              child: Container(
-                width: 200,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "お気に入りがありません",
+                  style: TextStyle(
+                    fontSize: 18,
+                    height: 1.5,
+                    fontWeight: FontWeight.bold,
+                    color: onSurface.withOpacity(0.8),
+                  ),
                 ),
-                clipBehavior: Clip.hardEdge,
-                child: Column(
-                  children: [
-                    // 赤背景サムネ
-                    Container(
-                      width: double.infinity,
-                      height: 100,
-                      color: const Color(0xFFB5B9BE),
-                      child: const Center(
-                        child: Icon(
-                          Icons.play_circle_fill,
-                          size: 42,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
 
-                    // 下の説明エリア
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.pinkAccent.shade100.withOpacity(0.12),
-                            Colors.pinkAccent.shade100.withOpacity(0.04),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                const SizedBox(height: 6),
+
+                Text(
+                  "アイコンタップでお気に入りに追加！",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: onSurface.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ★ ダークテーマ対応ミニカード
+                AnimatedScale(
+                  scale: 1.00,
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutBack,
+                  child: Container(
+                    width: 200,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black.withOpacity(0.4)
+                              : Colors.black.withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.85, end: 1.0),
-                            duration: const Duration(milliseconds: 600),
-                            curve: Curves.easeInOutBack,
-                            builder: (context, scale, _) {
-                              return Transform.scale(
-                                scale: scale,
-                                child: const Icon(
-                                  Icons.favorite_border_rounded,
-                                  color: Colors.pinkAccent,
-                                  size: 22,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.arrow_left_rounded,
-                            color: Colors.pinkAccent.shade100,
-                            size: 26,
-                          ),
-                          const SizedBox(width: 4),
-                          const Expanded(
-                            child: Text(
-                              "ここをタップ！",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF646A70),
-                              ),
+                      ],
+                    ),
+                    clipBehavior: Clip.hardEdge,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 100,
+                          color: isDark ? Colors.grey[800] : const Color(0xFFB5B9BE),
+                          child: const Center(
+                            child: Icon(
+                              Icons.play_circle_fill,
+                              size: 42,
+                              color: Colors.white,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isDark
+                                  ? [
+                                Colors.white.withOpacity(0.05),
+                                Colors.white.withOpacity(0.02),
+                              ]
+                                  : [
+                                Colors.pinkAccent.shade100.withOpacity(0.12),
+                                Colors.pinkAccent.shade100.withOpacity(0.04),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.favorite_border_rounded,
+                                  color: Colors.pinkAccent, size: 22),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.arrow_left_rounded,
+                                  color: Colors.pinkAccent, size: 26),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  "ここをタップ！",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 28),
-          ],
-        ),
+          const SizedBox(height: 90), // 下側の余白も自然に確保
+        ],
       ),
     );
   }
 
+  // -------------------------------------------------------------
+  // LIST（ダークテーマ対応）
+  // -------------------------------------------------------------
   Widget _buildFavoritesList() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return RefreshIndicator(
       onRefresh: reload,
       child: ListView.builder(
@@ -274,10 +269,14 @@ class FavoritesScreenState extends State<FavoritesScreen> {
         itemCount: _list.length,
         itemBuilder: (context, i) {
           final video = _list[i];
+
           final savedAtRaw = video["savedAt"] ?? "";
           final savedAt = (savedAtRaw.isNotEmpty)
               ? DateFormat("yyyy-MM-dd").format(DateTime.parse(savedAtRaw))
               : "";
+
+          final cardColor = theme.cardTheme.color!;
+          final onSurface = theme.colorScheme.onSurface;
 
           return GestureDetector(
             onTap: () {
@@ -292,18 +291,21 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: cardColor,
+                borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
+                    ? (theme.cardTheme.shape as RoundedRectangleBorder).borderRadius
+                    : BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: isDark
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
@@ -312,11 +314,13 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                       width: 95,
                       height: 60,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Container(color: Colors.grey[300]),
+                      errorBuilder: (_, __, ___) => Container(
+                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -326,10 +330,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -338,28 +342,30 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: Colors.black87,
+                            color: onSurface.withOpacity(0.8),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           "$savedAt 登録",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Colors.black87,
+                            color: onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(width: 8),
+
                   GestureDetector(
                     onTap: () async => _tryDelete(video),
-                    child: const Icon(
+                    child: Icon(
                       Icons.delete_outline_rounded,
-                      color: Colors.red,
+                      color: Colors.red.shade400,
                       size: 30,
                     ),
                   ),
@@ -377,44 +383,35 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   // -------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    context.watch<FavoritesService>();
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F6),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // ===============================================================
-          // 🪩 共通ガラスAppBar（設定画面と同じレイアウト）
-          // ===============================================================
           SliverAppBar(
             floating: true,
             snap: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 82,
+            expandedHeight: 65,
             flexibleSpace: const CustomGlassAppBar(
               title: 'お気に入り',
-              showRefreshButton: false,
             ),
           ),
 
-          // ===============================================================
-          // 🧊 本体（空表示 or リスト表示）
-          // ===============================================================
           SliverToBoxAdapter(
             child: _isLoading
                 ? const Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+              padding: EdgeInsets.only(top: 60),
+              child: Center(child: CircularProgressIndicator()),
+            )
                 : _list.isEmpty
-                    ? SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.75,
-                        child: Center(
-                          child: _buildEmptyFavoritesUI(),
-                        ),
-                      )
-                    : _buildFavoritesList(),
+                ? SizedBox(
+              height: MediaQuery.of(context).size.height * 0.75,
+              child: _buildEmptyFavoritesUI(),
+            )
+                : _buildFavoritesList(),
           ),
         ],
       ),
