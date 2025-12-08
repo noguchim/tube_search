@@ -43,8 +43,8 @@ class VideoListTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       side: BorderSide(
         color: isDark
-            ? Colors.white.withOpacity(0.07)       // ← 0.05 → 0.07 に調整
-            : Colors.black.withOpacity(0.05),
+            ? Colors.white.withValues(alpha: 0.07)       // ← 0.05 → 0.07 に調整
+            : Colors.black.withValues(alpha: 0.05),
         width: 1,
       ),
     );

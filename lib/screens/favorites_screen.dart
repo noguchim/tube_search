@@ -147,7 +147,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                     fontSize: 18,
                     height: 1.5,
                     fontWeight: FontWeight.bold,
-                    color: onSurface.withOpacity(0.8),
+                    color: onSurface.withValues(alpha: 0.8),
                   ),
                 ),
 
@@ -157,7 +157,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   "アイコンタップでお気に入りに追加！",
                   style: TextStyle(
                     fontSize: 15,
-                    color: onSurface.withOpacity(0.7),
+                    color: onSurface.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -177,8 +177,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: isDark
-                              ? Colors.black.withOpacity(0.4)
-                              : Colors.black.withOpacity(0.06),
+                              ? Colors.black.withValues(alpha: 0.4)
+                              : Colors.black.withValues(alpha: 0.06),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -207,12 +207,12 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                             gradient: LinearGradient(
                               colors: isDark
                                   ? [
-                                Colors.white.withOpacity(0.05),
-                                Colors.white.withOpacity(0.02),
+                                Colors.white.withValues(alpha: 0.05),
+                                Colors.white.withValues(alpha: 0.02),
                               ]
                                   : [
-                                Colors.pinkAccent.shade100.withOpacity(0.12),
-                                Colors.pinkAccent.shade100.withOpacity(0.04),
+                                Colors.pinkAccent.shade100.withValues(alpha: 0.12),
+                                Colors.pinkAccent.shade100.withValues(alpha: 0.04),
                               ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
@@ -232,7 +232,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: onSurface.withOpacity(0.7),
+                                    color: onSurface.withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
@@ -298,8 +298,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 boxShadow: [
                   BoxShadow(
                     color: isDark
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.06),
+                        ? Colors.black.withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -344,7 +344,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             fontSize: 13,
-                            color: onSurface.withOpacity(0.8),
+                            color: onSurface.withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -352,7 +352,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                           "$savedAt 登録",
                           style: TextStyle(
                             fontSize: 11,
-                            color: onSurface.withOpacity(0.7),
+                            color: onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],

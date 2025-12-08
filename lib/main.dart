@@ -179,14 +179,14 @@ class GlassDockNavigationBar extends StatelessWidget {
           ];
 
     final Color bgColor = isDark
-        ? const Color(0xFF111111).withOpacity(0.85)
-        : const Color(0xFFF9FAFB).withOpacity(0.85);
+        ? const Color(0xFF111111).withValues(alpha: 0.85)
+        : const Color(0xFFF9FAFB).withValues(alpha: 0.85);
 
     final Color borderColor =
-        isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.7);
+        isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.7);
 
     final Color shadowColor =
-        isDark ? Colors.black.withOpacity(0.4) : Colors.black.withOpacity(0.07);
+        isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.07);
 
     return ClipRect(
       child: BackdropFilter(
@@ -278,20 +278,20 @@ class GlassDockNavigationBar extends StatelessWidget {
                             gradient: LinearGradient(
                               colors: isDark
                                   ? [
-                                      Colors.white.withOpacity(0.25),
-                                      Colors.white.withOpacity(0.05),
+                                      Colors.white.withValues(alpha: 0.25),
+                                      Colors.white.withValues(alpha: 0.05),
                                     ]
                                   : [
-                                      Colors.white.withOpacity(0.42),
-                                      Colors.white.withOpacity(0.14),
+                                      Colors.white.withValues(alpha: 0.42),
+                                      Colors.white.withValues(alpha: 0.14),
                                     ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             border: Border.all(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.30)
-                                  : Colors.white.withOpacity(0.55),
+                                  ? Colors.white.withValues(alpha: 0.30)
+                                  : Colors.white.withValues(alpha: 0.55),
                               width: 1.0,
                             ),
                           ),
@@ -310,7 +310,7 @@ class GlassDockNavigationBar extends StatelessWidget {
                           gradient: RadialGradient(
                             radius: 0.85,
                             colors: [
-                              primary.withOpacity(0.22),
+                              primary.withValues(alpha: 0.22),
                               Colors.transparent,
                             ],
                           ),
@@ -331,12 +331,12 @@ class GlassDockNavigationBar extends StatelessWidget {
                             end: Alignment.bottomCenter,
                             colors: isDark
                                 ? [
-                                    Colors.white.withOpacity(0.60),
-                                    Colors.white.withOpacity(0.0),
+                                    Colors.white.withValues(alpha: 0.60),
+                                    Colors.white.withValues(alpha: 0.0),
                                   ]
                                 : [
-                                    Colors.white.withOpacity(0.75),
-                                    Colors.white.withOpacity(0.0),
+                                    Colors.white.withValues(alpha: 0.75),
+                                    Colors.white.withValues(alpha: 0.0),
                                   ],
                           ),
                         ),

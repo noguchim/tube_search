@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: onSurface.withOpacity(0.8),
+                      color: onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -112,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       "ON にするとアプリ全体がダークモードになります。",
                       style: TextStyle(
                         fontSize: 12,
-                        color: onSurface.withOpacity(0.7),
+                        color: onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     onChanged: (value) {
@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: onSurface.withOpacity(0.8),
+                      color: onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -159,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       "OFF にするとお気に入り削除時の確認を省略します。",
                       style: TextStyle(
                         fontSize: 12,
-                        color: onSurface.withOpacity(0.7),
+                        color: onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     onChanged: (v) => _updateSkipConfirm(!v),

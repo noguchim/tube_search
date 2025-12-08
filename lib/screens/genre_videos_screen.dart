@@ -168,7 +168,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                 return Center(
                   child: Text(
                     "動画が見つかりません",
-                    style: TextStyle(color: onSurface.withOpacity(0.8)),
+                    style: TextStyle(color: onSurface.withValues(alpha: 0.8)),
                   ),
                 );
               }
@@ -208,7 +208,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                               horizontal: 14, vertical: 4),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white.withOpacity(0.04)
+                                ? Colors.white.withValues(alpha: 0.04)
                                 : const Color(0xFFE4E8EC),
                           ),
                           child: Row(
@@ -216,12 +216,12 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             children: [
                               Icon(Icons.access_time,
                                   size: 14,
-                                  color: onSurface.withOpacity(0.7)),
+                                  color: onSurface.withValues(alpha: 0.7)),
                               const SizedBox(width: 4),
                               Text(
                                 _formatFetchedAt(),
                                 style: TextStyle(
-                                  color: onSurface.withOpacity(0.8),
+                                  color: onSurface.withValues(alpha: 0.8),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),

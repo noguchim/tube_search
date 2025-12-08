@@ -97,7 +97,7 @@ final ThemeData appDarkTheme = ThemeData(
 
   // ★★ Dark 用 CardTheme（Glass UI 最適化）
   cardTheme: CardThemeData(
-    color: Colors.white.withOpacity(0.08), // ← 背景より少し明るい透明カード
+    color: Colors.white.withValues(alpha: 0.08), // ← 背景より少し明るい透明カード
     elevation: 0, // Glass デザインのため影は不要
     margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
 
@@ -105,7 +105,7 @@ final ThemeData appDarkTheme = ThemeData(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
       side: BorderSide(
-        color: Colors.white.withOpacity(0.05), // ← 極薄ラインでカードを浮かせる
+        color: Colors.white.withValues(alpha: 0.05), // ← 極薄ラインでカードを浮かせる
         width: 1,
       ),
     ),

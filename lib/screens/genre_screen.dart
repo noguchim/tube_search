@@ -131,8 +131,8 @@ class _GenreScreenState extends State<GenreScreen>
 
     // 🍎 Apple系：検索バーはカードより明るい透明レイヤー
     final Color searchBg = isDark
-        ? Colors.white.withOpacity(0.12)   // ← 12〜16% がApple標準
-        : Colors.black.withOpacity(0.05);
+        ? Colors.white.withValues(alpha: 0.12)   // ← 12〜16% がApple標準
+        : Colors.black.withValues(alpha: 0.05);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -155,8 +155,8 @@ class _GenreScreenState extends State<GenreScreen>
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isDark
-                            ? Colors.white.withOpacity(0.10) // 輪郭の光
-                            : Colors.black.withOpacity(0.08),
+                            ? Colors.white.withValues(alpha: 0.10) // 輪郭の光
+                            : Colors.black.withValues(alpha: 0.08),
                       ),
                     ),
                     child: TextField(
@@ -165,7 +165,7 @@ class _GenreScreenState extends State<GenreScreen>
                       onChanged: _onSearchChanged,
                       style: TextStyle(
                         color: isDark
-                            ? Colors.white.withOpacity(0.90)
+                            ? Colors.white.withValues(alpha: 0.90)
                             : Colors.black87,
                       ),
                       decoration: InputDecoration(
@@ -233,8 +233,8 @@ class _GenreScreenState extends State<GenreScreen>
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.4)
-                : Colors.black.withOpacity(0.08),
+                ? Colors.black.withValues(alpha: 0.4)
+                : Colors.black.withValues(alpha: 0.08),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),

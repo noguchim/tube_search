@@ -45,8 +45,8 @@ class CustomGlassAppBar extends StatelessWidget {
     ];
 
     final Color bgColor = isDark
-        ? const Color(0xFF111111).withOpacity(0.85)
-        : const Color(0xFFF9FAFB).withOpacity(0.85);
+        ? const Color(0xFF111111).withValues(alpha: 0.85)
+        : const Color(0xFFF9FAFB).withValues(alpha: 0.85);
 
     //
     // -------------------------------------------------------------
@@ -56,7 +56,7 @@ class CustomGlassAppBar extends StatelessWidget {
     final Color fgColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     final Color borderColor = isDark
-        ? Colors.black.withOpacity(0.9)   // ダーク時：濃い黒
+        ? Colors.black.withValues(alpha: 0.9)   // ダーク時：濃い黒
         : Colors.grey.shade400;           // ライト時：やや濃いグレー
 
     return ClipRect(
@@ -106,7 +106,7 @@ class CustomGlassAppBar extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.play_arrow_rounded,
-                            size: 16, color: fgColor.withOpacity(0.90)),
+                            size: 16, color: fgColor.withValues(alpha: 0.90)),
                         const SizedBox(width: 4),
                         Text(
                           'TUBE+',
@@ -115,7 +115,7 @@ class CustomGlassAppBar extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
                             letterSpacing: 0.5,
-                            color: fgColor.withOpacity(0.95),
+                            color: fgColor.withValues(alpha: 0.95),
                           ),
                         ),
                       ],
@@ -272,7 +272,7 @@ class _InfoButtonState extends State<_InfoButton>
     final double top = pos.dy + size.height + gap;
 
     final Color tooltipBg =
-    isDark ? Colors.white.withOpacity(0.95) : Colors.grey.shade800.withOpacity(0.95);
+    isDark ? Colors.white.withValues(alpha: 0.95) : Colors.grey.shade800.withValues(alpha: 0.95);
 
     final Color tooltipTextColor = isDark ? Colors.black87 : Colors.white;
 
