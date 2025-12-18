@@ -45,6 +45,11 @@ ios/Flutter/flutter_export_environment.sh
 ios/Runner.xcworkspace/
 ios/Runner/GeneratedPluginRegistrant.*
 
+# CocoaPods
+ios/Podfile
+ios/Podfile.lock
+macos/Podfile
+
 # Xcode
 *.xcuserstate
 *.xcuserdata
