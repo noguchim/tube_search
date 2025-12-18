@@ -1,121 +1,395 @@
+// lib/main.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tube_search/providers/banner_ad_provider.dart';
+import 'package:tube_search/widgets/ad_banner.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'services/favorites_service.dart';
+import 'providers/theme_provider.dart';
+
+import 'screens/splash_screen.dart';
+import 'screens/popular_videos_screen.dart';
+import 'screens/genre_screen.dart';
+import 'screens/favorites_screen.dart';
+import 'screens/settings_screen.dart';
+
+import 'theme/app_theme.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
+
+  final favorites = FavoritesService();
+  await favorites.loadFavorites();
+
+  // ★ ThemeProvider を先に生成
+  final themeProvider = ThemeProvider();
+
+  // ★ 保存済みテーマをロード（ここが最重要）
+  await themeProvider.loadTheme();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: favorites),
+        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider(create: (_) => BannerAdProvider()),
+       // ChangeNotifierProvider(create: (_) => RemoveAdsProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
+      title: 'TUBE+',
+
+      // 🍀 Light / Dark テーマを適用
+      theme: appLightTheme,
+      darkTheme: appDarkTheme,
+      themeMode: themeProvider.themeMode, // ← Provider で切替
+
+      home: const SplashScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+/// ----------------------------------------------------------------
+/// 🧭 BottomNavigation 管理画面（背景のダーク対応を改善済み）
+/// ----------------------------------------------------------------
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _selectedIndex = 0;
+  bool _isScrollingDown = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  final GlobalKey<FavoritesScreenState> _favKey =
+  GlobalKey<FavoritesScreenState>();
+
+  late final List<Widget> _screens = [
+    PopularVideosScreen(onScrollChanged: _onScrollChanged),
+    GenreScreen(onScrollChanged: _onScrollChanged),
+    FavoritesScreen(key: _favKey),
+    const SettingsScreen(),
+  ];
+
+  void _onScrollChanged(bool isScrollingDown) {
+    if (_isScrollingDown != isScrollingDown && mounted) {
+      setState(() => _isScrollingDown = isScrollingDown);
+    }
+  }
+
+  /// 🔥 ダークテーマ対応の背景
+  Widget _buildBackground(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+            const Color(0xFF0F0F0F),
+            const Color(0xFF1A1A1A),
+          ]
+              : [
+            const Color(0xFFE2E8F0),
+            const Color(0xFFF8FAFC),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+    final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
+    //final removedAds = context.watch<RemoveAdsProvider>().isRemovedAds;
+
+    return KeyboardVisibilityBuilder(
+      builder: (context, isKeyboardVisible) {
+        // ★ Remove Ads → 広告は完全に無視
+        // final bool shouldShowBanner =
+        //     (!removedAds) && (!isKeyboardVisible) && bannerLoaded;
+        final bool shouldShowBanner =
+            (!isKeyboardVisible) && bannerLoaded;
+
+        return Scaffold(
+          extendBody: true,
+          body: Stack(
+            children: [
+              // 背景
+              Positioned.fill(child: _buildBackground(context)),
+
+              // メイン画面
+              Positioned.fill(
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: _screens,
+                ),
+              ),
+
+              // ★ BottomNav（キーボード表示中は隠す）
+              if (!isKeyboardVisible)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: shouldShowBanner ? 50 : 0,
+                  child: AnimatedOpacity(
+                    opacity: _isScrollingDown ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: IgnorePointer(
+                      ignoring: _isScrollingDown,
+                      child: SizedBox(
+                        height: 65,
+                        child: GlassDockNavigationBar(
+                          selectedIndex: _selectedIndex,
+                          onTabSelected: (index) {
+                            setState(() => _selectedIndex = index);
+                            if (index == 2) _favKey.currentState?.reload();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ★ バナー広告（Remove Ads の場合は完全に描画しない）
+              if (shouldShowBanner)
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: AdBanner(),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class GlassDockNavigationBar extends StatelessWidget {
+  final int selectedIndex;
+  final Function(int) onTabSelected;
+
+  const GlassDockNavigationBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onTabSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ---------------------------------------------------------
+    // 🎨 Light / Dark 背景グラデーション
+    // ---------------------------------------------------------
+    final List<Color> bgGradient = isDark
+        ? [
+      const Color(0xCC111111),
+      const Color(0xB31A1A1A),
+      const Color(0x991A1A1A),
+    ]
+        : [
+      const Color(0xE6FFFFFF),
+      const Color(0xCCE5E8EC),
+      const Color(0x99D0D4D9),
+    ];
+
+    final Color bgColor = isDark
+        ? const Color(0xFF111111).withValues(alpha: 0.85)
+        : const Color(0xFFF9FAFB).withValues(alpha: 0.85);
+
+    final Color borderColor =
+    isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.7);
+
+    final Color shadowColor =
+    isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.07);
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          height: 65,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: bgGradient,
+            ),
+            color: bgColor,
+            border: Border(
+              top: BorderSide(
+                color: borderColor,
+                width: 0.8,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: shadowColor,
+                blurRadius: 12,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildTab(context, 0, Icons.local_fire_department_rounded),
+              _buildTab(context, 1, Icons.category_rounded),
+              _buildTab(context, 2, Icons.favorite_rounded),
+              _buildTab(context, 3, Icons.settings_rounded),
+            ],
+          ),
+        ),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    );
+  }
+
+  // ---------------------------------------------------------
+  // 🔥 タブ描画（花瓶問題を解消した“丸い”バブル）
+  // ---------------------------------------------------------
+  Widget _buildTab(BuildContext context, int index, IconData icon) {
+    final bool isActive = selectedIndex == index;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color primary = Theme.of(context).colorScheme.primary;
+    final Color inactiveIcon =
+    isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+    final Color inactiveText =
+    isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+
+    final labels = [
+      "人気急上昇",
+      "ジャンル",
+      "お気に入り",
+      "設定",
+    ];
+
+    // ❤️ お気に入りだけ 1pt 小さく & 少し下げる補正は維持
+    final double iconSize = isActive
+        ? (index == 2 ? 21 : 22)
+        : 18;
+
+    final double iconYOffset = (index == 2) ? 2.0 : 0.0;
+
+    // ✨ ライトテーマでは発光強め、ダークでは現状維持寄り
+    final double bubbleInnerAlpha = isDark ? 0.28 : 0.55;
+    final double bubbleOuterAlpha = isDark ? 0.08 : 0.20;
+    final double glowAlpha       = isDark ? 0.25 : 0.35;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => onTabSelected(index),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            SizedBox(
+              height: 30,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  // 🟣 ぼかし入りの丸いバブル
+                  if (isActive)
+                    ClipOval(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: bubbleInnerAlpha),
+                                Colors.white.withValues(alpha: bubbleOuterAlpha),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(
+                                alpha: isDark ? 0.30 : 0.55,
+                              ),
+                              width: 1.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // 🌕 足元の発光（ライトでかなり強め）
+                  if (isActive)
+                    Positioned(
+                      bottom: 0,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            radius: 0.95,
+                            colors: [
+                              primary.withValues(alpha: glowAlpha),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // 🖼 アイコン本体（お気に入りだけ少し下げて描画）
+                  Transform.translate(
+                    offset: Offset(0, iconYOffset),
+                    child: Icon(
+                      icon,
+                      size: iconSize,
+                      color: isActive ? primary : inactiveIcon,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 1),
+
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive ? primary : inactiveText,
+              ),
+              child: Text(labels[index] ?? ''),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
