@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tube_search/screens/shop_screen.dart';
 
 import '../providers/theme_provider.dart';
 
@@ -226,111 +227,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // -------------------------------------------------------------------
-  // 🔥 Remove Ads ダイアログ
-  // -------------------------------------------------------------------
-  // void _showRemoveAdsDialog(BuildContext context) {
-  //   final theme = Theme.of(context);
-  //   final onSurface = theme.colorScheme.onSurface;
-  //   final removeAdsProvider = context.read<RemoveAdsProvider>();
-  //
-  //   final bool purchased = removeAdsProvider.isRemovedAds;
-  //
-  //   showModalBottomSheet(
-  //     context: context,
-  //     backgroundColor: theme.cardColor,
-  //     shape: const RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-  //     ),
-  //     builder: (_) {
-  //       return Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           const SizedBox(height: 12),
-  //           Container(
-  //             width: 40,
-  //             height: 4,
-  //             decoration: BoxDecoration(
-  //               color: Colors.grey.withOpacity(0.4),
-  //               borderRadius: BorderRadius.circular(4),
-  //             ),
-  //           ),
-  //           const SizedBox(height: 16),
-  //
-  //           Padding(
-  //             padding: const EdgeInsets.symmetric(horizontal: 20),
-  //             child: Text(
-  //               "広告表示について",
-  //               style: TextStyle(
-  //                 fontSize: 17,
-  //                 fontWeight: FontWeight.bold,
-  //                 color: onSurface,
-  //               ),
-  //             ),
-  //           ),
-  //
-  //           const SizedBox(height: 12),
-  //
-  //           Padding(
-  //             padding: const EdgeInsets.symmetric(horizontal: 20),
-  //             child: Text(
-  //               purchased
-  //                   ? "広告は現在非表示になっています（購入済み）。"
-  //                   : "現在：広告を表示しています\n\n広告を非表示にすると、画面下のバナーが消え、より快適に利用できます。",
-  //               style: TextStyle(
-  //                 fontSize: 14,
-  //                 color: onSurface.withValues(alpha: 0.7),
-  //               ),
-  //             ),
-  //           ),
-  //
-  //           const SizedBox(height: 20),
-  //
-  //           if (!purchased)
-  //             ListTile(
-  //               title: const Text(
-  //                 "広告を非表示にする（¥300）",
-  //                 style: TextStyle(
-  //                   fontSize: 16,
-  //                   fontWeight: FontWeight.w600,
-  //                 ),
-  //               ),
-  //               trailing:
-  //               Icon(Icons.chevron_right_rounded, color: onSurface),
-  //               onTap: () {
-  //                 Navigator.pop(context);
-  //                 debugPrint("Start purchase flow");
-  //               },
-  //             ),
-  //
-  //           if (purchased)
-  //             const Padding(
-  //               padding: EdgeInsets.symmetric(vertical: 16),
-  //               child: Text(
-  //                 "購入済みです",
-  //                 style: TextStyle(fontSize: 15),
-  //               ),
-  //             ),
-  //
-  //           ListTile(
-  //             title: const Center(
-  //               child: Text(
-  //                 "キャンセル",
-  //                 style: TextStyle(
-  //                   fontSize: 15,
-  //                 ),
-  //               ),
-  //             ),
-  //             onTap: () => Navigator.pop(context),
-  //           ),
-  //
-  //           const SizedBox(height: 16),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-
-  // -------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +235,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cardTheme = theme.cardTheme;
 
     final themeProvider = context.watch<ThemeProvider>();
-    //final removeAdsProvider = context.watch<RemoveAdsProvider>();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -370,128 +265,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // ------------------------------
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "テーマ",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
+                  child: Material(
+                    color: cardTheme.color,
+                    elevation: cardTheme.elevation ?? 0,
+                    shape: cardTheme.shape,
+                    child: ListTile(
+                      leading: Icon(Icons.dark_mode, color: onSurface),
 
-                Material(
-                  color: cardTheme.color,
-                  elevation: cardTheme.elevation ?? 0,
-                  shape: cardTheme.shape,
-                  child: ListTile(
-                    leading: Icon(Icons.dark_mode, color: onSurface),
-                    title: Text(
-                      "デザイン: ${_themeLabel(themeProvider.themeMode)}",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                      title: const Text(
+                        "テーマ",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      subtitle: Text(
+                        _themeLabel(themeProvider.themeMode), // ライト / ダーク
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
                         color: onSurface,
                       ),
+
+                      onTap: () => _showThemeDialog(context, themeProvider),
                     ),
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        color: onSurface),
-                    onTap: () =>
-                        _showThemeDialog(context, themeProvider),
                   ),
                 ),
 
-                const SizedBox(height: 26),
+                const SizedBox(height: 20),
 
                 // ------------------------------
                 // ⭐ お気に入り
                 // ------------------------------
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "お気に入り",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface.withValues(alpha: 0.8),
+                  child: Material(
+                    color: cardTheme.color,
+                    elevation: cardTheme.elevation ?? 0,
+                    shape: cardTheme.shape,
+                    child: ListTile(
+                      leading: Icon(Icons.favorite_rounded, color: onSurface),
+                      title: const Text(
+                        "お気に入り削除時に確認",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _skipDeleteConfirm ? "しない" : "する",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      trailing: Icon(Icons.chevron_right_rounded, color: onSurface),
+                      onTap: () => _showDeleteConfirmDialog(context),
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
 
-                Material(
-                  color: cardTheme.color,
-                  elevation: cardTheme.elevation ?? 0,
-                  shape: cardTheme.shape,
-                  child: ListTile(
-                    leading:
-                    Icon(Icons.favorite_rounded, color: onSurface),
-                    title: const Text(
-                      "削除時に確認",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      _skipDeleteConfirm ? "しない" : "する",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        color: onSurface),
-                    onTap: () => _showDeleteConfirmDialog(context),
-                  ),
-                ),
+                const SizedBox(height: 20),
 
-                const SizedBox(height: 24),
-
-                // ------------------------------
-                // ⭐ 広告（Remove Ads）
-                // ------------------------------
+                // ------------------------------------
+                // 🛒 ショップセクション
+                // ------------------------------------
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "広告",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                Material(
-                  color: cardTheme.color,
-                  elevation: cardTheme.elevation ?? 0,
-                  shape: cardTheme.shape,
-                  child: ListTile(
-                    leading:
-                    Icon(Icons.ads_click, color: onSurface),
-                    title: const Text(
-                      "広告表示",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                  child: Material(
+                    color: cardTheme.color,
+                    elevation: cardTheme.elevation ?? 0,
+                    shape: cardTheme.shape,
+                    child: ListTile(
+                      leading: Icon(Icons.storefront, color: onSurface),
+                      title: const Text(
+                        "ショップ",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      subtitle: const Text(
+                        "便利機能の追加",
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      trailing: Icon(Icons.chevron_right_rounded, color: onSurface),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ShopScreen()),
+                        );
+                      },
                     ),
-                    // subtitle: Text(
-                    //   removeAdsProvider.isRemovedAds
-                    //       ? "非表示（購入済み）"
-                    //       : "表示中",
-                    //   style: const TextStyle(fontSize: 12),
-                    // ),
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        color: onSurface),
-                    //onTap: () => _showRemoveAdsDialog(context),
                   ),
                 ),
-
-                const SizedBox(height: 24),
               ],
             ),
           ),

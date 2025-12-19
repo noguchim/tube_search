@@ -27,6 +27,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/images/coming_soon.png
 
   fonts:
     - family: NotoSansJP
