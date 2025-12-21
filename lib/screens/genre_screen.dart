@@ -33,12 +33,13 @@ class _GenreScreenState extends State<GenreScreen>
 
   bool _isScrollingDown = false;
 
-  bool _isFirstTap = true;
+  // bool _isFirstTap = true;
   bool _isSearchingFromSuggest = false;
 
   late AnimationController _tapAnim;
   late Animation<double> _scaleAnim;
   late Animation<double> _shadowAnim;
+  Brightness? _lastBrightness;
 
   @override
   void initState() {
@@ -56,6 +57,16 @@ class _GenreScreenState extends State<GenreScreen>
     _shadowAnim = Tween<double>(begin: 6.0, end: 10.0).animate(
       CurvedAnimation(parent: _tapAnim, curve: Curves.easeOut),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
   }
 
   @override
@@ -83,6 +94,40 @@ class _GenreScreenState extends State<GenreScreen>
       _isScrollingDown = false;
       widget.onScrollChanged?.call(false);
     }
+  }
+
+  Future<void> _executeSearch(String keyword) async {
+    final kw = keyword.trim();
+    if (kw.isEmpty) return;
+
+    _debounce?.cancel();
+    _focusNode.unfocus();
+
+    setState(() {
+      _suggestions = [];
+      _isSearchingFromSuggest = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GenreVideosScreen(
+          categoryId: '0',
+          categoryTitle: kw,
+          keyword: kw,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSearchingFromSuggest = false;
+    });
   }
 
   // ----------------------------------------------------
@@ -127,19 +172,19 @@ class _GenreScreenState extends State<GenreScreen>
     });
   }
 
-  Future<void> _onTapSearchField() async {
-    if (_isFirstTap) {
-      _isFirstTap = false;
-
-      _tapAnim.forward();
-      await Future.delayed(const Duration(milliseconds: 280));
-      _focusNode.requestFocus();
-      await Future.delayed(const Duration(milliseconds: 150));
-      if (mounted) _tapAnim.reverse();
-    } else {
-      _focusNode.requestFocus();
-    }
-  }
+  // Future<void> _onTapSearchField() async {
+  //   if (_isFirstTap) {
+  //     _isFirstTap = false;
+  //
+  //     _tapAnim.forward();
+  //     await Future.delayed(const Duration(milliseconds: 280));
+  //     _focusNode.requestFocus();
+  //     await Future.delayed(const Duration(milliseconds: 150));
+  //     if (mounted) _tapAnim.reverse();
+  //   } else {
+  //     _focusNode.requestFocus();
+  //   }
+  // }
 
   // ----------------------------------------------------
   // 🔍 検索フォーム（Dark対応）
@@ -148,81 +193,104 @@ class _GenreScreenState extends State<GenreScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // 🍎 Apple系：検索バーはカードより明るい透明レイヤー
     final Color searchBg = isDark
-        ? Colors.white.withValues(alpha: 0.12)   // ← 12〜16% がApple標準
+        ? Colors.white.withValues(alpha: 0.12)
         : Colors.black.withValues(alpha: 0.05);
 
+    final Color actionBg = isDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : Colors.black.withValues(alpha: 0.08);
+
+    // final Color searchBg = Colors.white.withValues(alpha: 0.12);
+    // final Color actionBg = Colors.white.withValues(alpha: 0.18);
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      // margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: AnimatedBuilder(
         animation: _tapAnim,
         builder: (context, child) {
           return Transform.scale(
             scale: _scaleAnim.value,
             child: Material(
-              elevation: 0, // ← Appleの検索バーは影0
+              elevation: 0,
               borderRadius: BorderRadius.circular(14),
-              color: Colors.transparent, // ← Material自体に色をつけない
-              child: Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: searchBg, // ← Apple検索バーの透明感
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.10) // 輪郭の光
-                            : Colors.black.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchCtrl,
-                      focusNode: _focusNode,
-                      onChanged: _onSearchChanged,
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.90)
-                            : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        icon: Icon(
-                          Icons.search,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xFF475569),
-                        ),
-                        hintText: "検索ワードを入力...",
-                        hintStyle: TextStyle(
-                          color: isDark
-                              ? Colors.white60
-                              : Colors.black54,
-                        ),
-                      ),
-                    ),
+              color: Colors.transparent,
+              child: Container(
+                height: 44, // ← 高さ固定（ズレ防止の要）
+                decoration: BoxDecoration(
+                  color: searchBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.black.withValues(alpha: 0.08),
                   ),
-
-                  if (_isSearchingFromSuggest)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                child: Row(
+                  children: [
+                    // ==================
+                    // 🔍 入力欄
+                    // ==================
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          focusNode: _focusNode,
+                          onChanged: _onSearchChanged,
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.90)
+                                : Colors.black87,
+                          ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "検索ワードを入力...",
+                            hintStyle: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
 
-                  // ← 検索バータップ拡張
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _onTapSearchField,
+                    // ==================
+                    // 🔘 右側アクション
+                    // ==================
+                    Container(
+                      width: 52, // ← 少し広げる（44 → 52）
+                      height: double.infinity,
+                      decoration: BoxDecoration(
+                        color: actionBg, // ← 背景を濃く
+                        borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(14),
+                          bottomRight: Radius.circular(14),
+                        ),
+                      ),
+                      child: Center(
+                        child: _isSearchingFromSuggest
+                            ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white, // ← ローディングも白で統一
+                          ),
+                        )
+                            : IconButton(
+                          icon: const Icon(
+                            Icons.search,
+                            size: 22,
+                            color: Colors.white, // ← 検索アイコン白
+                          ),
+                          onPressed: () {
+                            _executeSearch(_searchCtrl.text);
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -352,37 +420,8 @@ class _GenreScreenState extends State<GenreScreen>
                 style: TextStyle(color: theme.colorScheme.onSurface),
               ),
               onTap: () async {
-                _debounce?.cancel();
-
-                final kw = s;
-                _searchCtrl.text = kw;
-                _focusNode.unfocus();
-
-                setState(() {
-                  _suggestions = [];
-                  _isSearchingFromSuggest = true;
-                });
-
-                await Future.delayed(const Duration(milliseconds: 1500));
-
-                if (!mounted) return;
-
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GenreVideosScreen(
-                      categoryId: '0',
-                      categoryTitle: kw,
-                      keyword: kw,
-                    ),
-                  ),
-                );
-
-                if (!mounted) return;
-
-                setState(() {
-                  _isSearchingFromSuggest = false;
-                });
+                _searchCtrl.text = s;
+                _executeSearch(s);
               },
             ),
           ),
@@ -506,6 +545,18 @@ class _GenreScreenState extends State<GenreScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final brightness = Theme.of(context).brightness;
+
+    if (_lastBrightness != brightness) {
+      _lastBrightness = brightness;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
@@ -513,7 +564,7 @@ class _GenreScreenState extends State<GenreScreen>
         slivers: [
           const SliverAppBar(
             floating: true,
-            snap: true,
+            snap: false,
             elevation: 0,
             backgroundColor: Colors.transparent,
             expandedHeight: 70,
@@ -537,7 +588,19 @@ class _GenreScreenState extends State<GenreScreen>
             ),
           ),
 
-          SliverToBoxAdapter(child: _buildSearchField()),
+          // ===============================
+          // 🔒 検索フォーム固定
+          // ===============================
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: SearchHeaderDelegate(
+              height: 72, // ← 実測で余裕を持たせる
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: _buildSearchField(), // ← margin を剥がしたもの
+              ),
+            ),
+          ),
           SliverToBoxAdapter(child: _buildSuggestions()),
 
           SliverToBoxAdapter(
@@ -565,5 +628,38 @@ class _GenreScreenState extends State<GenreScreen>
         ],
       ),
     );
+  }
+}
+
+class SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  SearchHeaderDelegate({
+    required this.child,
+    required this.height,
+  });
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
+    return SizedBox(
+      height: height,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
   }
 }

@@ -352,7 +352,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       subtitle: const Text(
-                        "便利機能の追加",
+                        "便利な機能でより快適に！",
                         style: TextStyle(fontSize: 12),
                       ),
                       trailing: Icon(Icons.chevron_right_rounded, color: onSurface),
