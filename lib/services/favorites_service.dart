@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/iap_provider.dart';
+import 'limit_service.dart';
+
 class FavoritesService extends ChangeNotifier {
   static const String key = "favorite_videos";
 
@@ -72,6 +75,39 @@ class FavoritesService extends ChangeNotifier {
 
     await _save();
     notifyListeners();
+  }
+
+
+  // ------------------------------------------------------------
+  // ❤️ 上限チェック付きで「追加」を試みる
+  // ------------------------------------------------------------
+  Future<bool> tryAddFavorite(
+      String id,
+      Map<String, dynamic> video,
+      IapProvider iap,
+      ) async {
+    await _load();
+
+    // 既に登録済みなら true 扱い（何もしない）
+    if (isFavoriteSync(id)) return true;
+
+    final max = LimitService.favoritesLimit(iap);
+
+    if (_cache.length >= max) {
+      // ← ここで “上限到達” を通知
+      return false;
+    }
+
+    final withDate = {
+      ...video,
+      "savedAt": DateTime.now().toString(),
+    };
+
+    _cache.add(withDate);
+    await _save();
+    notifyListeners();
+
+    return true;
   }
 
   // ------------------------------------------------------------

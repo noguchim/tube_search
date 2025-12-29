@@ -70,11 +70,12 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final banner = _banner;
+    const bool debugMode = false;
 
     // ★ どちらにせよ高さは 50px で統一
     return SizedBox(
       height: 50,
-      child: _isLoaded && banner != null
+      child: (_isLoaded && banner != null) && !debugMode
           ? AdWidget(ad: banner)
           : _buildDummyBannerGlass(context), // ← バナーなし時はこれ
     );

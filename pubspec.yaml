@@ -19,14 +19,13 @@ dependencies:
   google_mobile_ads: ^5.1.0
   flutter_keyboard_visibility: ^6.0.0
   connectivity_plus: ^6.0.3
-#  purchases_flutter: ^6.0.0
+  in_app_purchase: ^3.1.11
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
-    - assets/icons/
     - assets/images/coming_soon.png
 
   fonts:

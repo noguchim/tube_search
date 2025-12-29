@@ -3,6 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
+import 'package:tube_search/providers/iap_provider.dart';
+import 'package:tube_search/services/iap_products.dart';
+import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 
 import 'services/favorites_service.dart';
@@ -38,7 +41,26 @@ void main() async {
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => BannerAdProvider()),
-       // ChangeNotifierProvider(create: (_) => RemoveAdsProvider()),
+
+        // ★ IapService + IapProvider
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = IapProvider(IapService());
+
+            provider.init(
+              onPurchased: (product) {
+                // 👇 ここでは UI 表示不要（静かに状態だけ復元）
+                // でも「ログは残す」と後で助かる
+                print('[MAIN] restored: ${product.id}');
+              },
+              onError: (msg) {
+                print('[MAIN] IAP error: $msg');
+              },
+            );
+
+            return provider;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
@@ -124,15 +146,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
-    //final removedAds = context.watch<RemoveAdsProvider>().isRemovedAds;
+    final adsRemoved =
+    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
-        // ★ Remove Ads → 広告は完全に無視
-        // final bool shouldShowBanner =
-        //     (!removedAds) && (!isKeyboardVisible) && bannerLoaded;
         final bool shouldShowBanner =
-            (!isKeyboardVisible) && bannerLoaded;
+            (!adsRemoved) &&
+                (!isKeyboardVisible) &&
+                bannerLoaded;
+
+        // for test
+        //const bool shouldShowBanner = false;
 
         return Scaffold(
           extendBody: true,

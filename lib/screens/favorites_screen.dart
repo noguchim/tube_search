@@ -3,8 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
+import '../services/limit_service.dart';
 import '../widgets/custom_glass_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -384,21 +386,54 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iap = context.watch<IapProvider>();
+    final favoritesLimit = LimitService.favoritesLimit(iap);
+    final currentCount = _list.length;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            floating: true,
-            snap: true,
+          const SliverAppBar(
+            floating: false,
+            snap: false,
+            pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 70,
+            toolbarHeight: 70,
             flexibleSpace: const CustomGlassAppBar(
               title: 'お気に入り',
             ),
           ),
+
+          // 🔹 0件のときは表示しない
+          if (!_isLoading && currentCount > 0)
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : const Color(0xFFE4E8EC),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      "お気に入り登録数：$currentCount / $favoritesLimit 件",
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           SliverToBoxAdapter(
             child: _isLoading
@@ -412,6 +447,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               child: _buildEmptyFavoritesUI(),
             )
                 : _buildFavoritesList(),
+          ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 120),
           ),
         ],
       ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
+import '../services/iap_products.dart';
 
 class VideoListTile extends StatelessWidget {
   final Map<String, dynamic> video;
@@ -139,8 +141,17 @@ class VideoListTile extends StatelessWidget {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () async {
-                              await fav.toggle(id, video);
+                              final fav = context.read<FavoritesService>();
+                              final iap = context.read<IapProvider>();
+
+                              // 🔥 上限チェック付きで追加
+                              final ok = await fav.tryAddFavorite(id, video, iap);
+
+                              if (!ok) {
+                                _showLimitDialog(context, iap);
+                              }
                             },
+
                             child: AnimatedScale(
                               scale: isFav ? 1.18 : 1.0, // ← 視覚的に大きめアニメ
                               duration: const Duration(milliseconds: 150),
@@ -177,6 +188,36 @@ class VideoListTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showLimitDialog(BuildContext context, IapProvider iap) {
+    final purchased = iap.isPurchased(IapProducts.limitUpgrade.id);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("お気に入り上限"),
+        content: Text(
+          purchased
+              ? "お気に入りは最大50件まで追加できます。"
+              : "お気に入りは10件までです。\n\n上限拡張で5倍（50件まで）追加できます。",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("閉じる"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          if (!purchased)
+            TextButton(
+              child: const Text("上限を拡張する"),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, "/shop");
+              },
+            ),
+        ],
       ),
     );
   }

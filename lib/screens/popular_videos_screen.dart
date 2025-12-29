@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
+import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
+import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../widgets/custom_glass_app_bar.dart';
 import '../widgets/network_error_view.dart';
@@ -28,6 +30,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   bool _isRefreshing = false;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
+  int _lastLimit = 10;
 
   @override
   void initState() {
@@ -56,8 +59,13 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchVideos() async {
-    final videos = await _apiService.fetchPopularVideos();
+  Future<List<Map<String, dynamic>>> _fetchVideos({bool forceRefresh = false}) async {
+    final iap = context.read<IapProvider>();
+
+    final videos = await _apiService.fetchPopularVideos(
+      maxResults: LimitService.videoListLimit(iap),
+      forceRefresh: forceRefresh,          // ← 重要
+    );
 
     final mapped = videos.map((v) {
       return {
@@ -70,7 +78,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       };
     }).toList();
 
-    // 再生数で降順ソート
     mapped.sort((a, b) {
       final viewA = int.tryParse(a['viewCount'] ?? '0') ?? 0;
       final viewB = int.tryParse(b['viewCount'] ?? '0') ?? 0;
@@ -85,8 +92,12 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     setState(() => _isRefreshing = true);
 
     try {
+      // 🔥 IAP 上限適用
+      final iap = context.read<IapProvider>();
+      final limit = LimitService.videoListLimit(iap);
+
       // 例外が出れば catch に飛ぶ
-      final videos = await _apiService.fetchPopularVideos();
+      final videos = await _apiService.fetchPopularVideos(maxResults: limit,);
 
       final mapped = videos.map((v) {
         return {
@@ -128,6 +139,19 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
     // ★ Favorite 状態変化を購読して同期
     context.watch<FavoritesService>();
+
+// 上限（IAP反映）を監視
+    final iap = context.watch<IapProvider>();
+    final currentLimit = LimitService.videoListLimit(iap);
+
+    // 🟣 上限が変わったら自動で再取得（＝キャッシュ無視で最新取得）
+    if (currentLimit != _lastLimit) {
+      _lastLimit = currentLimit;
+
+      setState(() {
+        _futureVideos = _fetchVideos(forceRefresh: true);
+      });
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -200,7 +224,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                 ),
 
                 const SliverToBoxAdapter(
-                  child: SafeArea(top: false, child: SizedBox(height: 0)),
+                  child: SizedBox(height: 120),
                 ),
               ],
             ),

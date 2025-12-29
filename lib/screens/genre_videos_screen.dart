@@ -5,6 +5,9 @@ import '../widgets/network_error_view.dart';
 import '../widgets/video_list_tile.dart';
 import '../widgets/custom_glass_app_bar.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:provider/provider.dart';
+import '../providers/iap_provider.dart';
+import '../services/limit_service.dart';
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
@@ -32,6 +35,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   bool _isRefreshing = false;
   bool _isScrollingDown = false;
   DateTime? _fetchedAt;
+  int _lastLimit = 10;
 
   @override
   void initState() {
@@ -71,6 +75,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   Future<List<Map<String, dynamic>>> _loadVideos() async {
     final kw = widget.keyword?.trim();
     final cat = widget.categoryId == "0" ? "" : widget.categoryId;
+    final iap = context.read<IapProvider>();
+    final limit = LimitService.videoListLimit(iap);
 
     List<Map<String, dynamic>> videos = [];
 
@@ -80,7 +86,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         final search = await _apiService.searchWithStats(
           categoryId: cat,
           keyword: kw,
-          maxResults: 50,
+          maxResults: limit,
         );
 
         if (search.isEmpty) {
@@ -105,7 +111,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         // 人気ジャンル一覧
         final list = await _apiService.fetchPopularVideos(
           videoCategoryId: cat,
-          maxResults: 50,
+          maxResults: limit,
         );
 
         videos = list
@@ -160,6 +166,18 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
+
+    final iap = context.watch<IapProvider>();
+    final currentLimit = LimitService.videoListLimit(iap);
+
+    // 🟣 上限が変わったら自動で再取得（IAP購入直後に即反映）
+    if (currentLimit != _lastLimit) {
+      _lastLimit = currentLimit;
+
+      setState(() {
+        _futureVideos = _loadVideos();
+      });
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -262,17 +280,23 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           // 🔙 戻るボタン（GlassAppBar外）
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
+            top: MediaQuery.of(context).padding.top + 25,
             left: 8,
-            child: IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: onSurface,
-                size: 22,
+            child: Material(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => Navigator.pop(context),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),   // ← 10 → 8 に縮小
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,                  // ← 22 → 18 に縮小
+                  ),
+                ),
               ),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
           ),
         ],

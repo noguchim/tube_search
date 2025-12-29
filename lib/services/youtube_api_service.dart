@@ -13,8 +13,10 @@ class YouTubeApiService {
   // -------------------------
   // 人気動画キャッシュ
   // -------------------------
-  List<YouTubeVideo>? _popularCache;
-  DateTime? _popularFetchedAt;
+  // List<YouTubeVideo>? _popularCache;
+  // DateTime? _popularFetchedAt;
+  final Map<String, List<YouTubeVideo>> _popularCache = {};
+  final Map<String, DateTime> _popularFetchedAt = {};
   static const Duration _popularCacheTTL = Duration(minutes: 10);
 
   // ------------------------------------------------------------
@@ -44,16 +46,19 @@ class YouTubeApiService {
   }) async {
     final now = DateTime.now();
 
-    // キャッシュ
+    // 👇 maxResults & category をキャッシュキーに含める
+    final key = "${regionCode}_${videoCategoryId ?? 'all'}_$maxResults";
+
+    // キャッシュヒット
     if (!forceRefresh &&
-        _popularCache != null &&
-        _popularFetchedAt != null &&
-        now.difference(_popularFetchedAt!) < _popularCacheTTL) {
-      logger.i("💾 PopularVideos: Using cache");
-      return _popularCache!;
+        _popularCache.containsKey(key) &&
+        _popularFetchedAt.containsKey(key) &&
+        now.difference(_popularFetchedAt[key]!) < _popularCacheTTL) {
+      logger.i("💾 PopularVideos: Using cache ($key)");
+      return _popularCache[key]!;
     }
 
-    // PHP API 呼び出し
+    // --- API 呼び出し ---
     final uri = Uri.https(baseApi, "/api/youtube_popular.php", {
       "region": regionCode,
       "max": "$maxResults",
@@ -63,7 +68,6 @@ class YouTubeApiService {
 
     final data = await _getJson(uri);
 
-    // data は完全にフラット配列
     if (data is! List) {
       logger.e("❌ Unexpected Popular API structure");
       throw Exception("Invalid API data");
@@ -80,8 +84,9 @@ class YouTubeApiService {
       );
     }).toList();
 
-    _popularCache = list;
-    _popularFetchedAt = now;
+    // 👇 キーごとに保存
+    _popularCache[key] = list;
+    _popularFetchedAt[key] = now;
 
     return list;
   }
