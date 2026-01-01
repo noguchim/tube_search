@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +6,7 @@ import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
+import '../utils/favorite_delete_helper.dart';
 
 class VideoListTile extends StatelessWidget {
   final Map<String, dynamic> video;
@@ -40,12 +42,13 @@ class VideoListTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     // 🎨 カード色・枠線は Theme 側を基準としつつ、より視認性を上げる BorderSide を追加
-    final cardColor = theme.cardTheme.color ?? (isDark ? Colors.white10 : Colors.white);
+    final cardColor =
+        theme.cardTheme.color ?? (isDark ? Colors.white10 : Colors.white);
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
       side: BorderSide(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.07)       // ← 0.05 → 0.07 に調整
+            ? Colors.white.withValues(alpha: 0.07) // ← 0.05 → 0.07 に調整
             : Colors.black.withValues(alpha: 0.05),
         width: 1,
       ),
@@ -84,12 +87,24 @@ class VideoListTile extends StatelessWidget {
                 children: [
                   AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.network(
-                      thumbnail,
-                      width: double.infinity,
+                    child: CachedNetworkImage(
+                      imageUrl: thumbnail,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      width: double.infinity,
+
+                      // ✔ 以前取得していれば、オフラインでも表示される
+                      placeholder: (_, __) => Container(
                         color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      ),
+
+                      // ✔ 未取得 & オフライン → デザイン崩さず fallback
+                      errorWidget: (_, __, ___) => Container(
+                        color: isDark ? Colors.grey[850] : Colors.grey[300],
+                        child: const Icon(
+                          Icons.wifi_off_rounded,
+                          size: 36,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -144,23 +159,36 @@ class VideoListTile extends StatelessWidget {
                               final fav = context.read<FavoritesService>();
                               final iap = context.read<IapProvider>();
 
+                              final isFavNow = fav.isFavoriteSync(id);
+
+                              // ❤️ 解除（トグル）
+                              if (isFavNow) {
+                                await FavoriteDeleteHelper.confirmOrDelete(
+                                    context, video);
+                                return;
+                              }
+
                               // 🔥 上限チェック付きで追加
-                              final ok = await fav.tryAddFavorite(id, video, iap);
+                              final ok =
+                                  await fav.tryAddFavorite(id, video, iap);
 
                               if (!ok) {
                                 _showLimitDialog(context, iap);
                               }
                             },
-
                             child: AnimatedScale(
                               scale: isFav ? 1.18 : 1.0, // ← 視覚的に大きめアニメ
                               duration: const Duration(milliseconds: 150),
                               curve: Curves.easeOut,
                               child: Icon(
-                                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                isFav
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
                                 color: isFav
                                     ? Colors.red
-                                    : (isDark ? Colors.white70 : Colors.grey.shade600),
+                                    : (isDark
+                                        ? Colors.white70
+                                        : Colors.grey.shade600),
                                 size: isFav ? 30 : 28, // ← 非活性でも大きめ & 活性は少し大きい
                               ),
                             ),

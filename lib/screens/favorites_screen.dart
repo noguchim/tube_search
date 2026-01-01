@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
+import '../utils/favorite_delete_helper.dart';
 import '../widgets/custom_glass_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -19,7 +19,6 @@ class FavoritesScreen extends StatefulWidget {
 class FavoritesScreenState extends State<FavoritesScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _list = [];
-  static const String _prefSkipDeleteConfirm = "skip_delete_confirm";
 
   @override
   void initState() {
@@ -53,74 +52,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  Future<void> _showDeleteDialog(Map<String, dynamic> video) async {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            "お気に入りから削除しますか？",
-            style: TextStyle(fontSize: 15, color: onSurface),
-          ),
-          content: Text(
-            "「${video["title"]}」をお気に入りから削除します。",
-            style: TextStyle(fontSize: 14, height: 1.5, color: onSurface),
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                "キャンセル",
-                style: TextStyle(fontSize: 14, color: onSurface),
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              ),
-              child: const Text(
-                "削除",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              onPressed: () async {
-                final fav = context.read<FavoritesService>();
-                await fav.toggle(video["id"], video);
-
-                if (mounted) {
-                  Navigator.pop(context);
-                  await reload();
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _tryDelete(Map<String, dynamic> video) async {
-    final prefs = await SharedPreferences.getInstance();
-    final skip = prefs.getBool(_prefSkipDeleteConfirm) ?? false;
-
-    if (skip) {
-      final fav = context.read<FavoritesService>();
-      await fav.toggle(video["id"], video);
-      await reload();
-      return;
-    }
-
-    await _showDeleteDialog(video);
+    await FavoriteDeleteHelper.confirmOrDelete(context, video);
+    await reload(); // ← 解除後の最新一覧を再取得
   }
 
   // -------------------------------------------------------------
@@ -130,8 +64,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
-    final cardColor =
-        theme.cardTheme.color ?? (isDark ? const Color(0xFF1E1E1E) : Colors.white);
+    final cardColor = theme.cardTheme.color ??
+        (isDark ? const Color(0xFF1E1E1E) : Colors.white);
 
     return SizedBox(
       width: double.infinity,
@@ -192,7 +126,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                         Container(
                           width: double.infinity,
                           height: 100,
-                          color: isDark ? Colors.grey[800] : const Color(0xFFB5B9BE),
+                          color: isDark
+                              ? Colors.grey[800]
+                              : const Color(0xFFB5B9BE),
                           child: const Center(
                             child: Icon(
                               Icons.play_circle_fill,
@@ -209,13 +145,15 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                             gradient: LinearGradient(
                               colors: isDark
                                   ? [
-                                Colors.white.withValues(alpha: 0.05),
-                                Colors.white.withValues(alpha: 0.02),
-                              ]
+                                      Colors.white.withValues(alpha: 0.05),
+                                      Colors.white.withValues(alpha: 0.02),
+                                    ]
                                   : [
-                                Colors.pinkAccent.shade100.withValues(alpha: 0.12),
-                                Colors.pinkAccent.shade100.withValues(alpha: 0.04),
-                              ],
+                                      Colors.pinkAccent.shade100
+                                          .withValues(alpha: 0.12),
+                                      Colors.pinkAccent.shade100
+                                          .withValues(alpha: 0.04),
+                                    ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                             ),
@@ -295,7 +233,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
-                    ? (theme.cardTheme.shape as RoundedRectangleBorder).borderRadius
+                    ? (theme.cardTheme.shape as RoundedRectangleBorder)
+                        .borderRadius
                     : BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -322,7 +261,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -360,9 +298,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
                   GestureDetector(
                     onTap: () async => _tryDelete(video),
                     child: Icon(
@@ -401,7 +337,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             elevation: 0,
             backgroundColor: Colors.transparent,
             toolbarHeight: 70,
-            flexibleSpace: const CustomGlassAppBar(
+            flexibleSpace: CustomGlassAppBar(
               title: 'お気に入り',
             ),
           ),
@@ -410,7 +346,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           if (!_isLoading && currentCount > 0)
             SliverToBoxAdapter(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: 0.04)
@@ -438,15 +375,15 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           SliverToBoxAdapter(
             child: _isLoading
                 ? const Padding(
-              padding: EdgeInsets.only(top: 60),
-              child: Center(child: CircularProgressIndicator()),
-            )
+                    padding: EdgeInsets.only(top: 60),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 : _list.isEmpty
-                ? SizedBox(
-              height: MediaQuery.of(context).size.height * 0.75,
-              child: _buildEmptyFavoritesUI(),
-            )
-                : _buildFavoritesList(),
+                    ? SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.75,
+                        child: _buildEmptyFavoritesUI(),
+                      )
+                    : _buildFavoritesList(),
           ),
           const SliverToBoxAdapter(
             child: SizedBox(height: 120),

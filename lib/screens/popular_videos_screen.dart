@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
@@ -26,7 +27,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
   final YouTubeApiService _apiService = YouTubeApiService();
   late Future<List<Map<String, dynamic>>> _futureVideos;
-  DateTime? _fetchedAt;
   bool _isRefreshing = false;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
@@ -59,12 +59,13 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchVideos({bool forceRefresh = false}) async {
+  Future<List<Map<String, dynamic>>> _fetchVideos(
+      {bool forceRefresh = false}) async {
     final iap = context.read<IapProvider>();
 
     final videos = await _apiService.fetchPopularVideos(
       maxResults: LimitService.videoListLimit(iap),
-      forceRefresh: forceRefresh,          // ← 重要
+      forceRefresh: forceRefresh, // ← 重要
     );
 
     final mapped = videos.map((v) {
@@ -84,7 +85,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       return viewB.compareTo(viewA);
     });
 
-    setState(() => _fetchedAt = DateTime.now());
     return mapped;
   }
 
@@ -96,8 +96,14 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       final iap = context.read<IapProvider>();
       final limit = LimitService.videoListLimit(iap);
 
+      final online = await _isOnline();
+
       // 例外が出れば catch に飛ぶ
-      final videos = await _apiService.fetchPopularVideos(maxResults: limit,);
+      final videos = await _apiService.fetchPopularVideos(
+        maxResults: limit,
+        // 🟣 ネットが不安定なら必ず通信しに行く（→失敗したらエラー画面）
+        forceRefresh: !online,
+      );
 
       final mapped = videos.map((v) {
         return {
@@ -119,18 +125,22 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       // 🔥 成功 → FutureBuilder にデータを渡す
       setState(() {
         _futureVideos = Future.value(mapped);
-        _fetchedAt = DateTime.now();
       });
-
     } catch (e) {
       // ❗ 例外時 → FutureBuilder にエラーを渡す
       setState(() {
         _futureVideos = Future.error(e);
       });
-
     } finally {
       setState(() => _isRefreshing = false);
     }
+  }
+
+  Future<bool> _isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result == ConnectivityResult.mobile ||
+        result == ConnectivityResult.wifi ||
+        result == ConnectivityResult.ethernet;
   }
 
   @override
@@ -140,7 +150,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     // ★ Favorite 状態変化を購読して同期
     context.watch<FavoritesService>();
 
-// 上限（IAP反映）を監視
+    // 上限（IAP反映）を監視
     final iap = context.watch<IapProvider>();
     final currentLimit = LimitService.videoListLimit(iap);
 
@@ -168,7 +178,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
             return NetworkErrorView(
               onRetry: () {
                 setState(() {
-                  _futureVideos = _fetchVideos();
+                  _futureVideos = _fetchVideos(forceRefresh: true);
                 });
               },
             );
@@ -209,7 +219,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                     showInfoButton: true,
                     onRefreshPressed: _refreshVideos,
                   ),
-
                 ),
 
                 // --- 動画リスト ---

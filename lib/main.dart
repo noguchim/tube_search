@@ -1,30 +1,97 @@
 // lib/main.dart
+import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
+import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 
-import 'services/favorites_service.dart';
 import 'providers/theme_provider.dart';
-
-import 'screens/splash_screen.dart';
-import 'screens/popular_videos_screen.dart';
-import 'screens/genre_screen.dart';
 import 'screens/favorites_screen.dart';
+import 'screens/genre_screen.dart';
+import 'screens/popular_videos_screen.dart';
 import 'screens/settings_screen.dart';
-
+import 'screens/splash_screen.dart';
+import 'services/favorites_service.dart';
 import 'theme/app_theme.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
+/// ----------------------------------------------------------------
+/// 📝 UMP（同意管理）
+/// ----------------------------------------------------------------
+Future<void> _requestConsent() async {
+  final consentInfo = ConsentInformation.instance;
+
+  final params = ConsentRequestParameters(
+    tagForUnderAgeOfConsent: false,
+  );
+
+  // 1️⃣ 同意情報リクエスト
+  final completer1 = Completer<void>();
+
+  consentInfo.requestConsentInfoUpdate(
+    params,
+    () {
+      // 成功
+      completer1.complete();
+    },
+    (FormError error) {
+      logger.i('⚠️ UMP request error: ${error.message}');
+      completer1.complete();
+    },
+  );
+
+  await completer1.future;
+
+  // 👇 ここで状態を確認！
+  final status = await ConsentInformation.instance.getConsentStatus();
+  logger.i('🔎 consent status = $status');
+
+  // 2️⃣ フォームが必要ならロード
+  if (await consentInfo.isConsentFormAvailable()) {
+    final completer2 = Completer<ConsentForm>();
+
+    ConsentForm.loadConsentForm(
+      (ConsentForm form) {
+        completer2.complete(form);
+      },
+      (FormError error) {
+        logger.i('⚠️ UMP form load error: ${error.message}');
+        completer2.completeError(error);
+      },
+    );
+
+    final form = await completer2.future;
+
+    // 3️⃣ 表示
+    form.show(
+      (FormError? error) {
+        if (error != null) {
+          logger.i('⚠️ UMP show error: ${error.message}');
+        }
+      },
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 👇 ここ（テスト端末登録）
+  await MobileAds.instance.updateRequestConfiguration(
+    RequestConfiguration(testDeviceIds: ['9ece5c366fa9bdadad267b8e1043760c']),
+  );
+
   await MobileAds.instance.initialize();
+
+  // ⭐ GDPR / UMP（EU圏のみ自動で表示）
+  await _requestConsent();
 
   final favorites = FavoritesService();
   await favorites.loadFavorites();
@@ -51,10 +118,10 @@ void main() async {
               onPurchased: (product) {
                 // 👇 ここでは UI 表示不要（静かに状態だけ復元）
                 // でも「ログは残す」と後で助かる
-                print('[MAIN] restored: ${product.id}');
+                logger.i('[MAIN] restored: ${product.id}');
               },
               onError: (msg) {
-                print('[MAIN] IAP error: $msg');
+                logger.i('[MAIN] IAP error: $msg');
               },
             );
 
@@ -81,13 +148,13 @@ class MyApp extends StatelessWidget {
       // 🍀 Light / Dark テーマを適用
       theme: appLightTheme,
       darkTheme: appDarkTheme,
-      themeMode: themeProvider.themeMode, // ← Provider で切替
+      themeMode: themeProvider.themeMode,
+      // ← Provider で切替
 
       home: const SplashScreen(),
     );
   }
 }
-
 
 /// ----------------------------------------------------------------
 /// 🧭 BottomNavigation 管理画面（背景のダーク対応を改善済み）
@@ -104,7 +171,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   bool _isScrollingDown = false;
 
   final GlobalKey<FavoritesScreenState> _favKey =
-  GlobalKey<FavoritesScreenState>();
+      GlobalKey<FavoritesScreenState>();
 
   late final List<Widget> _screens = [
     PopularVideosScreen(onScrollChanged: _onScrollChanged),
@@ -131,13 +198,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           end: Alignment.bottomCenter,
           colors: isDark
               ? [
-            const Color(0xFF0F0F0F),
-            const Color(0xFF1A1A1A),
-          ]
+                  const Color(0xFF0F0F0F),
+                  const Color(0xFF1A1A1A),
+                ]
               : [
-            const Color(0xFFE2E8F0),
-            const Color(0xFFF8FAFC),
-          ],
+                  const Color(0xFFE2E8F0),
+                  const Color(0xFFF8FAFC),
+                ],
         ),
       ),
     );
@@ -147,17 +214,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
-    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
         final bool shouldShowBanner =
-            (!adsRemoved) &&
-                (!isKeyboardVisible) &&
-                bannerLoaded;
-
-        // for test
-        //const bool shouldShowBanner = false;
+            (!adsRemoved) && (!isKeyboardVisible) && bannerLoaded;
 
         return Scaffold(
           extendBody: true,
@@ -179,7 +241,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: shouldShowBanner ? 50 : 0,
+                  bottom: shouldShowBanner ? 50 : 0, // ← 広告分だけ上げる
                   child: AnimatedOpacity(
                     opacity: _isScrollingDown ? 0.0 : 1.0,
                     duration: const Duration(milliseconds: 250),
@@ -199,7 +261,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 ),
 
-              // ★ バナー広告（Remove Ads の場合は完全に描画しない）
+              // ★ Divider（広告の直上に 1px）
+              if (shouldShowBanner)
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 50, // ← バナーの高さ
+                  child: _BottomAdDivider(),
+                ),
+
+              // ★ バナー広告
               if (shouldShowBanner)
                 const Positioned(
                   left: 0,
@@ -211,6 +282,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _BottomAdDivider extends StatelessWidget {
+  const _BottomAdDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 2, // ← ここがポイント（極薄の帯）
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.22),
+                  Colors.white.withValues(alpha: 0.05),
+                ]
+              : [
+                  Colors.black.withValues(alpha: 0.10),
+                  Colors.black.withValues(alpha: 0.02),
+                ],
+        ),
+      ),
     );
   }
 }
@@ -234,25 +333,27 @@ class GlassDockNavigationBar extends StatelessWidget {
     // ---------------------------------------------------------
     final List<Color> bgGradient = isDark
         ? [
-      const Color(0xCC111111),
-      const Color(0xB31A1A1A),
-      const Color(0x991A1A1A),
-    ]
+            const Color(0xCC111111),
+            const Color(0xB31A1A1A),
+            const Color(0x991A1A1A),
+          ]
         : [
-      const Color(0xE6FFFFFF),
-      const Color(0xCCE5E8EC),
-      const Color(0x99D0D4D9),
-    ];
+            const Color(0xE6FFFFFF),
+            const Color(0xCCE5E8EC),
+            const Color(0x99D0D4D9),
+          ];
 
     final Color bgColor = isDark
         ? const Color(0xFF111111).withValues(alpha: 0.85)
         : const Color(0xFFF9FAFB).withValues(alpha: 0.85);
 
-    final Color borderColor =
-    isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.7);
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.7);
 
-    final Color shadowColor =
-    isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.07);
+    final Color shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.4)
+        : Colors.black.withValues(alpha: 0.07);
 
     return ClipRect(
       child: BackdropFilter(
@@ -304,9 +405,9 @@ class GlassDockNavigationBar extends StatelessWidget {
 
     final Color primary = Theme.of(context).colorScheme.primary;
     final Color inactiveIcon =
-    isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
     final Color inactiveText =
-    isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
 
     final labels = [
       "人気急上昇",
@@ -316,16 +417,14 @@ class GlassDockNavigationBar extends StatelessWidget {
     ];
 
     // ❤️ お気に入りだけ 1pt 小さく & 少し下げる補正は維持
-    final double iconSize = isActive
-        ? (index == 2 ? 21 : 22)
-        : 18;
+    final double iconSize = isActive ? (index == 2 ? 21 : 22) : 18;
 
     final double iconYOffset = (index == 2) ? 2.0 : 0.0;
 
     // ✨ ライトテーマでは発光強め、ダークでは現状維持寄り
     final double bubbleInnerAlpha = isDark ? 0.28 : 0.55;
     final double bubbleOuterAlpha = isDark ? 0.08 : 0.20;
-    final double glowAlpha       = isDark ? 0.25 : 0.35;
+    final double glowAlpha = isDark ? 0.25 : 0.35;
 
     return Expanded(
       child: GestureDetector(
@@ -352,8 +451,10 @@ class GlassDockNavigationBar extends StatelessWidget {
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withValues(alpha: bubbleInnerAlpha),
-                                Colors.white.withValues(alpha: bubbleOuterAlpha),
+                                Colors.white
+                                    .withValues(alpha: bubbleInnerAlpha),
+                                Colors.white
+                                    .withValues(alpha: bubbleOuterAlpha),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -401,9 +502,7 @@ class GlassDockNavigationBar extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 1),
-
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
@@ -411,7 +510,7 @@ class GlassDockNavigationBar extends StatelessWidget {
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                 color: isActive ? primary : inactiveText,
               ),
-              child: Text(labels[index] ?? ''),
+              child: Text(labels[index]),
             ),
           ],
         ),

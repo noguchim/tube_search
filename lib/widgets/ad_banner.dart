@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+
+import '../utils/app_logger.dart';
 
 class AdBanner extends StatefulWidget {
   const AdBanner({super.key});
@@ -34,10 +36,17 @@ class _AdBannerState extends State<AdBanner> {
   void _loadBanner() {
     _banner = BannerAd(
       size: AdSize.banner,
-      adUnitId: "ca-app-pub-3940256099942544/6300978111",
+      adUnitId: "ca-app-pub-1955852466270592/7938489673",
+      // AdMob 公式テスト ID
+      // adUnitId: "ca-app-pub-3940256099942544/6300978111",
       listener: BannerAdListener(
-        onAdLoaded: (_) => setState(() => _isLoaded = true),
+        onAdLoaded: (_) {
+          logger.i('🎯 Banner loaded OK');
+          setState(() => _isLoaded = true);
+        },
         onAdFailedToLoad: (ad, err) {
+          logger.i('❌ Banner failed: ${err.code} / ${err.message}');
+
           ad.dispose();
           setState(() {
             _isLoaded = false;
@@ -97,13 +106,13 @@ class _AdBannerState extends State<AdBanner> {
             gradient: LinearGradient(
               colors: isDark
                   ? [
-                Colors.white.withValues(alpha: 0.10),
-                Colors.white.withValues(alpha: 0.05),
-              ]
+                      Colors.white.withValues(alpha: 0.10),
+                      Colors.white.withValues(alpha: 0.05),
+                    ]
                   : [
-                Colors.white.withValues(alpha: 0.55),
-                Colors.white.withValues(alpha: 0.35),
-              ],
+                      Colors.white.withValues(alpha: 0.55),
+                      Colors.white.withValues(alpha: 0.35),
+                    ],
             ),
             border: Border(
               top: BorderSide(

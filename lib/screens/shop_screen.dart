@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../providers/iap_provider.dart';
-import '../services/iap_products.dart';
-import '../services/iap_service.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/iap_provider.dart';
+import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -17,53 +16,56 @@ class _ShopScreenState extends State<ShopScreen> {
   bool isProcessing = false;
   bool _lastRemoveAds = false;
   bool _lastLimit = false;
+  IapProvider? _provider;
 
   @override
   void initState() {
     super.initState();
 
+    _provider = context.read<IapProvider>();
+
+    _lastRemoveAds = _provider!.isPurchased(IapProducts.removeAds.id);
+    _lastLimit = _provider!.isPurchased(IapProducts.limitUpgrade.id);
+
+    _provider!.addListener(_onIapChanged);
+  }
+
+  void _onIapChanged() {
     final provider = context.read<IapProvider>();
 
-    _lastRemoveAds = provider.isPurchased(IapProducts.removeAds.id);
-    _lastLimit     = provider.isPurchased(IapProducts.limitUpgrade.id);
+    final remove = provider.isPurchased(IapProducts.removeAds.id);
+    final limit = provider.isPurchased(IapProducts.limitUpgrade.id);
+
+    if (!_lastRemoveAds && remove) {
+      _showSnack(IapProducts.removeAds.purchaseMessage);
+    }
+
+    if (!_lastLimit && limit) {
+      _showSnack(IapProducts.limitUpgrade.purchaseMessage);
+    }
+
+    _lastRemoveAds = remove;
+    _lastLimit = limit;
   }
 
   @override
   void dispose() {
+    _provider?.removeListener(_onIapChanged);
     super.dispose();
   }
 
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final iapProvider = context.watch<IapProvider>();
-
-    final remove = iapProvider.isPurchased(IapProducts.removeAds.id);
-    final limit  = iapProvider.isPurchased(IapProducts.limitUpgrade.id);
-
-    iapProvider.addListener(() {
-      if (!_lastRemoveAds && remove) {
-        _showSnack(IapProducts.removeAds.purchaseMessage);
-      }
-
-      if (!_lastLimit && limit) {
-        _showSnack(IapProducts.limitUpgrade.purchaseMessage);
-      }
-
-      _lastRemoveAds = remove;
-      _lastLimit     = limit;
-    });
-
     // 👇 購入状態を Provider から取得（将来商品が増えても安全）
     final removeAdsPurchased =
-    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final limitUpgradePurchased =
-    context.watch<IapProvider>().isPurchased(IapProducts.limitUpgrade.id);
+        context.watch<IapProvider>().isPurchased(IapProducts.limitUpgrade.id);
 
     return Scaffold(
       body: Stack(
@@ -101,33 +103,39 @@ class _ShopScreenState extends State<ShopScreen> {
                       enabled: !removeAdsPurchased,
                       purchased: removeAdsPurchased,
                       iconColor: Theme.of(context).colorScheme.primary,
-
                       onBuy: removeAdsPurchased
                           ? null
                           : () async {
-                        logger.i('[UI] Buy tapped');
+                              logger.i('[UI] Buy tapped');
 
-                        setState(() => isProcessing = true);
+                              setState(() => isProcessing = true);
 
-                        try {
-                          final iapProvider = context.read<IapProvider>();
-                          final iap = iapProvider.service;
-                          final product =
-                          await iap.loadProduct(IapProducts.removeAds.id);
+                              try {
+                                // ① await の前で context 依存を完了しておく
+                                final messenger = ScaffoldMessenger.of(context);
+                                final iap = context.read<IapProvider>().service;
 
-                          if (product == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('商品情報を取得できませんでした')),
-                            );
-                            return;
-                          }
+                                // ② async
+                                final product = await iap
+                                    .loadProduct(IapProducts.removeAds.id);
 
-                          await iap.buy(product);
+                                if (product == null) {
+                                  // ③ context をもう直接使わない（messenger でOK）
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('商品情報を取得できませんでした'),
+                                    ),
+                                  );
+                                  return;
+                                }
 
-                        } finally {
-                          if (mounted) setState(() => isProcessing = false);
-                        }
-                      },
+                                await iap.buy(product);
+                              } finally {
+                                if (mounted) {
+                                  setState(() => isProcessing = false);
+                                }
+                              }
+                            },
                     ),
 
                     const SizedBox(height: 16),
@@ -140,47 +148,37 @@ class _ShopScreenState extends State<ShopScreen> {
                       enabled: !limitUpgradePurchased,
                       purchased: limitUpgradePurchased,
                       iconColor: const Color(0xFF9B59B6),
+                      onBuy: limitUpgradePurchased
+                          ? null
+                          : () async {
+                              logger.i('[UI] Buy tapped (limit_upgrade)');
+                              setState(() => isProcessing = true);
 
-                      onBuy: () async {
-                        logger.i('[UI] TEST: limit_upgrade buy start');
+                              try {
+                                // ① await の前で context 依存を解決
+                                final messenger = ScaffoldMessenger.of(context);
+                                final iap = context.read<IapProvider>().service;
 
-                        final iapProvider = context.read<IapProvider>();
-                        final iap = iapProvider.service;
-                        final product =
-                        await iap.loadProduct(IapProducts.limitUpgrade.id);
+                                // ② async
+                                final product = await iap
+                                    .loadProduct(IapProducts.limitUpgrade.id);
 
-                        logger.i('[UI] TEST: product loaded = ${product?.id}');
+                                if (product == null) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('商品情報を取得できませんでした'),
+                                    ),
+                                  );
+                                  return;
+                                }
 
-                        if (product != null) {
-                          await iap.buy(product);
-                          logger.i('[UI] TEST: buy() called');
-                        }
-                      },
-
-                      // onBuy: limitUpgradePurchased
-                      //     ? null
-                      //     : () async {
-                      //   logger.i('[UI] Buy tapped (limit_upgrade)');
-                      //
-                      //   setState(() => isProcessing = true);
-                      //
-                      //   try {
-                      //     final product =
-                      //     await iap.loadProduct(IapProducts.limitUpgrade.id);
-                      //
-                      //     if (product == null) {
-                      //       ScaffoldMessenger.of(context).showSnackBar(
-                      //         const SnackBar(content: Text('商品情報を取得できませんでした')),
-                      //       );
-                      //       return;
-                      //     }
-                      //
-                      //     await iap.buy(product);
-                      //
-                      //   } finally {
-                      //     if (mounted) setState(() => isProcessing = false);
-                      //   }
-                      // },
+                                await iap.buy(product);
+                              } finally {
+                                if (mounted) {
+                                  setState(() => isProcessing = false);
+                                }
+                              }
+                            },
                     ),
 
                     const SizedBox(height: 16),
@@ -200,17 +198,22 @@ class _ShopScreenState extends State<ShopScreen> {
                     Center(
                       child: OutlinedButton.icon(
                         onPressed: () async {
+                          // ① 先に Messenger を確保
+                          final messenger = ScaffoldMessenger.of(context);
+
                           setState(() => isProcessing = true);
 
                           try {
-                            final iapProvider = context.read<IapProvider>();
-                            final iap = iapProvider.service;
+                            final iap = context.read<IapProvider>().service;
                             await iap.restore();
                           } finally {
-                            if (mounted) setState(() => isProcessing = false);
+                            if (mounted) {
+                              setState(() => isProcessing = false);
+                            }
                           }
 
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          // ② async のあとでも安全
+                          messenger.showSnackBar(
                             const SnackBar(content: Text('購入を復元しました')),
                           );
                         },
@@ -239,8 +242,7 @@ class _ShopScreenState extends State<ShopScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                           ),
-                          backgroundColor:
-                          Colors.white.withValues(alpha: 0.05),
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
                     ),
@@ -336,6 +338,7 @@ class ShopListCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -358,18 +361,17 @@ class ShopListCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.10),
+                      color: Colors.green.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.green.withOpacity(0.45),
+                        color: Colors.green.withValues(alpha: 0.45),
                         width: 0.8,
                       ),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle,
-                            size: 16, color: Colors.green),
+                        Icon(Icons.check_circle, size: 16, color: Colors.green),
                         SizedBox(width: 6),
                         Text(
                           "購入済み",
@@ -393,8 +395,7 @@ class ShopListCard extends StatelessWidget {
                         backgroundColor: const Color(0xFF3A6EA5),
                         foregroundColor: Colors.white,
                         elevation: 2,
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 18),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'video_player_screen.dart';
+
 import '../main.dart';
+import 'video_player_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,7 +18,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
-    await VideoPlayerScreen.preloadController();  // 必須処理
+    await VideoPlayerScreen.preloadController(); // 必須処理
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -32,16 +33,16 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     const splashRed = Color(0xFFEF4444);
 
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: splashRed,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.play_circle_fill, size: 100, color: Colors.white),
             SizedBox(height: 16),
             Text(
-              "Loading YouTube Trends...",
+              "Loading TUBE+...",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,

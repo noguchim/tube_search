@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../services/youtube_api_service.dart';
-import '../widgets/network_error_view.dart';
-import '../widgets/video_list_tile.dart';
-import '../widgets/custom_glass_app_bar.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/iap_provider.dart';
 import '../services/limit_service.dart';
+import '../services/youtube_api_service.dart';
+import '../widgets/custom_glass_app_bar.dart';
+import '../widgets/network_error_view.dart';
+import '../widgets/video_list_tile.dart';
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
@@ -72,7 +73,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   // ---------------------------------------------------------
   // 🔥 API 統合フェッチ（キーワード or 人気ジャンル）
   // ---------------------------------------------------------
-  Future<List<Map<String, dynamic>>> _loadVideos() async {
+  Future<List<Map<String, dynamic>>> _loadVideos(
+      {bool forceRefresh = false}) async {
     final kw = widget.keyword?.trim();
     final cat = widget.categoryId == "0" ? "" : widget.categoryId;
     final iap = context.read<IapProvider>();
@@ -87,6 +89,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           categoryId: cat,
           keyword: kw,
           maxResults: limit,
+          forceRefresh: forceRefresh,
         );
 
         if (search.isEmpty) {
@@ -99,35 +102,37 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
         videos = detail
             .map((v) => {
-          'id': v.id,
-          'title': v.title,
-          'thumbnailUrl': v.thumbnailUrl,
-          'channelTitle': v.channelTitle,
-          'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': v.viewCount ?? 0,
-        })
+                  'id': v.id,
+                  'title': v.title,
+                  'thumbnailUrl': v.thumbnailUrl,
+                  'channelTitle': v.channelTitle,
+                  'publishedAt': v.publishedAt?.toIso8601String(),
+                  'viewCount': v.viewCount ?? 0,
+                })
             .toList();
       } else {
         // 人気ジャンル一覧
         final list = await _apiService.fetchPopularVideos(
           videoCategoryId: cat,
           maxResults: limit,
+          forceRefresh: forceRefresh,
         );
 
         videos = list
             .map((v) => {
-          'id': v.id,
-          'title': v.title,
-          'thumbnailUrl': v.thumbnailUrl,
-          'channelTitle': v.channelTitle,
-          'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': v.viewCount ?? 0,
-        })
+                  'id': v.id,
+                  'title': v.title,
+                  'thumbnailUrl': v.thumbnailUrl,
+                  'channelTitle': v.channelTitle,
+                  'publishedAt': v.publishedAt?.toIso8601String(),
+                  'viewCount': v.viewCount ?? 0,
+                })
             .toList();
       }
 
       // ソート & 更新時間
-      videos.sort((a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
+      videos.sort(
+          (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
       _fetchedAt = DateTime.now();
       return videos;
     } catch (e) {
@@ -193,7 +198,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               if (snap.hasError) {
                 return NetworkErrorView(
                   onRetry: () {
-                    setState(() => _futureVideos = _loadVideos());
+                    setState(() {
+                      _futureVideos = _loadVideos(forceRefresh: true);
+                    });
                   },
                 );
               }
@@ -230,7 +237,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                         onRefreshPressed: _refreshVideos,
                       ),
                     ),
-
                     if (_fetchedAt != null)
                       SliverToBoxAdapter(
                         child: Container(
@@ -260,15 +266,13 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                           ),
                         ),
                       ),
-
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                            (context, i) =>
+                        (context, i) =>
                             VideoListTile(video: videos[i], rank: i + 1),
                         childCount: videos.length,
                       ),
                     ),
-
                     const SliverToBoxAdapter(
                       child: SafeArea(top: false, child: SizedBox(height: 0)),
                     ),
@@ -290,10 +294,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                 customBorder: const CircleBorder(),
                 onTap: () => Navigator.pop(context),
                 child: const Padding(
-                  padding: EdgeInsets.all(8),   // ← 10 → 8 に縮小
+                  padding: EdgeInsets.all(8), // ← 10 → 8 に縮小
                   child: Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    size: 18,                  // ← 22 → 18 に縮小
+                    size: 18, // ← 22 → 18 に縮小
                   ),
                 ),
               ),

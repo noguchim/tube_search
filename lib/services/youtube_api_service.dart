@@ -1,8 +1,10 @@
 // lib/services/youtube_api_service.dart
 
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:tube_search/utils/app_logger.dart';
+
 import '../models/youtube_video.dart';
 
 class YouTubeApiService {
@@ -13,11 +15,12 @@ class YouTubeApiService {
   // -------------------------
   // 人気動画キャッシュ
   // -------------------------
-  // List<YouTubeVideo>? _popularCache;
-  // DateTime? _popularFetchedAt;
   final Map<String, List<YouTubeVideo>> _popularCache = {};
   final Map<String, DateTime> _popularFetchedAt = {};
   static const Duration _popularCacheTTL = Duration(minutes: 10);
+
+  final Map<String, List<YouTubeVideo>> _searchCache = {};
+  final Map<String, DateTime> _searchFetchedAt = {};
 
   // ------------------------------------------------------------
   // 🔧 GET JSON 共通処理
@@ -119,10 +122,30 @@ class YouTubeApiService {
     required String keyword,
     int maxResults = 50,
     String regionCode = "JP",
+    bool forceRefresh = false, // ← ★ 追加
   }) async {
     final kw = keyword.trim();
     if (kw.isEmpty) return [];
 
+    final now = DateTime.now();
+
+    // 👇 キャッシュキー（kw を小文字に正規化）
+    final key = "search_${categoryId}_${kw.toLowerCase()}_$maxResults";
+
+    // ------------------------
+    // 💾 キャッシュヒット
+    // ------------------------
+    if (!forceRefresh &&
+        _searchCache.containsKey(key) &&
+        _searchFetchedAt.containsKey(key) &&
+        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+      logger.i("💾 SearchWithStats: Using cache ($key)");
+      return _searchCache[key]!;
+    }
+
+    // ------------------------
+    // 🌐 API 呼び出し
+    // ------------------------
     final uri = Uri.https(baseApi, "/api/youtube_search_with_stats.php", {
       "q": kw,
       "region": regionCode,
@@ -132,9 +155,12 @@ class YouTubeApiService {
 
     final data = await _getJson(uri);
 
-    if (data is! List) return [];
+    if (data is! List) {
+      logger.e("❌ Unexpected Search API structure");
+      throw Exception("Invalid API data");
+    }
 
-    return data.map<YouTubeVideo>((v) {
+    final list = data.map<YouTubeVideo>((v) {
       return YouTubeVideo(
         id: v["id"] ?? "",
         title: v["title"] ?? "",
@@ -144,6 +170,14 @@ class YouTubeApiService {
         viewCount: v["viewCount"] as int?,
       );
     }).toList();
+
+    // ------------------------
+    // 💾 キャッシュ保存
+    // ------------------------
+    _searchCache[key] = list;
+    _searchFetchedAt[key] = now;
+
+    return list;
   }
 
   // ============================================================
