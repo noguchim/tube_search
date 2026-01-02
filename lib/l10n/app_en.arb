@@ -1,0 +1,97 @@
+{
+    "navPopular": "Trending",
+    "navGenre": "Genres",
+    "navFavorites": "Favorites",
+    "navSettings": "Settings",
+    "popularTitle": "Trending Now",
+    "infoTrendingUpdated": "Trending on YouTube — {region} — updated {date}",
+    "@infoTrendingUpdated": {
+        "placeholders": {
+          "region": { "type": "String" },
+          "date": { "type": "String" }
+        }
+    },
+    "noVideosFound": "No videos found",
+    "genreScreenTitle": "Popular by Genre",
+    "genreSearchHeader": "Search videos",
+    "genreSearchHint": "Type a keyword...",
+    "genreNetworkError": "Cannot connect to the network",
+    "genreBrowseHeader": "Browse by category",
+    "favoritesTitle": "Favorites",
+    "favoritesEmptyTitle": "No favorites yet",
+    "favoritesEmptyHint": "Tap the heart icon to add favorites!",
+    "favoritesTapHere": "Tap here!",
+    "favoritesRegisteredSuffix": "saved",
+    "favoritesCountMessage": "Favorites: {current} / {limit}",
+    "@favoritesCountMessage": {
+      "placeholders": {
+        "current": {},
+        "limit": {}
+      }
+    },
+    "favoriteDeleteTitle": "Remove from favorites?",
+    "favoriteDeleteMessage": "Remove \"{title}\" from your favorites?",
+    "@favoriteDeleteMessage": {
+        "placeholders": {
+          "title": {}
+        }
+    },
+    "favoriteDeleteCancel": "Cancel",
+    "favoriteDeleteConfirm": "Remove",
+    "favoriteLimitTitle": "Favorites limit",
+    "favoriteLimitPurchased": "You can save up to 50 favorites.",
+    "favoriteLimitNotPurchased": "You can save up to 10 favorites.\n\nA limit upgrade allows up to 5× (50 items).",
+    "favoriteLimitClose": "Close",
+    "favoriteLimitUpgrade": "Limit upgrade",
+    "genrePopularTitle": "Trending: {genre}",
+    "@genrePopularTitle": {
+        "placeholders": {
+          "genre": {}
+        }
+    },
+    "update": "updated",
+    "settingsTitle": "Settings",
+    "settingsTheme": "Theme",
+    "settingsThemeSystem": "Use device setting",
+    "settingsThemeLight": "Light mode",
+    "settingsThemeDark": "Dark mode",
+    "settingsThemeLabelSystem": "Device default",
+    "settingsThemeLabelLight": "Light",
+    "settingsThemeLabelDark": "Dark",
+    "settingsFavoriteDeleteTitle": "Confirm when removing favorites",
+    "settingsFavoriteDeleteOn": "On",
+    "settingsFavoriteDeleteOff": "Off",
+    "settingsShop": "Shop",
+    "settingsShopSubtitle": "Upgrade features for a better experience!",
+    "settingsPolicies": "Policies",
+    "settingsPoliciesSubtitle": "Privacy policy & Terms",
+    "settingsPrivacyPolicy": "Privacy policy",
+    "settingsTerms": "Terms of service",
+    "networkErrorTitle": "Cannot connect to the network",
+    "networkErrorDescription": "Please check your connection and try again.",
+    "networkErrorRetry": "Retry",
+    "shopTitleRemoveAds": "Remove ads",
+    "shopDescRemoveAds": "Hide all advertisements",
+    "shopTitleLimit": "Limit upgrade",
+    "shopDescLimit": "Greatly increases the limit for trending videos and favorites",
+    "shopTitleAutoplay": "Auto play",
+    "shopDescAutoplay": "Automatically play videos one after another",
+    "shopPurchasedRemoveAds": "Ads have been removed",
+    "shopPurchasedLimit": "Limits have been upgraded",
+    "shopPurchased": "Purchased",
+    "shopBuy": "{price}\n(Buy)",
+    "@shopBuy": {
+      "placeholders": {
+        "price": {}
+      }
+    },
+    "shopRestore": "Restore purchases",
+    "shopLoadFailed": "Failed to load product information",
+    "shopRestoreAlready": "Your purchases are already restored",
+    "shopRestoreNothing": "No purchases to restore",
+    "shopRestoreDone": "Purchases restored",
+    "settingsRegion": "Region",
+    "settingsRegionSubtitle": "Choose the country for video trends",
+    "regionJapan": "Japan",
+    "regionUnitedStates": "United States"
+}

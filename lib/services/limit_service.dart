@@ -6,14 +6,12 @@ class LimitService {
   /// 🔹 動画一覧の最大件数
   static int videoListLimit(IapProvider iap) {
     return iap.isPurchased(IapProducts.limitUpgrade.id)
-        ? 50   // ← 上限拡張（購入済み）
-        : 10;  // ← 無料版
+        ? 50 // ← 上限拡張（購入済み）
+        : 20; // ← 無料版
   }
 
   /// 🔹 お気に入りの最大件数
   static int favoritesLimit(IapProvider iap) {
-    return iap.isPurchased(IapProducts.limitUpgrade.id)
-        ? 50
-        : 10;
+    return iap.isPurchased(IapProducts.limitUpgrade.id) ? 50 : 20;
   }
 }

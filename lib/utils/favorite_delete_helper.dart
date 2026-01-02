@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/favorites_service.dart';
 
 class FavoriteDeleteHelper {
@@ -41,16 +42,19 @@ class FavoriteDeleteHelper {
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
-            "お気に入りから削除しますか？",
+            AppLocalizations.of(context)!.favoriteDeleteTitle,
             style: TextStyle(fontSize: 15, color: onSurface),
           ),
           content: Text(
-            "「${video["title"]}」をお気に入りから削除します。",
+            AppLocalizations.of(context)!.favoriteDeleteMessage(
+              video["title"] ?? "",
+            ),
             style: TextStyle(fontSize: 14, height: 1.5, color: onSurface),
           ),
           actions: [
             TextButton(
-              child: Text("キャンセル", style: TextStyle(color: onSurface)),
+              child: Text(AppLocalizations.of(context)!.favoriteDeleteCancel,
+                  style: TextStyle(color: onSurface)),
               onPressed: () => navigator.pop(),
             ),
             ElevatedButton(
@@ -59,7 +63,9 @@ class FavoriteDeleteHelper {
                 foregroundColor: Colors.white,
                 elevation: 0,
               ),
-              child: const Text("削除"),
+              child: Text(
+                AppLocalizations.of(context)!.favoriteDeleteConfirm,
+              ),
               onPressed: () async {
                 await fav.toggle(video["id"], video);
                 navigator.pop();

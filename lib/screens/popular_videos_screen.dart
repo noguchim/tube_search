@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
+import '../providers/region_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
@@ -24,7 +26,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     with AutomaticKeepAliveClientMixin<PopularVideosScreen> {
   @override
   bool get wantKeepAlive => true;
-
+  String _currentRegion = "JP";
   final YouTubeApiService _apiService = YouTubeApiService();
   late Future<List<Map<String, dynamic>>> _futureVideos;
   bool _isRefreshing = false;
@@ -62,9 +64,10 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   Future<List<Map<String, dynamic>>> _fetchVideos(
       {bool forceRefresh = false}) async {
     final iap = context.read<IapProvider>();
-
+    final region = context.read<RegionProvider>().regionCode;
     final videos = await _apiService.fetchPopularVideos(
       maxResults: LimitService.videoListLimit(iap),
+      regionCode: region,
       forceRefresh: forceRefresh, // ← 重要
     );
 
@@ -99,8 +102,10 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       final online = await _isOnline();
 
       // 例外が出れば catch に飛ぶ
+      final region = context.read<RegionProvider>().regionCode;
       final videos = await _apiService.fetchPopularVideos(
         maxResults: limit,
+        regionCode: region,
         // 🟣 ネットが不安定なら必ず通信しに行く（→失敗したらエラー画面）
         forceRefresh: !online,
       );
@@ -163,6 +168,15 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       });
     }
 
+    // 🌎 地域変更 → 再取得（＝キャッシュ無視で最新取得）
+    final region = context.watch<RegionProvider>().regionCode;
+    if (region != _currentRegion) {
+      _currentRegion = region;
+      setState(() {
+        _futureVideos = _fetchVideos(forceRefresh: true);
+      });
+    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -188,7 +202,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
               child: Text(
-                '動画が見つかりません',
+                AppLocalizations.of(context)!.noVideosFound,
                 style: TextStyle(
                   color: Theme.of(context)
                       .colorScheme
@@ -213,7 +227,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                   backgroundColor: Colors.transparent,
                   expandedHeight: 70,
                   flexibleSpace: CustomGlassAppBar(
-                    title: '人気急上昇',
+                    title: AppLocalizations.of(context)!.popularTitle,
                     showRefreshButton: true,
                     isRefreshing: _isRefreshing,
                     showInfoButton: true,

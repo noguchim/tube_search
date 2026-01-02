@@ -97,11 +97,15 @@ class YouTubeApiService {
   // ============================================================
   // 2️⃣ サジェスト（PHP モジュール）
   // ============================================================
-  Future<List<String>> fetchSuggestions(String query) async {
+  Future<List<String>> fetchSuggestions(
+    String query, {
+    String regionCode = "JP",
+  }) async {
     if (query.trim().isEmpty) return [];
 
     final uri = Uri.https(baseApi, "/api/youtube_suggest.php", {
       "q": query,
+      "region": regionCode,
     });
 
     final raw = await _getJson(uri);

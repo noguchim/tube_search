@@ -4,15 +4,18 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
+import 'package:tube_search/providers/region_provider.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 
+import 'l10n/app_localizations.dart';
 import 'providers/theme_provider.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/genre_screen.dart';
@@ -105,6 +108,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => RegionProvider()),
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => BannerAdProvider()),
@@ -139,9 +143,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RegionProvider>().initFromLocale(context);
+    });
+
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        AppLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ja'),
+      ],
+
       debugShowCheckedModeBanner: false,
       title: 'TUBE+',
 
@@ -167,6 +186,7 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  final PageController _pageController = PageController();
   int _selectedIndex = 0;
   bool _isScrollingDown = false;
 
@@ -230,8 +250,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
               // メイン画面
               Positioned.fill(
-                child: IndexedStack(
-                  index: _selectedIndex,
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() => _selectedIndex = index);
+                    _isScrollingDown = false;
+
+                    if (index == 2) {
+                      _favKey.currentState?.reload();
+                    }
+                  },
                   children: _screens,
                 ),
               ),
@@ -253,7 +281,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIndex: _selectedIndex,
                           onTabSelected: (index) {
                             setState(() => _selectedIndex = index);
-                            if (index == 2) _favKey.currentState?.reload();
+
+                            if (index == 2) {
+                              _favKey.currentState?.reload();
+                            }
+
+                            _pageController.animateToPage(
+                              index,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
                           },
                         ),
                       ),
@@ -409,11 +446,13 @@ class GlassDockNavigationBar extends StatelessWidget {
     final Color inactiveText =
         isDark ? Colors.grey.shade300 : Colors.grey.shade700;
 
+    final l = AppLocalizations.of(context)!;
+
     final labels = [
-      "人気急上昇",
-      "ジャンル",
-      "お気に入り",
-      "設定",
+      l.navPopular,
+      l.navGenre,
+      l.navFavorites,
+      l.navSettings,
     ];
 
     // ❤️ お気に入りだけ 1pt 小さく & 少し下げる補正は維持

@@ -3,7 +3,9 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
+import '../providers/region_provider.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../widgets/custom_glass_app_bar.dart';
@@ -85,10 +87,12 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     try {
       if (kw != null && kw.isNotEmpty) {
         // キーワード検索 → IDs → 詳細
+        final region = context.read<RegionProvider>().regionCode;
         final search = await _apiService.searchWithStats(
           categoryId: cat,
           keyword: kw,
           maxResults: limit,
+          regionCode: region,
           forceRefresh: forceRefresh,
         );
 
@@ -112,9 +116,12 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
             .toList();
       } else {
         // 人気ジャンル一覧
+        final region = context.read<RegionProvider>().regionCode;
+
         final list = await _apiService.fetchPopularVideos(
           videoCategoryId: cat,
           maxResults: limit,
+          regionCode: region,
           forceRefresh: forceRefresh,
         );
 
@@ -160,7 +167,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
   String _formatFetchedAt() {
     if (_fetchedAt == null) return "";
-    return "${DateFormat("M/d HH:mm").format(_fetchedAt!)} 更新";
+    return "${DateFormat("M/d HH:mm").format(_fetchedAt!)} "
+        "${AppLocalizations.of(context)!.update}";
   }
 
   // ---------------------------------------------------------
@@ -210,7 +218,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               if (videos.isEmpty) {
                 return Center(
                   child: Text(
-                    "動画が見つかりません",
+                    AppLocalizations.of(context)!.noVideosFound,
                     style: TextStyle(
                       color: onSurface.withValues(alpha: 0.8),
                     ),
@@ -231,7 +239,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                       expandedHeight: 70,
                       automaticallyImplyLeading: false,
                       flexibleSpace: CustomGlassAppBar(
-                        title: '人気：${shortTitle(widget.categoryTitle)}',
+                        title: AppLocalizations.of(context)!.genrePopularTitle(
+                          shortTitle(widget.categoryTitle),
+                        ),
                         showRefreshButton: true,
                         isRefreshing: _isRefreshing,
                         onRefreshPressed: _refreshVideos,

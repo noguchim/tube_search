@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
@@ -78,7 +79,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "お気に入りがありません",
+                  AppLocalizations.of(context)!.favoritesTitle,
                   style: TextStyle(
                     fontSize: 18,
                     height: 1.5,
@@ -90,7 +91,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 const SizedBox(height: 6),
 
                 Text(
-                  "アイコンタップでお気に入りに追加！",
+                  AppLocalizations.of(context)!.favoritesEmptyHint,
                   style: TextStyle(
                     fontSize: 15,
                     color: onSurface.withValues(alpha: 0.7),
@@ -168,7 +169,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  "ここをタップ！",
+                                  AppLocalizations.of(context)!
+                                      .favoritesTapHere,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -212,7 +214,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
 
           final savedAtRaw = video["savedAt"] ?? "";
           final savedAt = (savedAtRaw.isNotEmpty)
-              ? DateFormat("yyyy-MM-dd").format(DateTime.parse(savedAtRaw))
+              ? DateFormat.yMMMd(Localizations.localeOf(context).toString())
+                  .format(DateTime.parse(savedAtRaw))
               : "";
 
           final cardColor = theme.cardTheme.color!;
@@ -289,7 +292,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          "$savedAt 登録",
+                          "$savedAt ${AppLocalizations.of(context)!.favoritesRegisteredSuffix}",
                           style: TextStyle(
                             fontSize: 11,
                             color: onSurface.withValues(alpha: 0.7),
@@ -330,7 +333,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar(
+          SliverAppBar(
             floating: false,
             snap: false,
             pinned: true,
@@ -338,7 +341,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             backgroundColor: Colors.transparent,
             toolbarHeight: 70,
             flexibleSpace: CustomGlassAppBar(
-              title: 'お気に入り',
+              title: AppLocalizations.of(context)!.favoritesTitle,
             ),
           ),
 
@@ -357,7 +360,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      "お気に入り登録数：$currentCount / $favoritesLimit 件",
+                      AppLocalizations.of(context)!.favoritesCountMessage(
+                        currentCount,
+                        favoritesLimit,
+                      ),
                       style: TextStyle(
                         color: Theme.of(context)
                             .colorScheme

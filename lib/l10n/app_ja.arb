@@ -1,0 +1,97 @@
+{
+    "navPopular": "人気急上昇",
+    "navGenre": "ジャンル",
+    "navFavorites": "お気に入り",
+    "navSettings": "設定",
+    "popularTitle": "人気急上昇",
+    "infoTrendingUpdated": "YouTube急上昇ランキング（{region}・トレンド反映） {date} 更新",
+    "@infoTrendingUpdated": {
+        "placeholders": {
+          "region": { "type": "String" },
+          "date": { "type": "String" }
+        }
+    },
+    "noVideosFound": "動画が見つかりません",
+    "genreScreenTitle": "ジャンル別人気",
+    "genreSearchHeader": "検索して探す",
+    "genreSearchHint": "検索ワードを入力...",
+    "genreNetworkError": "ネットワークに接続できません",
+    "genreBrowseHeader": "ジャンルから探す",
+    "favoritesTitle": "お気に入り",
+    "favoritesEmptyTitle": "お気に入りがありません",
+    "favoritesEmptyHint": "アイコンタップでお気に入りに追加！",
+    "favoritesTapHere": "ここをタップ！",
+    "favoritesRegisteredSuffix": "登録",
+    "favoritesCountMessage": "お気に入り登録数：{current} / {limit} 件",
+    "@favoritesCountMessage": {
+      "placeholders": {
+        "current": {},
+        "limit": {}
+      }
+    },
+    "favoriteDeleteTitle": "お気に入りから削除しますか？",
+    "favoriteDeleteMessage": "「{title}」をお気に入りから削除します。",
+    "@favoriteDeleteMessage": {
+        "placeholders": {
+          "title": {}
+        }
+    },
+    "favoriteDeleteCancel": "キャンセル",
+    "favoriteDeleteConfirm": "削除",
+    "favoriteLimitTitle": "お気に入り上限",
+    "favoriteLimitPurchased": "お気に入りは最大50件まで追加できます。",
+    "favoriteLimitNotPurchased": "お気に入りは10件までです。\n\n上限拡張で5倍（50件まで）追加できます。",
+    "favoriteLimitClose": "閉じる",
+    "favoriteLimitUpgrade": "上限を拡張する",
+    "genrePopularTitle": "人気：{genre}",
+    "@genrePopularTitle": {
+        "placeholders": {
+          "genre": {}
+        }
+    },
+    "update": "更新",
+    "settingsTitle": "設定",
+    "settingsTheme": "テーマ",
+    "settingsThemeSystem": "デバイスのモードを使用",
+    "settingsThemeLight": "ライトモード",
+    "settingsThemeDark": "ダークモード",
+    "settingsThemeLabelSystem": "デバイス設定",
+    "settingsThemeLabelLight": "ライト",
+    "settingsThemeLabelDark": "ダーク",
+    "settingsFavoriteDeleteTitle": "お気に入り削除時に確認",
+    "settingsFavoriteDeleteOn": "する",
+    "settingsFavoriteDeleteOff": "しない",
+    "settingsShop": "ショップ",
+    "settingsShopSubtitle": "便利な機能でより快適に！",
+    "settingsPolicies": "各種ポリシー",
+    "settingsPoliciesSubtitle": "プライバシー・利用規約",
+    "settingsPrivacyPolicy": "プライバシーポリシー",
+    "settingsTerms": "利用規約",
+    "networkErrorTitle": "ネットワークに接続できません",
+    "networkErrorDescription": "接続状態を確認してから再度お試しください。",
+    "networkErrorRetry": "再読み込み",
+    "shopTitleRemoveAds": "広告削除",
+    "shopDescRemoveAds": "広告を非表示にします",
+    "shopTitleLimit": "上限拡張",
+    "shopDescLimit": "人気一覧表示とお気に入り登録の上限大幅アップ",
+    "shopTitleAutoplay": "連続再生",
+    "shopDescAutoplay": "動画を自動で連続再生",
+    "shopPurchasedRemoveAds": "広告を削除しました",
+    "shopPurchasedLimit": "上限を拡張しました",
+    "shopPurchased": "購入済み",
+    "shopBuy": "{price}\n(購入する)",
+    "@shopBuy": {
+      "placeholders": {
+        "price": {}
+      }
+    },
+    "shopRestore": "購入を復元",
+    "shopLoadFailed": "商品情報を取得できませんでした",
+    "shopRestoreAlready": "すでに購入が反映されています",
+    "shopRestoreNothing": "復元できる購入はありませんでした",
+    "shopRestoreDone": "購入を復元しました",
+    "settingsRegion": "地域",
+    "settingsRegionSubtitle": "アプリで表示する国を選択",
+    "regionJapan": "日本",
+    "regionUnitedStates": "アメリカ"
+}

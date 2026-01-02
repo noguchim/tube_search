@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
+import '../widgets/network_error_view.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -17,6 +21,10 @@ class _ShopScreenState extends State<ShopScreen> {
   bool _lastRemoveAds = false;
   bool _lastLimit = false;
   IapProvider? _provider;
+  String _priceRemove = "—";
+  String _priceLimit = "—";
+  bool _hasError = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,24 +36,106 @@ class _ShopScreenState extends State<ShopScreen> {
     _lastLimit = _provider!.isPurchased(IapProducts.limitUpgrade.id);
 
     _provider!.addListener(_onIapChanged);
+
+    _loadPrices();
+  }
+
+  Future<bool> _checkNetwork() async {
+    try {
+      final result = await InternetAddress.lookup('apple.com')
+          .timeout(const Duration(seconds: 3));
+
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _loadPrices() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    // ① ネットワーク健全性チェック
+    final ok = await _checkNetwork();
+    if (!ok) {
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // ② 価格取得
+    try {
+      final iap = context.read<IapProvider>().service;
+
+      final pRemove = await iap.loadProduct(IapProducts.removeAds.id);
+      final pLimit = await iap.loadProduct(IapProducts.limitUpgrade.id);
+
+      if (!mounted) return;
+
+      // ③ 両方取得できないならエラー扱い
+      if (pRemove == null || pLimit == null) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _priceRemove = pRemove.price;
+        _priceLimit = pLimit.price;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _retry() {
+    _loadPrices();
   }
 
   void _onIapChanged() {
     final provider = context.read<IapProvider>();
+    final t = AppLocalizations.of(context)!;
 
     final remove = provider.isPurchased(IapProducts.removeAds.id);
     final limit = provider.isPurchased(IapProducts.limitUpgrade.id);
 
     if (!_lastRemoveAds && remove) {
-      _showSnack(IapProducts.removeAds.purchaseMessage);
+      _showSnack(
+        _resolveMessage(t, IapProducts.removeAds.purchaseMessageKey),
+      );
     }
 
     if (!_lastLimit && limit) {
-      _showSnack(IapProducts.limitUpgrade.purchaseMessage);
+      _showSnack(
+        _resolveMessage(t, IapProducts.limitUpgrade.purchaseMessageKey),
+      );
     }
 
     _lastRemoveAds = remove;
     _lastLimit = limit;
+  }
+
+  String _resolveMessage(AppLocalizations t, String key) {
+    switch (key) {
+      case 'iapRemoveAdsPurchased':
+        return t.shopPurchasedRemoveAds; // ← 既存 L10N に合わせて調整
+      case 'iapLimitUpgradePurchased':
+        return t.shopPurchasedLimit;
+      default:
+        return '';
+    }
   }
 
   @override
@@ -92,185 +182,289 @@ class _ShopScreenState extends State<ShopScreen> {
           SafeArea(
             child: Stack(
               children: [
-                ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 64, 16, 24),
-                  children: [
-                    // ===== 広告削除 =====
-                    ShopListCard(
-                      icon: Icons.ads_click,
-                      title: "広告削除",
-                      description: "広告を非表示にします",
-                      enabled: !removeAdsPurchased,
-                      purchased: removeAdsPurchased,
-                      iconColor: Theme.of(context).colorScheme.primary,
-                      onBuy: removeAdsPurchased
-                          ? null
-                          : () async {
-                              logger.i('[UI] Buy tapped');
-
-                              setState(() => isProcessing = true);
-
-                              try {
-                                // ① await の前で context 依存を完了しておく
-                                final messenger = ScaffoldMessenger.of(context);
-                                final iap = context.read<IapProvider>().service;
-
-                                // ② async
-                                final product = await iap
-                                    .loadProduct(IapProducts.removeAds.id);
-
-                                if (product == null) {
-                                  // ③ context をもう直接使わない（messenger でOK）
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('商品情報を取得できませんでした'),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                await iap.buy(product);
-                              } finally {
-                                if (mounted) {
-                                  setState(() => isProcessing = false);
-                                }
-                              }
-                            },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ===== 上限拡張 =====
-                    ShopListCard(
-                      icon: Icons.upgrade,
-                      title: "上限拡張",
-                      description: "人気一覧表示とお気に入り登録の上限が5倍に",
-                      enabled: !limitUpgradePurchased,
-                      purchased: limitUpgradePurchased,
-                      iconColor: const Color(0xFF9B59B6),
-                      onBuy: limitUpgradePurchased
-                          ? null
-                          : () async {
-                              logger.i('[UI] Buy tapped (limit_upgrade)');
-                              setState(() => isProcessing = true);
-
-                              try {
-                                // ① await の前で context 依存を解決
-                                final messenger = ScaffoldMessenger.of(context);
-                                final iap = context.read<IapProvider>().service;
-
-                                // ② async
-                                final product = await iap
-                                    .loadProduct(IapProducts.limitUpgrade.id);
-
-                                if (product == null) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('商品情報を取得できませんでした'),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                await iap.buy(product);
-                              } finally {
-                                if (mounted) {
-                                  setState(() => isProcessing = false);
-                                }
-                              }
-                            },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ===== 連続再生（将来用）=====
-                    const ShopListCard(
-                      icon: Icons.play_circle_outline,
-                      title: "連続再生",
-                      description: "動画を自動で連続再生",
-                      enabled: false,
-                      purchased: false,
-                      iconColor: Color(0xFFE67E22),
-                    ),
-
-                    // ===== Restore =====
-                    const SizedBox(height: 24),
-                    Center(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          // ① 先に Messenger を確保
-                          final messenger = ScaffoldMessenger.of(context);
-
-                          setState(() => isProcessing = true);
-
-                          try {
-                            final iap = context.read<IapProvider>().service;
-                            await iap.restore();
-                          } finally {
-                            if (mounted) {
-                              setState(() => isProcessing = false);
-                            }
-                          }
-
-                          // ② async のあとでも安全
-                          messenger.showSnackBar(
-                            const SnackBar(content: Text('購入を復元しました')),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.restore,
-                          size: 18,
-                          color: Colors.white70,
-                        ),
-                        label: const Text(
-                          '購入を復元',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
-                          ),
-                          side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            width: 1,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                // =========================
+                // 🚨 ネットワークエラー
+                // =========================
+                if (_hasError)
+                  Stack(
+                    children: [
+                      Container(
+                        color: const Color(0xFFFAF5EF),
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: Center(
+                          child: NetworkErrorView(onRetry: _retry),
                         ),
                       ),
-                    ),
-                  ],
-                ),
 
-                // 戻るボタン
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Material(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    shape: const CircleBorder(),
-                    elevation: 4,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.pop(context),
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.arrow_back_ios_new,
-                          size: 20,
-                          color: Colors.white,
+                      // ← 戻る
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Material(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          shape: const CircleBorder(),
+                          elevation: 4,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => Navigator.pop(context),
+                            child: const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.arrow_back_ios_new,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
+                  )
+
+                // =========================
+                // ⏳ ローディング
+                // =========================
+                else if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+
+                // =========================
+                // 🎁 通常ショップ表示
+                // =========================
+                else
+                  Stack(
+                    children: [
+                      ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 64, 16, 24),
+                        children: [
+                          // ===== 広告削除 =====
+                          ShopListCard(
+                            icon: Icons.ads_click,
+                            title: AppLocalizations.of(context)!
+                                .shopTitleRemoveAds,
+                            description:
+                                AppLocalizations.of(context)!.shopDescRemoveAds,
+                            enabled: !removeAdsPurchased,
+                            purchased: removeAdsPurchased,
+                            iconColor: Theme.of(context).colorScheme.primary,
+                            priceLabel: _priceRemove,
+                            minHeight: 90,
+                            onBuy: removeAdsPurchased
+                                ? null
+                                : () async {
+                                    logger.i('[UI] Buy tapped');
+                                    setState(() => isProcessing = true);
+                                    try {
+                                      final messenger =
+                                          ScaffoldMessenger.of(context);
+                                      final iap =
+                                          context.read<IapProvider>().service;
+
+                                      final product = await iap.loadProduct(
+                                          IapProducts.removeAds.id);
+                                      if (product == null) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              AppLocalizations.of(context)!
+                                                  .shopLoadFailed,
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      await iap.buy(product);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => isProcessing = false);
+                                      }
+                                    }
+                                  },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // ===== 上限拡張 =====
+                          ShopListCard(
+                            icon: Icons.upgrade,
+                            title: AppLocalizations.of(context)!.shopTitleLimit,
+                            description:
+                                AppLocalizations.of(context)!.shopDescLimit,
+                            enabled: !limitUpgradePurchased,
+                            purchased: limitUpgradePurchased,
+                            iconColor: const Color(0xFF9B59B6),
+                            priceLabel: _priceLimit,
+                            minHeight: 90,
+                            onBuy: limitUpgradePurchased
+                                ? null
+                                : () async {
+                                    logger.i('[UI] Buy tapped (limit_upgrade)');
+                                    setState(() => isProcessing = true);
+                                    try {
+                                      final messenger =
+                                          ScaffoldMessenger.of(context);
+                                      final iap =
+                                          context.read<IapProvider>().service;
+
+                                      final product = await iap.loadProduct(
+                                          IapProducts.limitUpgrade.id);
+                                      if (product == null) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              AppLocalizations.of(context)!
+                                                  .shopLoadFailed,
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      await iap.buy(product);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => isProcessing = false);
+                                      }
+                                    }
+                                  },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // ===== 連続再生（将来用）=====
+                          ShopListCard(
+                            icon: Icons.play_circle_outline,
+                            title:
+                                AppLocalizations.of(context)!.shopTitleAutoplay,
+                            description:
+                                AppLocalizations.of(context)!.shopDescAutoplay,
+                            enabled: false,
+                            purchased: false,
+                            iconColor: const Color(0xFFE67E22),
+                            priceLabel: "0",
+                            minHeight: 90,
+                          ),
+
+                          const SizedBox(height: 50),
+
+                          // ===== Restore =====
+                          Center(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                setState(() => isProcessing = true);
+                                try {
+                                  final iap = context.read<IapProvider>();
+
+                                  final beforeRemove =
+                                      iap.isPurchased(IapProducts.removeAds.id);
+                                  final beforeLimit = iap
+                                      .isPurchased(IapProducts.limitUpgrade.id);
+
+                                  await iap.service.restore();
+
+                                  final afterRemove =
+                                      iap.isPurchased(IapProducts.removeAds.id);
+                                  final afterLimit = iap
+                                      .isPurchased(IapProducts.limitUpgrade.id);
+
+                                  final restoredNow =
+                                      (!beforeRemove && afterRemove) ||
+                                          (!beforeLimit && afterLimit);
+
+                                  final alreadyOwned =
+                                      afterRemove || afterLimit;
+
+                                  if (restoredNow) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(context)!
+                                              .shopRestoreDone,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (alreadyOwned) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(context)!
+                                              .shopRestoreAlready,
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(context)!
+                                              .shopRestoreNothing,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  if (mounted) {
+                                    setState(() => isProcessing = false);
+                                  }
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.restore,
+                                size: 18,
+                                color: Colors.white70,
+                              ),
+                              label: Text(
+                                AppLocalizations.of(context)!.shopRestore,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 14,
+                                ),
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.35),
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.05),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // ← 戻る（通常表示）
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Material(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          shape: const CircleBorder(),
+                          elevation: 4,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => Navigator.pop(context),
+                            child: const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.arrow_back_ios_new,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
               ],
             ),
           ),
@@ -297,6 +491,8 @@ class ShopListCard extends StatelessWidget {
   final bool purchased;
   final Color iconColor;
   final VoidCallback? onBuy;
+  final String priceLabel;
+  final double minHeight;
 
   const ShopListCard({
     super.key,
@@ -307,6 +503,8 @@ class ShopListCard extends StatelessWidget {
     required this.purchased,
     required this.iconColor,
     this.onBuy,
+    required this.priceLabel,
+    this.minHeight = 80,
   });
 
   @override
@@ -317,102 +515,113 @@ class ShopListCard extends StatelessWidget {
           color: Colors.white,
           elevation: 4,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 56,
-                  color: iconColor,
-                ),
-
-                const SizedBox(width: 16),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 44,
+                    color: iconColor,
                   ),
-                ),
 
-                // 右端：購入済み（ボタンの代わり）
-                if (purchased)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.withValues(alpha: 0.45),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+                  const SizedBox(width: 16),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.check_circle, size: 16, color: Colors.green),
-                        SizedBox(width: 6),
                         Text(
-                          "購入済み",
-                          style: TextStyle(
-                            color: Colors.green,
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black87,
                           ),
                         ),
                       ],
                     ),
-                  )
+                  ),
 
-                // 未購入 → 「購入する」
-                else if (enabled)
-                  SizedBox(
-                    height: 32,
-                    child: ElevatedButton(
-                      onPressed: onBuy,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3A6EA5),
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                  const SizedBox(width: 5),
+
+                  // 右端：購入済み（ボタンの代わり）
+                  if (purchased)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.45),
+                          width: 0.8,
                         ),
                       ),
-                      child: const Text("購入する"),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle,
+                              size: 16, color: Colors.green),
+                          const SizedBox(width: 6),
+                          Text(
+                            AppLocalizations.of(context)!.shopPurchased,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+
+                  // 未購入 → 「購入する」
+                  else if (enabled)
+                    SizedBox(
+                      height: 60,
+                      width: 85,
+                      child: ElevatedButton(
+                        onPressed: onBuy,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF44336),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.shopBuy(priceLabel),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                        ),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
 
-        // Coming soon（← purchased の場合は絶対出さない）
+        // Coming soon
         if (!enabled && !purchased)
           Positioned.fill(
             child: IgnorePointer(
@@ -422,8 +631,8 @@ class ShopListCard extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Image.asset(
                     "assets/images/coming_soon.png",
-                    width: 70,
-                    opacity: const AlwaysStoppedAnimation(0.9),
+                    width: 80,
+                    opacity: const AlwaysStoppedAnimation(0.8),
                   ),
                 ),
               ),

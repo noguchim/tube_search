@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
@@ -18,19 +19,35 @@ class VideoListTile extends StatelessWidget {
     required this.rank,
   });
 
-  String _formatViewCount(String value) {
+  String _formatViewCount(BuildContext context, String value) {
     final num? number = num.tryParse(value);
-    if (number == null) return '0回視聴';
+    if (number == null) return '0';
 
-    if (number < 10000) {
-      return '${number.toInt()}回視聴';
-    } else if (number < 100000000) {
-      final man = number / 10000;
-      final formatted = man.toStringAsFixed(man < 10 ? 1 : 0);
-      return '$formatted万回視聴';
+    final locale = Localizations.localeOf(context).languageCode;
+
+    // 🇯🇵 日本形式（万 / 億）
+    if (locale == 'ja') {
+      if (number < 10000) {
+        return '${number.toInt()}回視聴';
+      } else if (number < 100000000) {
+        final man = number / 10000;
+        final formatted = man.toStringAsFixed(man < 10 ? 1 : 0);
+        return '$formatted万回視聴';
+      } else {
+        final oku = number / 100000000;
+        return '${oku.toStringAsFixed(1)}億回視聴';
+      }
+    }
+
+    // 🌎 英語形式（K / M / B）
+    if (number < 1000) {
+      return '${number.toInt()} views';
+    } else if (number < 1000000) {
+      return '${(number / 1000).toStringAsFixed(1)}K views';
+    } else if (number < 1000000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M views';
     } else {
-      final oku = number / 100000000;
-      return '${oku.toStringAsFixed(1)}億回視聴';
+      return '${(number / 1000000000).toStringAsFixed(1)}B views';
     }
   }
 
@@ -60,7 +77,8 @@ class VideoListTile extends StatelessWidget {
     final title = video['title'] ?? '';
     final thumbnail = video['thumbnailUrl'] ?? '';
     final channel = video['channelTitle'] ?? '';
-    final viewText = _formatViewCount((video['viewCount'] ?? '0').toString());
+    final viewText =
+        _formatViewCount(context, (video['viewCount'] ?? '0').toString());
     final isFav = fav.isFavoriteSync(id);
 
     return Padding(
@@ -222,24 +240,23 @@ class VideoListTile extends StatelessWidget {
 
   void _showLimitDialog(BuildContext context, IapProvider iap) {
     final purchased = iap.isPurchased(IapProducts.limitUpgrade.id);
+    final t = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("お気に入り上限"),
+        title: Text(t.favoriteLimitTitle),
         content: Text(
-          purchased
-              ? "お気に入りは最大50件まで追加できます。"
-              : "お気に入りは10件までです。\n\n上限拡張で5倍（50件まで）追加できます。",
+          purchased ? t.favoriteLimitPurchased : t.favoriteLimitNotPurchased,
         ),
         actions: [
           TextButton(
-            child: const Text("閉じる"),
+            child: Text(t.favoriteLimitClose),
             onPressed: () => Navigator.pop(context),
           ),
           if (!purchased)
             TextButton(
-              child: const Text("上限を拡張する"),
+              child: Text(t.favoriteLimitUpgrade),
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, "/shop");

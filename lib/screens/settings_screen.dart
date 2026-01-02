@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/screens/policy_webview_screen.dart';
 import 'package:tube_search/screens/shop_screen.dart';
 
+import '../data/region_option.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/region_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/custom_glass_app_bar.dart';
 
@@ -49,13 +52,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // 🔥 現在の ThemeMode を文字に変換
   // -------------------------------------------------------------------
   String _themeLabel(ThemeMode mode) {
+    final l = AppLocalizations.of(context)!;
     switch (mode) {
       case ThemeMode.dark:
-        return "ダーク";
+        return l.settingsThemeLabelDark;
       case ThemeMode.light:
-        return "ライト";
+        return l.settingsThemeLabelLight;
       default:
-        return "デバイス設定";
+        return l.settingsThemeLabelSystem;
     }
   }
 
@@ -87,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _buildOption(
               context,
-              label: "デバイスのモードを使用",
+              label: AppLocalizations.of(context)!.settingsThemeSystem,
               selected: provider.themeMode == ThemeMode.system,
               onTap: () {
                 provider.setTheme(ThemeMode.system);
@@ -96,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _buildOption(
               context,
-              label: "ライトモード",
+              label: AppLocalizations.of(context)!.settingsThemeLight,
               selected: provider.themeMode == ThemeMode.light,
               onTap: () {
                 provider.setTheme(ThemeMode.light);
@@ -105,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _buildOption(
               context,
-              label: "ダークモード",
+              label: AppLocalizations.of(context)!.settingsThemeDark,
               selected: provider.themeMode == ThemeMode.dark,
               onTap: () {
                 provider.setTheme(ThemeMode.dark);
@@ -171,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _buildDeleteOption(
               context,
-              label: "する",
+              label: AppLocalizations.of(context)!.settingsFavoriteDeleteOn,
               selected: !_skipDeleteConfirm,
               onTap: () {
                 _updateSkipConfirm(false);
@@ -180,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _buildDeleteOption(
               context,
-              label: "しない",
+              label: AppLocalizations.of(context)!.settingsFavoriteDeleteOff,
               selected: _skipDeleteConfirm,
               onTap: () {
                 _updateSkipConfirm(true);
@@ -246,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               tileColor: theme.cardColor,
               selectedTileColor: theme.cardColor,
               title: Text(
-                "プライバシーポリシー",
+                AppLocalizations.of(context)!.settingsPrivacyPolicy,
                 style: TextStyle(
                   fontSize: 15,
                   color: onSurface,
@@ -270,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               tileColor: theme.cardColor,
               selectedTileColor: theme.cardColor,
               title: Text(
-                "利用規約",
+                AppLocalizations.of(context)!.settingsTerms,
                 style: TextStyle(
                   fontSize: 15,
                   color: onSurface,
@@ -297,6 +301,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showRegionDialog(BuildContext context) {
+    final provider = context.read<RegionProvider>();
+    final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
+    final onSurface = theme.colorScheme.onSurface;
+
+    final sorted = [...regionOptions];
+    sorted.sort((a, b) => a.code == provider.regionCode
+        ? -1
+        : b.code == provider.regionCode
+            ? 1
+            : 0);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...sorted.map((r) {
+              return ListTile(
+                leading: Text(r.flag, style: const TextStyle(fontSize: 20)),
+                title: Text(
+                  r.label(l),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                trailing: provider.regionCode == r.code
+                    ? Icon(Icons.check, color: theme.colorScheme.primary)
+                    : null,
+                onTap: () {
+                  provider.setRegion(r.code);
+                  Navigator.pop(context);
+                },
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
+    );
+  }
+
   // -------------------------------------------------------------------
 
   @override
@@ -311,13 +375,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar(
+          SliverAppBar(
             floating: true,
             snap: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
             expandedHeight: 70,
-            flexibleSpace: CustomGlassAppBar(title: '設定'),
+            flexibleSpace: CustomGlassAppBar(
+              title: AppLocalizations.of(context)!.settingsTitle,
+            ),
           ),
           SliverToBoxAdapter(
             child: _loading
@@ -339,9 +405,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           shape: cardTheme.shape,
                           child: ListTile(
                             leading: Icon(Icons.dark_mode, color: onSurface),
-                            title: const Text(
-                              "テーマ",
-                              style: TextStyle(
+                            title: Text(
+                              AppLocalizations.of(context)!.settingsTheme,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -375,15 +441,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: ListTile(
                             leading:
                                 Icon(Icons.favorite_rounded, color: onSurface),
-                            title: const Text(
-                              "お気に入り削除時に確認",
-                              style: TextStyle(
+                            title: Text(
+                              AppLocalizations.of(context)!
+                                  .settingsFavoriteDeleteTitle,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
-                              _skipDeleteConfirm ? "しない" : "する",
+                              _skipDeleteConfirm
+                                  ? AppLocalizations.of(context)!
+                                      .settingsFavoriteDeleteOff
+                                  : AppLocalizations.of(context)!
+                                      .settingsFavoriteDeleteOn,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: onSurface.withValues(alpha: 0.7),
@@ -400,6 +471,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       const SizedBox(height: 20),
 
+                      // ⭐ 地域（YouTube ランキング）
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Material(
+                          color: cardTheme.color,
+                          elevation: cardTheme.elevation ?? 0,
+                          shape: cardTheme.shape,
+                          child: Consumer<RegionProvider>(
+                            builder: (context, provider, _) {
+                              final l = AppLocalizations.of(context)!;
+
+                              final current = regionOptions.firstWhere(
+                                  (r) => r.code == provider.regionCode);
+
+                              return ListTile(
+                                leading: Icon(Icons.public, color: onSurface),
+                                title: Text(
+                                  AppLocalizations.of(context)!.settingsRegion,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+
+                                // ← ★ 国旗 + 国名（L10N）
+                                subtitle: Text(
+                                  "${current.flag}  ${current.label(l)}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: onSurface.withValues(alpha: 0.7),
+                                  ),
+                                ),
+
+                                trailing: Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: onSurface,
+                                ),
+                                onTap: () => _showRegionDialog(context),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
                       // 🛒 ショップ
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -409,16 +525,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           shape: cardTheme.shape,
                           child: ListTile(
                             leading: Icon(Icons.storefront, color: onSurface),
-                            title: const Text(
-                              "ショップ",
-                              style: TextStyle(
+                            title: Text(
+                              AppLocalizations.of(context)!.settingsShop,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            subtitle: const Text(
-                              "便利な機能でより快適に！",
-                              style: TextStyle(fontSize: 12),
+                            subtitle: Text(
+                              AppLocalizations.of(context)!
+                                  .settingsShopSubtitle,
+                              style: const TextStyle(fontSize: 12),
                             ),
                             trailing: Icon(
                               Icons.chevron_right_rounded,
@@ -447,16 +564,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           shape: cardTheme.shape,
                           child: ListTile(
                             leading: Icon(Icons.policy, color: onSurface),
-                            title: const Text(
-                              "各種ポリシー",
-                              style: TextStyle(
+                            title: Text(
+                              AppLocalizations.of(context)!.settingsPolicies,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            subtitle: const Text(
-                              "プライバシー・利用規約",
-                              style: TextStyle(fontSize: 12),
+                            subtitle: Text(
+                              AppLocalizations.of(context)!
+                                  .settingsPoliciesSubtitle,
+                              style: const TextStyle(fontSize: 12),
                             ),
                             trailing: Icon(Icons.chevron_right_rounded,
                                 color: onSurface),

@@ -9,8 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   http: ^1.1.0
-  intl: ^0.18.0
+  intl: ^0.20.2
   webview_flutter: ^4.4.1
   # 👆 他の依存関係をここに書く
   logger: ^2.0.2
@@ -36,6 +38,8 @@ flutter:
         - asset: assets/fonts/NotoSansJP-Regular.ttf
         - asset: assets/fonts/NotoSansJP-Bold.ttf
           weight: 700
+
+  generate: true
 
 dev_dependencies:
   flutter_lints: ^3.0.1

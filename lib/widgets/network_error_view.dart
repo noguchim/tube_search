@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 class NetworkErrorView extends StatelessWidget {
   final VoidCallback onRetry;
 
@@ -9,6 +11,7 @@ class NetworkErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final t = AppLocalizations.of(context)!;
 
     return Center(
       child: Padding(
@@ -23,7 +26,7 @@ class NetworkErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              "ネットワークに接続できません",
+              t.networkErrorTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
@@ -33,7 +36,7 @@ class NetworkErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "接続状態を確認してから再度お試しください。",
+              t.networkErrorDescription,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -44,7 +47,7 @@ class NetworkErrorView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text("再読み込み"),
+              label: Text(t.networkErrorRetry),
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

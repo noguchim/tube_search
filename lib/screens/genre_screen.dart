@@ -3,8 +3,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:provider/provider.dart';
 
-import '../data/genre_groups.dart';
+import '../data/base_genre_models.dart';
+import '../data/genre_groups_ja.dart';
+import '../data/genre_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/region_provider.dart';
 import '../services/youtube_api_service.dart';
 import '../widgets/custom_glass_app_bar.dart';
 import 'genre_videos_screen.dart';
@@ -20,6 +25,8 @@ class GenreScreen extends StatefulWidget {
 
 class _GenreScreenState extends State<GenreScreen>
     with SingleTickerProviderStateMixin {
+  String _lastRegion = "JP";
+
   final YouTubeApiService _apiService = YouTubeApiService();
 
   final ScrollController _scrollController = ScrollController();
@@ -33,7 +40,6 @@ class _GenreScreenState extends State<GenreScreen>
 
   bool _isScrollingDown = false;
 
-  // bool _isFirstTap = true;
   bool _isSearchingFromSuggest = false;
 
   late AnimationController _tapAnim;
@@ -148,7 +154,11 @@ class _GenreScreenState extends State<GenreScreen>
       });
 
       try {
-        final list = await _apiService.fetchSuggestions(text);
+        final region = context.read<RegionProvider>().regionCode;
+        final list = await _apiService.fetchSuggestions(
+          text,
+          regionCode: region,
+        );
 
         if (!mounted) return;
 
@@ -169,20 +179,6 @@ class _GenreScreenState extends State<GenreScreen>
     });
   }
 
-  // Future<void> _onTapSearchField() async {
-  //   if (_isFirstTap) {
-  //     _isFirstTap = false;
-  //
-  //     _tapAnim.forward();
-  //     await Future.delayed(const Duration(milliseconds: 280));
-  //     _focusNode.requestFocus();
-  //     await Future.delayed(const Duration(milliseconds: 150));
-  //     if (mounted) _tapAnim.reverse();
-  //   } else {
-  //     _focusNode.requestFocus();
-  //   }
-  // }
-
   // ----------------------------------------------------
   // 🔍 検索フォーム（Dark対応）
   // ----------------------------------------------------
@@ -197,9 +193,6 @@ class _GenreScreenState extends State<GenreScreen>
     final Color actionBg = isDark
         ? Colors.white.withValues(alpha: 0.18)
         : Colors.black.withValues(alpha: 0.08);
-
-    // final Color searchBg = Colors.white.withValues(alpha: 0.12);
-    // final Color actionBg = Colors.white.withValues(alpha: 0.18);
 
     return AnimatedBuilder(
       animation: _tapAnim,
@@ -246,7 +239,8 @@ class _GenreScreenState extends State<GenreScreen>
                             ),
                             decoration: InputDecoration(
                               border: InputBorder.none,
-                              hintText: "検索ワードを入力...",
+                              hintText:
+                                  AppLocalizations.of(context)!.genreSearchHint,
                               hintStyle: TextStyle(
                                 color: isDark ? Colors.white60 : Colors.black54,
                               ),
@@ -378,7 +372,7 @@ class _GenreScreenState extends State<GenreScreen>
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                "ネットワークに接続できません",
+                AppLocalizations.of(context)!.genreNetworkError,
                 style: TextStyle(
                   color: theme.colorScheme.error,
                   fontSize: 14,
@@ -516,7 +510,7 @@ class _GenreScreenState extends State<GenreScreen>
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
                     final groupId = group.groupId;
-                    final baseCatId = baseCategoryIds[groupId]!.toString();
+                    final baseCatId = baseCategoryIdsJa[groupId]!.toString();
 
                     if (cat.isOfficial) {
                       Navigator.push(
@@ -585,6 +579,23 @@ class _GenreScreenState extends State<GenreScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final region = context.watch<RegionProvider>().regionCode;
+
+    // 🌎 地域変更 → サジェストもリセット
+    if (region != _lastRegion) {
+      _lastRegion = region;
+
+      setState(() {
+        _suggestions = [];
+        _networkError = false;
+      });
+
+      // 入力中なら自動でサジェスト再取得
+      if (_searchCtrl.text.isNotEmpty) {
+        _onSearchChanged(_searchCtrl.text);
+      }
+    }
+
     final brightness = Theme.of(context).brightness;
 
     if (_lastBrightness != brightness) {
@@ -597,19 +608,21 @@ class _GenreScreenState extends State<GenreScreen>
       });
     }
 
+    final groups = getGenreGroupsForRegion(region);
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          const SliverAppBar(
+          SliverAppBar(
             floating: true,
             snap: false,
             elevation: 0,
             backgroundColor: Colors.transparent,
             expandedHeight: 70,
             flexibleSpace: CustomGlassAppBar(
-              title: 'ジャンル別人気',
+              title: AppLocalizations.of(context)!.genreScreenTitle,
             ),
           ),
 
@@ -618,7 +631,7 @@ class _GenreScreenState extends State<GenreScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
-                "検索して探す",
+                AppLocalizations.of(context)!.genreSearchHeader,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -647,7 +660,7 @@ class _GenreScreenState extends State<GenreScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Text(
-                "ジャンルから探す",
+                AppLocalizations.of(context)!.genreBrowseHeader,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -659,8 +672,8 @@ class _GenreScreenState extends State<GenreScreen>
 
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, idx) => _buildGroupSection(genreGroups[idx]),
-              childCount: genreGroups.length,
+              (context, idx) => _buildGroupSection(groups[idx]),
+              childCount: groups.length,
             ),
           ),
 

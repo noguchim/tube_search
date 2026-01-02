@@ -1,7 +1,10 @@
 // lib/widgets/custom_glass_app_bar.dart
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../l10n/app_localizations.dart';
 
 class CustomGlassAppBar extends StatelessWidget {
   final String title;
@@ -35,15 +38,15 @@ class CustomGlassAppBar extends StatelessWidget {
     //
     final List<Color> bgGradient = isDark
         ? [
-      const Color(0xCC111111),
-      const Color(0xB31A1A1A),
-      const Color(0x991A1A1A),
-    ]
+            const Color(0xCC111111),
+            const Color(0xB31A1A1A),
+            const Color(0x991A1A1A),
+          ]
         : [
-      const Color(0xE6FFFFFF),
-      const Color(0xCCE5E8EC),
-      const Color(0x99D0D4D9),
-    ];
+            const Color(0xE6FFFFFF),
+            const Color(0xCCE5E8EC),
+            const Color(0x99D0D4D9),
+          ];
 
     final Color bgColor = isDark
         ? const Color(0xFF111111).withValues(alpha: 0.85)
@@ -149,15 +152,34 @@ class CustomGlassAppBar extends StatelessWidget {
                                   ),
                                 ),
                               ),
-
                               if (showInfoButton)
                                 Builder(
                                   builder: (_) {
-                                    final now = DateTime.now();
-                                    final formatted = DateFormat('MM/dd HH:mm').format(now);
+                                    String resolveRegionLabel(Locale locale) {
+                                      switch (locale.languageCode) {
+                                        case 'ja':
+                                          return "日本国内";
+                                        case 'en':
+                                          return "United States";
+                                        // 追加予定
+                                        // case 'fr': return "France";
+                                        // case 'de': return "Germany";
+                                        default:
+                                          return "Worldwide";
+                                      }
+                                    }
 
+                                    final l = AppLocalizations.of(context)!;
+                                    final now = DateTime.now();
+                                    final formatted =
+                                        DateFormat.yMd(l.localeName)
+                                            .add_Hm()
+                                            .format(now);
+                                    final region = resolveRegionLabel(
+                                        Localizations.localeOf(context));
                                     final infoText = infoMessage ??
-                                        "YouTube急上昇ランキング（日本国内・トレンド反映） $formatted 更新";
+                                        l.infoTrendingUpdated(
+                                            region, formatted);
 
                                     return _InfoButton(
                                       message: infoText,
@@ -168,7 +190,6 @@ class CustomGlassAppBar extends StatelessWidget {
                             ],
                           ),
                         ),
-
                         if (showRefreshButton)
                           Positioned(
                             right: 0,
@@ -176,20 +197,18 @@ class CustomGlassAppBar extends StatelessWidget {
                             child: IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onPressed:
-                              isRefreshing ? null : onRefreshPressed,
+                              onPressed: isRefreshing ? null : onRefreshPressed,
                               iconSize: 28,
                               icon: isRefreshing
                                   ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.8,
-                                  color: fgColor,
-                                ),
-                              )
-                                  : Icon(Icons.refresh_rounded,
-                                  color: fgColor),
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.8,
+                                        color: fgColor,
+                                      ),
+                                    )
+                                  : Icon(Icons.refresh_rounded, color: fgColor),
                             ),
                           ),
                       ],
@@ -273,12 +292,13 @@ class _InfoButtonState extends State<_InfoButton>
 
     final screenWidth = MediaQuery.of(context).size.width;
     final double left =
-    (screenWidth / 2 - width / 2).clamp(8, screenWidth - width - 8);
+        (screenWidth / 2 - width / 2).clamp(8, screenWidth - width - 8);
 
     final double top = pos.dy + size.height + gap;
 
-    final Color tooltipBg =
-    isDark ? Colors.white.withValues(alpha: 0.95) : Colors.grey.shade800.withValues(alpha: 0.95);
+    final Color tooltipBg = isDark
+        ? Colors.white.withValues(alpha: 0.95)
+        : Colors.grey.shade800.withValues(alpha: 0.95);
 
     final Color tooltipTextColor = isDark ? Colors.black87 : Colors.white;
 
@@ -349,12 +369,9 @@ class _InfoButtonState extends State<_InfoButton>
         margin: const EdgeInsets.only(left: 6),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _isPressed
-              ? Colors.black12
-              : Colors.transparent,
+          color: _isPressed ? Colors.black12 : Colors.transparent,
         ),
-        child: Icon(Icons.info_outline_rounded,
-            color: widget.color, size: 20),
+        child: Icon(Icons.info_outline_rounded, color: widget.color, size: 20),
       ),
     );
   }
