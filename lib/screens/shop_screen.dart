@@ -88,7 +88,9 @@ class _ShopScreenState extends State<ShopScreen> {
 
       setState(() {
         _priceRemove = pRemove.price;
+        logger.i("[_loadPrices] _priceRemove = $_priceRemove");
         _priceLimit = pLimit.price;
+        logger.i("[_loadPrices] _priceLimit = $_priceLimit");
         _isLoading = false;
       });
     } catch (_) {
@@ -248,7 +250,7 @@ class _ShopScreenState extends State<ShopScreen> {
                             purchased: removeAdsPurchased,
                             iconColor: Theme.of(context).colorScheme.primary,
                             priceLabel: _priceRemove,
-                            minHeight: 90,
+                            minHeight: 80,
                             onBuy: removeAdsPurchased
                                 ? null
                                 : () async {
@@ -294,7 +296,7 @@ class _ShopScreenState extends State<ShopScreen> {
                             purchased: limitUpgradePurchased,
                             iconColor: const Color(0xFF9B59B6),
                             priceLabel: _priceLimit,
-                            minHeight: 90,
+                            minHeight: 80,
                             onBuy: limitUpgradePurchased
                                 ? null
                                 : () async {

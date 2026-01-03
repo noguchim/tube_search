@@ -696,10 +696,12 @@ class SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => height;
+  double get minExtent => height + _extraTopPadding;
 
   @override
-  double get maxExtent => height;
+  double get maxExtent => height + _extraTopPadding;
+
+  double get _extraTopPadding => 8; // ← 好みで 6〜10px 調整OK
 
   @override
   Widget build(
@@ -707,14 +709,23 @@ class SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return SizedBox(
-      height: height,
-      child: child,
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+
+    return Container(
+      color: bg,
+      child: Column(
+        children: [
+          SizedBox(height: _extraTopPadding), // 👈 上だけ余白
+          SizedBox(
+            height: height, // 👈 検索フォーム本来の高さは固定
+            child: child,
+          ),
+        ],
+      ),
     );
   }
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
-    return true;
-  }
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+      true;
 }

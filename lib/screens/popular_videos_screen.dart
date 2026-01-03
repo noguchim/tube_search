@@ -9,6 +9,8 @@ import '../providers/region_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
+import '../widgets/continuous_play_dialog.dart';
+import '../widgets/continuous_play_status_bar.dart';
 import '../widgets/custom_glass_app_bar.dart';
 import '../widgets/network_error_view.dart';
 import '../widgets/video_list_tile.dart';
@@ -232,6 +234,20 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                     isRefreshing: _isRefreshing,
                     showInfoButton: true,
                     onRefreshPressed: _refreshVideos,
+                  ),
+                ),
+
+                // Phase2対応(連続再生)
+                SliverToBoxAdapter(
+                  child: ContinuousPlayStatusBar(
+                    enabled: false,
+                    mode: "asc",
+                    onSettingsTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const ContinuousPlayDialog(),
+                      );
+                    },
                   ),
                 ),
 

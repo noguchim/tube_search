@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,8 +10,19 @@ class RegionProvider extends ChangeNotifier {
 
   String get regionCode => _regionCode;
 
+  // 対応リージョン
+  static const _supported = [
+    "JP",
+    "US",
+    "GB",
+    "KR",
+    "DE",
+    "FR",
+    "IN",
+  ];
+
   // --------------------------------------------------
-  // ⭐ 初期化：保存があればそれを使う → なければ Locale から推定
+  // ⭐ 初期化（保存 → 端末推定 → US フォールバック）
   // --------------------------------------------------
   Future<void> initFromLocale(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
@@ -17,26 +30,40 @@ class RegionProvider extends ChangeNotifier {
 
     if (saved != null) {
       _regionCode = saved;
-      return; // ← notifyListeners() しない（UIはまだ構築前）
+      debugPrint("🌏 [Region] loaded from storage → $_regionCode");
+      return;
     }
 
-    final locale = Localizations.localeOf(context);
+    final deviceLocale = Platform.localeName;
+    debugPrint("🌏 [Region] device locale = $deviceLocale");
 
-    if (locale.countryCode == "US") {
-      _regionCode = "US";
+    final parts = deviceLocale.split("_");
+    final country = parts.length > 1 ? parts.last : "US";
+
+    if (_supported.contains(country)) {
+      _regionCode = country;
+      debugPrint("🌏 [Region] detected & supported → $_regionCode");
     } else {
-      _regionCode = "JP";
+      _regionCode = "US";
+      debugPrint(
+        "🌏 [Region] unsupported ($country) → fallback to US",
+      );
     }
+
+    await prefs.setString(_prefRegion, _regionCode);
+    debugPrint("🌏 [Region] saved initial region → $_regionCode");
   }
 
   // --------------------------------------------------
-  // ⭐ 変更時：保存 + 反映
+  // ⭐ 変更（保存 + 通知）
   // --------------------------------------------------
   Future<void> setRegion(String code) async {
     _regionCode = code;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefRegion, code);
+
+    debugPrint("🌏 [Region] changed manually → $_regionCode");
 
     notifyListeners();
   }
