@@ -112,6 +112,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                   'channelTitle': v.channelTitle,
                   'publishedAt': v.publishedAt?.toIso8601String(),
                   'viewCount': v.viewCount ?? 0,
+                  'durationSeconds': v.durationSeconds ?? 0,
                 })
             .toList();
       } else {
@@ -133,6 +134,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                   'channelTitle': v.channelTitle,
                   'publishedAt': v.publishedAt?.toIso8601String(),
                   'viewCount': v.viewCount ?? 0,
+                  'durationSeconds': v.durationSeconds ?? 0,
                 })
             .toList();
       }
@@ -278,8 +280,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                       ),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, i) =>
-                            VideoListTile(video: videos[i], rank: i + 1),
+                        (context, i) => VideoListTile(
+                          video: videos[i],
+                          rank: i + 1,
+                        ),
                         childCount: videos.length,
                       ),
                     ),

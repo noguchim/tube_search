@@ -226,7 +226,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => VideoPlayerScreen(video: video),
+                  builder: (_) => VideoPlayerScreen(
+                    video: video,
+                    isRepeat: false,
+                  ),
                 ),
               );
             },

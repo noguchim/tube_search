@@ -6,6 +6,7 @@ class YouTubeVideo {
   final String channelTitle;
   final DateTime? publishedAt;
   final int? viewCount;
+  final int? durationSeconds;
 
   YouTubeVideo({
     required this.id,
@@ -14,5 +15,6 @@ class YouTubeVideo {
     required this.channelTitle,
     this.publishedAt,
     this.viewCount,
+    this.durationSeconds,
   });
 }

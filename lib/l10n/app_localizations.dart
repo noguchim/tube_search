@@ -245,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @favoriteLimitNotPurchased.
   ///
   /// In en, this message translates to:
-  /// **'You can save up to 10 favorites.\n\nA limit upgrade allows up to 5× (50 items).'**
+  /// **'You’ve reached the favorites limit.\nUpgrading lets you save more favorites.'**
   String get favoriteLimitNotPurchased;
 
   /// No description provided for @favoriteLimitClose.
@@ -505,6 +505,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'United States'**
   String get regionUnitedStates;
+
+  /// No description provided for @repeatStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'OFF'**
+  String get repeatStatusOff;
+
+  /// No description provided for @repeatStatusAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'ON (Ascending)'**
+  String get repeatStatusAscending;
+
+  /// No description provided for @repeatStatusDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'ON (Descending)'**
+  String get repeatStatusDescending;
+
+  /// No description provided for @repeatStatusRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'ON (Random)'**
+  String get repeatStatusRandom;
+
+  /// No description provided for @repeatDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuous play settings'**
+  String get repeatDialogTitle;
+
+  /// No description provided for @repeatSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuous play settings'**
+  String get repeatSettingsTitle;
+
+  /// No description provided for @repeatOptionOff.
+  ///
+  /// In en, this message translates to:
+  /// **'OFF (do not auto-play)'**
+  String get repeatOptionOff;
+
+  /// No description provided for @repeatOptionAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Play in ascending order'**
+  String get repeatOptionAscending;
+
+  /// No description provided for @repeatOptionDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Play in descending order'**
+  String get repeatOptionDescending;
+
+  /// No description provided for @repeatOptionRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle play'**
+  String get repeatOptionRandom;
+
+  /// No description provided for @repeatDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get repeatDialogCancel;
+
+  /// No description provided for @repeatDialogSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get repeatDialogSave;
+
+  /// No description provided for @repeatDialogMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select how continuous play should behave.'**
+  String get repeatDialogMessage;
 }
 
 class _AppLocalizationsDelegate

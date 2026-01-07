@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
+import '../screens/shop_screen.dart';
 import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../utils/favorite_delete_helper.dart';
+import 'app_dialog.dart';
 
 class VideoListTile extends StatelessWidget {
   final Map<String, dynamic> video;
@@ -93,7 +95,10 @@ class VideoListTile extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => VideoPlayerScreen(video: video),
+                builder: (_) => VideoPlayerScreen(
+                  video: video,
+                  isRepeat: false,
+                ),
               ),
             );
           },
@@ -244,26 +249,49 @@ class VideoListTile extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(t.favoriteLimitTitle),
-        content: Text(
-          purchased ? t.favoriteLimitPurchased : t.favoriteLimitNotPurchased,
-        ),
-        actions: [
-          TextButton(
-            child: Text(t.favoriteLimitClose),
-            onPressed: () => Navigator.pop(context),
-          ),
-          if (!purchased)
+      builder: (_) {
+        return AppDialog(
+          title: t.favoriteLimitTitle,
+          message: purchased
+              ? t.favoriteLimitPurchased
+              : t.favoriteLimitNotPurchased,
+          style: AppDialogStyle.info,
+          actions: [
             TextButton(
-              child: Text(t.favoriteLimitUpgrade),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, "/shop");
-              },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    Theme.of(context).colorScheme.onSurface, // ← ★本文と同色
+              ),
+              child: Text(t.favoriteLimitClose),
+              onPressed: () => Navigator.pop(context),
             ),
-        ],
-      ),
+            if (!purchased)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context); // ダイアログ閉じる
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ShopScreen()),
+                  );
+                },
+                child: Text(t.favoriteLimitUpgrade),
+              ),
+            const SizedBox(width: 10),
+          ],
+        );
+      },
     );
   }
 

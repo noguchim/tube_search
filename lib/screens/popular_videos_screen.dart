@@ -9,10 +9,9 @@ import '../providers/region_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/continuous_play_dialog.dart';
-import '../widgets/continuous_play_status_bar.dart';
 import '../widgets/custom_glass_app_bar.dart';
 import '../widgets/network_error_view.dart';
+import '../widgets/repeat_settings_panel.dart';
 import '../widgets/video_list_tile.dart';
 
 class PopularVideosScreen extends StatefulWidget {
@@ -80,15 +79,13 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
         'thumbnailUrl': v.thumbnailUrl,
         'channelTitle': v.channelTitle,
         'publishedAt': v.publishedAt?.toIso8601String(),
-        'viewCount': (v.viewCount ?? 0).toString(),
+        'viewCount': v.viewCount ?? 0,
+        'durationSeconds': v.durationSeconds ?? 0,
       };
     }).toList();
 
-    mapped.sort((a, b) {
-      final viewA = int.tryParse(a['viewCount'] ?? '0') ?? 0;
-      final viewB = int.tryParse(b['viewCount'] ?? '0') ?? 0;
-      return viewB.compareTo(viewA);
-    });
+    mapped.sort(
+        (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
 
     return mapped;
   }
@@ -119,15 +116,13 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           'thumbnailUrl': v.thumbnailUrl,
           'channelTitle': v.channelTitle,
           'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': (v.viewCount ?? 0).toString(),
+          'viewCount': v.viewCount ?? 0,
+          'durationSeconds': v.durationSeconds ?? 0,
         };
       }).toList();
 
-      mapped.sort((a, b) {
-        final viewA = int.tryParse(a['viewCount'] ?? '0') ?? 0;
-        final viewB = int.tryParse(b['viewCount'] ?? '0') ?? 0;
-        return viewB.compareTo(viewA);
-      });
+      mapped.sort(
+          (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
 
       // 🔥 成功 → FutureBuilder にデータを渡す
       setState(() {
@@ -238,16 +233,49 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                 ),
 
                 // Phase2対応(連続再生)
+                // SliverToBoxAdapter(
+                //   child: Container(
+                //     margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                //     padding: const EdgeInsets.all(20),
+                //     decoration: BoxDecoration(
+                //       color: Theme.of(context).colorScheme.surface,
+                //       borderRadius: BorderRadius.circular(12),
+                //       border: Border.all(
+                //         color: Theme.of(context)
+                //             .colorScheme
+                //             .onSurface
+                //             .withValues(alpha: 0.08),
+                //       ),
+                //     ),
+                //     child: Center(
+                //       child: ElevatedButton(
+                //         onPressed: () async {
+                //           // Navigator.pop(context); // もしダイアログ上なら閉じる
+                //
+                //           await showRepeatSettingsPanel(
+                //             context: context,
+                //             videos: videos,
+                //           );
+                //         },
+                //         child: const Text("連続再生を始める"),
+                //       ),
+                //     ),
+                //   ),
+                // ),
+
                 SliverToBoxAdapter(
-                  child: ContinuousPlayStatusBar(
-                    enabled: false,
-                    mode: "asc",
-                    onSettingsTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => const ContinuousPlayDialog(),
-                      );
-                    },
+                  child: Center(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Navigator.pop(context); // もしダイアログ上なら閉じる
+
+                        await showRepeatSettingsPanel(
+                          context: context,
+                          videos: videos,
+                        );
+                      },
+                      child: const Text("連続再生を始める"),
+                    ),
                   ),
                 ),
 

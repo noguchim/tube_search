@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
+import 'package:tube_search/providers/repeat_provider.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
@@ -108,6 +109,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => RepeatProvider()..init()),
         ChangeNotifierProvider(create: (_) => RegionProvider()),
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),

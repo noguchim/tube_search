@@ -17,6 +17,7 @@
     "genreSearchHint": "検索ワードを入力...",
     "genreNetworkError": "ネットワークに接続できません",
     "genreBrowseHeader": "ジャンルから探す",
+
     "favoritesTitle": "お気に入り",
     "favoritesEmptyTitle": "お気に入りがありません",
     "favoritesEmptyHint": "アイコンタップでお気に入りに追加！",
@@ -40,9 +41,10 @@
     "favoriteDeleteConfirm": "削除",
     "favoriteLimitTitle": "お気に入り上限",
     "favoriteLimitPurchased": "お気に入りは最大50件まで追加できます。",
-    "favoriteLimitNotPurchased": "お気に入りは10件までです。\n\n上限拡張で5倍（50件まで）追加できます。",
+    "favoriteLimitNotPurchased": "お気に入りの上限に達しました。\n上限拡張で、さらに多く登録できるようになります。",
     "favoriteLimitClose": "閉じる",
     "favoriteLimitUpgrade": "上限を拡張する",
+
     "genrePopularTitle": "人気：{genre}",
     "@genrePopularTitle": {
         "placeholders": {
@@ -70,6 +72,7 @@
     "networkErrorTitle": "ネットワークに接続できません",
     "networkErrorDescription": "接続状態を確認してから再度お試しください。",
     "networkErrorRetry": "再読み込み",
+
     "shopTitleRemoveAds": "広告削除",
     "shopDescRemoveAds": "広告を非表示にします",
     "shopTitleLimit": "上限拡張",
@@ -90,8 +93,23 @@
     "shopRestoreAlready": "すでに購入が反映されています",
     "shopRestoreNothing": "復元できる購入はありませんでした",
     "shopRestoreDone": "購入を復元しました",
+
     "settingsRegion": "地域",
     "settingsRegionSubtitle": "アプリで表示する国を選択",
     "regionJapan": "日本",
-    "regionUnitedStates": "アメリカ"
+    "regionUnitedStates": "アメリカ",
+
+    "repeatStatusOff": "OFF",
+    "repeatStatusAscending": "ON (昇順)",
+    "repeatStatusDescending": "ON (降順)",
+    "repeatStatusRandom": "ON (ランダム)",
+    "repeatDialogTitle": "連続再生の設定",
+    "repeatSettingsTitle": "連続再生の設定",
+    "repeatOptionOff": "OFF（連続再生しない）",
+    "repeatOptionAscending": "昇順で再生",
+    "repeatOptionDescending": "降順で再生",
+    "repeatOptionRandom": "ランダム再生",
+    "repeatDialogCancel": "キャンセル",
+    "repeatDialogSave": "保存",
+    "repeatDialogMessage": "連続再生の動作を選択してください。"
 }

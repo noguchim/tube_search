@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/favorites_service.dart';
+import '../widgets/app_dialog.dart';
 
 class FavoriteDeleteHelper {
   static const String _prefSkipDeleteConfirm = "skip_delete_confirm";
@@ -29,48 +30,49 @@ class FavoriteDeleteHelper {
     if (!context.mounted) return;
 
     final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
     final navigator = Navigator.of(context);
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) {
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        return AppDialog(
+          title: AppLocalizations.of(context)!.favoriteDeleteTitle,
+          message: AppLocalizations.of(context)!.favoriteDeleteMessage(
+            video["title"] ?? "",
           ),
-          title: Text(
-            AppLocalizations.of(context)!.favoriteDeleteTitle,
-            style: TextStyle(fontSize: 15, color: onSurface),
-          ),
-          content: Text(
-            AppLocalizations.of(context)!.favoriteDeleteMessage(
-              video["title"] ?? "",
-            ),
-            style: TextStyle(fontSize: 14, height: 1.5, color: onSurface),
-          ),
+          style: AppDialogStyle.danger, // ← 削除なので危険色
           actions: [
             TextButton(
-              child: Text(AppLocalizations.of(context)!.favoriteDeleteCancel,
-                  style: TextStyle(color: onSurface)),
               onPressed: () => navigator.pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
               child: Text(
-                AppLocalizations.of(context)!.favoriteDeleteConfirm,
+                AppLocalizations.of(context)!.favoriteDeleteCancel,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+            ),
+            const SizedBox(width: 6),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                // 🔥 赤固定（danger）
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold, // ← ★ 強調
+                  fontSize: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 await fav.toggle(video["id"], video);
                 navigator.pop();
               },
+              child: Text(AppLocalizations.of(context)!.favoriteDeleteConfirm),
             ),
+            const SizedBox(width: 10),
           ],
         );
       },

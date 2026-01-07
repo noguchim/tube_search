@@ -40,7 +40,7 @@
     "favoriteDeleteConfirm": "Remove",
     "favoriteLimitTitle": "Favorites limit",
     "favoriteLimitPurchased": "You can save up to 50 favorites.",
-    "favoriteLimitNotPurchased": "You can save up to 10 favorites.\n\nA limit upgrade allows up to 5× (50 items).",
+    "favoriteLimitNotPurchased": "You’ve reached the favorites limit.\nUpgrading lets you save more favorites.",
     "favoriteLimitClose": "Close",
     "favoriteLimitUpgrade": "Limit upgrade",
     "genrePopularTitle": "Trending: {genre}",
@@ -93,5 +93,19 @@
     "settingsRegion": "Region",
     "settingsRegionSubtitle": "Choose the country for video trends",
     "regionJapan": "Japan",
-    "regionUnitedStates": "United States"
+    "regionUnitedStates": "United States",
+
+    "repeatStatusOff": "OFF",
+    "repeatStatusAscending": "ON (Ascending)",
+    "repeatStatusDescending": "ON (Descending)",
+    "repeatStatusRandom": "ON (Random)",
+    "repeatDialogTitle": "Continuous play settings",
+    "repeatSettingsTitle": "Continuous play settings",
+    "repeatOptionOff": "OFF (do not auto-play)",
+    "repeatOptionAscending": "Play in ascending order",
+    "repeatOptionDescending": "Play in descending order",
+    "repeatOptionRandom": "Shuffle play",
+    "repeatDialogCancel": "Cancel",
+    "repeatDialogSave": "Save",
+    "repeatDialogMessage": "Select how continuous play should behave."
 }

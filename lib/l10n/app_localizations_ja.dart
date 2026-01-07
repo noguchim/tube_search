@@ -88,7 +88,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get favoriteLimitNotPurchased =>
-      'お気に入りは10件までです。\n\n上限拡張で5倍（50件まで）追加できます。';
+      'お気に入りの上限に達しました。\n上限拡張で、さらに多く登録できるようになります。';
 
   @override
   String get favoriteLimitClose => '閉じる';
@@ -222,4 +222,43 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get regionUnitedStates => 'アメリカ';
+
+  @override
+  String get repeatStatusOff => 'OFF';
+
+  @override
+  String get repeatStatusAscending => 'ON (昇順)';
+
+  @override
+  String get repeatStatusDescending => 'ON (降順)';
+
+  @override
+  String get repeatStatusRandom => 'ON (ランダム)';
+
+  @override
+  String get repeatDialogTitle => '連続再生の設定';
+
+  @override
+  String get repeatSettingsTitle => '連続再生の設定';
+
+  @override
+  String get repeatOptionOff => 'OFF（連続再生しない）';
+
+  @override
+  String get repeatOptionAscending => '昇順で再生';
+
+  @override
+  String get repeatOptionDescending => '降順で再生';
+
+  @override
+  String get repeatOptionRandom => 'ランダム再生';
+
+  @override
+  String get repeatDialogCancel => 'キャンセル';
+
+  @override
+  String get repeatDialogSave => '保存';
+
+  @override
+  String get repeatDialogMessage => '連続再生の動作を選択してください。';
 }

@@ -84,6 +84,7 @@ class YouTubeApiService {
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
       );
     }).toList();
 
@@ -172,6 +173,7 @@ class YouTubeApiService {
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
       );
     }).toList();
 
@@ -204,6 +206,7 @@ class YouTubeApiService {
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
       );
     }).toList();
   }

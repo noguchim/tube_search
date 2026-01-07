@@ -88,7 +88,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoriteLimitNotPurchased =>
-      'You can save up to 10 favorites.\n\nA limit upgrade allows up to 5× (50 items).';
+      'You’ve reached the favorites limit.\nUpgrading lets you save more favorites.';
 
   @override
   String get favoriteLimitClose => 'Close';
@@ -225,4 +225,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get regionUnitedStates => 'United States';
+
+  @override
+  String get repeatStatusOff => 'OFF';
+
+  @override
+  String get repeatStatusAscending => 'ON (Ascending)';
+
+  @override
+  String get repeatStatusDescending => 'ON (Descending)';
+
+  @override
+  String get repeatStatusRandom => 'ON (Random)';
+
+  @override
+  String get repeatDialogTitle => 'Continuous play settings';
+
+  @override
+  String get repeatSettingsTitle => 'Continuous play settings';
+
+  @override
+  String get repeatOptionOff => 'OFF (do not auto-play)';
+
+  @override
+  String get repeatOptionAscending => 'Play in ascending order';
+
+  @override
+  String get repeatOptionDescending => 'Play in descending order';
+
+  @override
+  String get repeatOptionRandom => 'Shuffle play';
+
+  @override
+  String get repeatDialogCancel => 'Cancel';
+
+  @override
+  String get repeatDialogSave => 'Save';
+
+  @override
+  String get repeatDialogMessage => 'Select how continuous play should behave.';
 }
