@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/screens/video_player_screen.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
-import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
-import '../widgets/custom_glass_app_bar.dart';
+import '../widgets/light_flat_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -68,130 +68,134 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     final cardColor = theme.cardTheme.color ??
         (isDark ? const Color(0xFF1E1E1E) : Colors.white);
 
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          const SizedBox(height: 30), // AppBar 下の余白調整（必要に応じて調整可）
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: ConstrainedBox(
+            // ✅ ここが重要：最低でも画面の高さを確保 → 縦では中央寄せが維持できる
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  const SizedBox(height: 24),
 
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.favoritesTitle,
-                  style: TextStyle(
-                    fontSize: 18,
-                    height: 1.5,
-                    fontWeight: FontWeight.bold,
-                    color: onSurface.withValues(alpha: 0.8),
-                  ),
-                ),
+                  // ✅ ここは Expanded じゃなく Spacer で柔軟にする
+                  const Spacer(),
 
-                const SizedBox(height: 6),
-
-                Text(
-                  AppLocalizations.of(context)!.favoritesEmptyHint,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: onSurface.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ★ ダークテーマ対応ミニカード
-                AnimatedScale(
-                  scale: 1.00,
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutBack,
-                  child: Container(
-                    width: 200,
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark
-                              ? Colors.black.withValues(alpha: 0.4)
-                              : Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                  Text(
+                    AppLocalizations.of(context)!.favoritesTitle,
+                    style: TextStyle(
+                      fontSize: 18,
+                      height: 1.5,
+                      fontWeight: FontWeight.bold,
+                      color: onSurface.withValues(alpha: 0.8),
                     ),
-                    clipBehavior: Clip.hardEdge,
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 100,
-                          color: isDark
-                              ? Colors.grey[800]
-                              : const Color(0xFFB5B9BE),
-                          child: const Center(
-                            child: Icon(
-                              Icons.play_circle_fill,
-                              size: 42,
-                              color: Colors.white,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    AppLocalizations.of(context)!.favoritesEmptyHint,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: onSurface.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ✅ 空状態カード（サイズは維持しつつ）
+                  AnimatedScale(
+                    scale: 1.00,
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutBack,
+                    child: Container(
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.4)
+                                : Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.hardEdge,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 100,
+                            color: isDark
+                                ? Colors.grey[800]
+                                : const Color(0xFFB5B9BE),
+                            child: const Center(
+                              child: Icon(
+                                Icons.play_circle_fill,
+                                size: 42,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isDark
-                                  ? [
-                                      Colors.white.withValues(alpha: 0.05),
-                                      Colors.white.withValues(alpha: 0.02),
-                                    ]
-                                  : [
-                                      Colors.pinkAccent.shade100
-                                          .withValues(alpha: 0.12),
-                                      Colors.pinkAccent.shade100
-                                          .withValues(alpha: 0.04),
-                                    ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [
+                                        Colors.white.withValues(alpha: 0.05),
+                                        Colors.white.withValues(alpha: 0.02),
+                                      ]
+                                    : [
+                                        Colors.pinkAccent.shade100
+                                            .withValues(alpha: 0.12),
+                                        Colors.pinkAccent.shade100
+                                            .withValues(alpha: 0.04),
+                                      ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.favorite_border_rounded,
-                                  color: Colors.pinkAccent, size: 22),
-                              const SizedBox(width: 6),
-                              const Icon(Icons.arrow_left_rounded,
-                                  color: Colors.pinkAccent, size: 26),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  AppLocalizations.of(context)!
-                                      .favoritesTapHere,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: onSurface.withValues(alpha: 0.7),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.favorite_border_rounded,
+                                    color: Colors.pinkAccent, size: 22),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_left_rounded,
+                                    color: Colors.pinkAccent, size: 26),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    AppLocalizations.of(context)!
+                                        .favoritesTapHere,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: onSurface.withValues(alpha: 0.7),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+
+                  const Spacer(),
+                  const SizedBox(height: 90),
+                ],
+              ),
             ),
           ),
-
-          const SizedBox(height: 90), // 下側の余白も自然に確保
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -218,102 +222,130 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   .format(DateTime.parse(savedAtRaw))
               : "";
 
-          final cardColor = theme.cardTheme.color!;
+          final cardColor = theme.colorScheme.surface;
           final onSurface = theme.colorScheme.onSurface;
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VideoPlayerScreen(
-                    video: video,
-                    isRepeat: false,
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: cardColor,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Material(
+              color: cardColor,
+              shape: RoundedRectangleBorder(
                 borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
                     ? (theme.cardTheme.shape as RoundedRectangleBorder)
                         .borderRadius
                     : BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark
-                        ? Colors.black.withValues(alpha: 0.3)
-                        : Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                side: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.05),
+                ),
               ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      video["thumbnailUrl"] ?? "",
-                      width: 95,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+              elevation: 0, // 影は下のBoxShadowで付ける
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
+                      ? (theme.cardTheme.shape as RoundedRectangleBorder)
+                          .borderRadius
+                      : BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.3)
+                          : Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Row(
+                    children: [
+                      // ✅ サムネ（波紋出すなら Ink.image がベスト）
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VideoPlayerScreen(
+                                  video: video, isRepeat: false),
+                            ),
+                          ),
+                          splashColor: Colors.white.withValues(alpha: 0.22),
+                          highlightColor: Colors.white.withValues(alpha: 0.08),
+                          child: Ink.image(
+                            image: NetworkImage(video["thumbnailUrl"] ?? ""),
+                            fit: BoxFit.cover,
+                            width: 95,
+                            height: 60,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          video["title"] ?? "",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: onSurface,
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: IgnorePointer(
+                          ignoring: true,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                video["title"] ?? "",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                video["channelTitle"] ?? "",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: onSurface.withValues(alpha: 0.8),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                "$savedAt ${AppLocalizations.of(context)!.favoritesRegisteredSuffix}",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          video["channelTitle"] ?? "",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: onSurface.withValues(alpha: 0.8),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async => _tryDelete(video),
+                          borderRadius: BorderRadius.circular(99),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.red.shade400,
+                              size: 30,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "$savedAt ${AppLocalizations.of(context)!.favoritesRegisteredSuffix}",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () async => _tryDelete(video),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      color: Colors.red.shade400,
-                      size: 30,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -342,8 +374,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            toolbarHeight: 70,
-            flexibleSpace: CustomGlassAppBar(
+            toolbarHeight: 65,
+            flexibleSpace: LightFlatAppBar(
               title: AppLocalizations.of(context)!.favoritesTitle,
             ),
           ),

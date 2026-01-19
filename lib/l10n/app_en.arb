@@ -14,7 +14,7 @@
     "noVideosFound": "No videos found",
     "genreScreenTitle": "Popular by Genre",
     "genreSearchHeader": "Search videos",
-    "genreSearchHint": "Type a keyword...",
+
     "genreNetworkError": "Cannot connect to the network",
     "genreBrowseHeader": "Browse by category",
     "favoritesTitle": "Favorites",
@@ -43,12 +43,7 @@
     "favoriteLimitNotPurchased": "You’ve reached the favorites limit.\nUpgrading lets you save more favorites.",
     "favoriteLimitClose": "Close",
     "favoriteLimitUpgrade": "Limit upgrade",
-    "genrePopularTitle": "Trending: {genre}",
-    "@genrePopularTitle": {
-        "placeholders": {
-          "genre": {}
-        }
-    },
+
     "update": "updated",
     "settingsTitle": "Settings",
     "settingsTheme": "Theme",
@@ -94,6 +89,10 @@
     "settingsRegionSubtitle": "Choose the country for video trends",
     "regionJapan": "Japan",
     "regionUnitedStates": "United States",
+    "regionUnitedKingdom": "United Kingdom",
+    "regionGermany": "Germany",
+    "regionFrance": "France",
+    "regionIndia": "India",
 
     "repeatStatusOff": "OFF",
     "repeatStatusAscending": "ON (Ascending)",

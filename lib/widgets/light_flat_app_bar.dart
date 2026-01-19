@@ -1,28 +1,46 @@
-// lib/widgets/custom_glass_app_bar.dart
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../providers/region_provider.dart';
+import '../utils/app_logger.dart';
+import '../utils/card_density_prefs.dart';
 
-class CustomGlassAppBar extends StatelessWidget {
+enum AppBarTitleAlign {
+  center,
+  left,
+}
+
+class LightFlatAppBar extends StatelessWidget {
   final String title;
   final bool showRefreshButton;
   final bool isRefreshing;
   final VoidCallback? onRefreshPressed;
-
   final bool showInfoButton;
-  final String? infoMessage;
+  final DateTime? fetchedAt;
+  final bool showDensityButton;
+  final CardDensity density;
+  final VoidCallback? onToggleDensity;
+  final bool reserveLeadingSpace;
+  final AppBarTitleAlign titleAlign;
 
-  const CustomGlassAppBar({
+  const LightFlatAppBar({
     super.key,
     required this.title,
     this.showRefreshButton = false,
     this.isRefreshing = false,
     this.onRefreshPressed,
     this.showInfoButton = false,
-    this.infoMessage,
+    this.fetchedAt,
+    this.showDensityButton = false,
+    this.density = CardDensity.big,
+    this.onToggleDensity,
+    this.reserveLeadingSpace = false,
+    this.titleAlign = AppBarTitleAlign.center,
   });
 
   @override
@@ -59,6 +77,111 @@ class CustomGlassAppBar extends StatelessWidget {
     //
     final Color fgColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
+    final double leftReserve = reserveLeadingSpace ? 44 : 0;
+
+    final double rightReserve =
+        (showRefreshButton ? 40 : 0) + (showDensityButton ? 36 : 0) + 6;
+
+    Widget buildTitleRow(BoxConstraints constraints) {
+      final maxTitleWidth = (constraints.maxWidth - leftReserve - rightReserve)
+          .clamp(120.0, constraints.maxWidth);
+
+      final row = ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxTitleWidth),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: titleAlign == AppBarTitleAlign.center
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                textAlign: titleAlign == AppBarTitleAlign.center
+                    ? TextAlign.center
+                    : TextAlign.left,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: TextStyle(
+                  color: fgColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 21,
+                  height: 1.0,
+                  letterSpacing: 0.25,
+                ),
+              ),
+            ),
+            if (showInfoButton)
+              Builder(
+                builder: (_) {
+                  final l = AppLocalizations.of(context)!;
+                  final dt = fetchedAt;
+                  final formatted = (dt == null)
+                      ? "--"
+                      : DateFormat.yMd(l.localeName).add_Hm().format(dt);
+
+                  // ✅ RegionProvider の設定値を参照
+                  final regionCode = context.read<RegionProvider>().regionCode;
+
+                  // ✅ 地域ラベルをregionCodeで決定（ローカライズ対応）
+                  String resolveRegionLabel(String code) {
+                    switch (code) {
+                      case "JP":
+                        return l.regionJapan; // ← 追加するローカライズキー
+                      case "US":
+                        return l.regionUnitedStates;
+                      case "GB":
+                        return l.regionUnitedKingdom;
+                      case "DE":
+                        return l.regionGermany;
+                      case "FR":
+                        return l.regionFrance;
+                      case "IN":
+                        return l.regionIndia;
+                      default:
+                        return code;
+                    }
+                  }
+
+                  final regionLabel = resolveRegionLabel(regionCode);
+                  final infoText =
+                      l.infoTrendingUpdated(regionLabel, formatted);
+                  logger.i("info text = $infoText");
+
+                  return _InfoButton(
+                    message: infoText,
+                    color: fgColor,
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+
+      if (titleAlign == AppBarTitleAlign.center) {
+        // ✅ Popularなど：センター
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Transform.translate(
+            offset: const Offset(0, 2),
+            child: Center(child: row),
+          ),
+        );
+      }
+
+      // ✅ Genreなど：左寄せ（戻る分のpaddingを確保）
+      return Align(
+        alignment: Alignment.bottomLeft,
+        child: Transform.translate(
+          offset: const Offset(0, 2),
+          child: Padding(
+            padding: EdgeInsets.only(left: leftReserve),
+            child: row,
+          ),
+        ),
+      );
+    }
+
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
@@ -75,6 +198,16 @@ class CustomGlassAppBar extends StatelessWidget {
                     colors: bgGradient,
                   ),
                   color: bgColor,
+
+                  // ✅ 境界
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -82,7 +215,7 @@ class CustomGlassAppBar extends StatelessWidget {
 
           //
           // -------------------------------------------------------------
-          // 🧩 コンテンツ（既存維持）
+          // 🧩 コンテンツ
           // -------------------------------------------------------------
           //
           SafeArea(
@@ -125,7 +258,7 @@ class CustomGlassAppBar extends StatelessWidget {
                   const SizedBox(height: 2),
 
                   //
-                  // 📺 タイトル＋Info＋更新（元ロジック維持）
+                  // 📺 タイトル＋Info＋更新＋（左：密度ボタン）
                   //
                   SizedBox(
                     height: 28,
@@ -133,84 +266,59 @@ class CustomGlassAppBar extends StatelessWidget {
                       alignment: Alignment.bottomCenter,
                       clipBehavior: Clip.none,
                       children: [
+                        // ✅ 中央：タイトル + Info（既存ベース維持しつつ “被り回避” を maxWidth で行う）
                         Align(
                           alignment: Alignment.bottomCenter,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) =>
+                                buildTitleRow(constraints),
+                          ),
+                        ),
+
+                        // ✅ 右：切替ボタン → 更新ボタン（並び順固定）
+                        Positioned(
+                          right: 0,
+                          bottom: -13,
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Flexible(
-                                child: Text(
-                                  title,
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: fgColor,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 21,
-                                    height: 1.0,
-                                    letterSpacing: 0.25,
+                              if (showDensityButton)
+                                Transform.translate(
+                                  offset: const Offset(10, 0), // ✅ 更新側に寄せる
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: onToggleDensity,
+                                    iconSize: 26,
+                                    tooltip: _densityTooltip(density),
+                                    icon: Icon(
+                                      _densityIcon(density),
+                                      color: fgColor,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (showInfoButton)
-                                Builder(
-                                  builder: (_) {
-                                    String resolveRegionLabel(Locale locale) {
-                                      switch (locale.languageCode) {
-                                        case 'ja':
-                                          return "日本国内";
-                                        case 'en':
-                                          return "United States";
-                                        // 追加予定
-                                        // case 'fr': return "France";
-                                        // case 'de': return "Germany";
-                                        default:
-                                          return "Worldwide";
-                                      }
-                                    }
-
-                                    final l = AppLocalizations.of(context)!;
-                                    final now = DateTime.now();
-                                    final formatted =
-                                        DateFormat.yMd(l.localeName)
-                                            .add_Hm()
-                                            .format(now);
-                                    final region = resolveRegionLabel(
-                                        Localizations.localeOf(context));
-                                    final infoText = infoMessage ??
-                                        l.infoTrendingUpdated(
-                                            region, formatted);
-
-                                    return _InfoButton(
-                                      message: infoText,
-                                      color: fgColor,
-                                    );
-                                  },
+                              if (showRefreshButton)
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed:
+                                      isRefreshing ? null : onRefreshPressed,
+                                  iconSize: 28,
+                                  icon: isRefreshing
+                                      ? SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.8,
+                                            color: fgColor,
+                                          ),
+                                        )
+                                      : Icon(Icons.refresh_rounded,
+                                          color: fgColor),
                                 ),
                             ],
                           ),
                         ),
-                        if (showRefreshButton)
-                          Positioned(
-                            right: 0,
-                            bottom: -13,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: isRefreshing ? null : onRefreshPressed,
-                              iconSize: 28,
-                              icon: isRefreshing
-                                  ? SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.8,
-                                        color: fgColor,
-                                      ),
-                                    )
-                                  : Icon(Icons.refresh_rounded, color: fgColor),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -222,9 +330,31 @@ class CustomGlassAppBar extends StatelessWidget {
       ),
     );
   }
+
+  IconData _densityIcon(CardDensity d) {
+    switch (d) {
+      case CardDensity.big:
+        // return Icons.crop_portrait_rounded; // Bigカード
+        return Icons.view_carousel_rounded; // Bigカード
+      case CardDensity.middle:
+        return Icons.view_agenda_rounded; // Middle（縦カード）
+      case CardDensity.small:
+        return Icons.view_list_rounded; // Small（横並びCompact）
+    }
+  }
+
+  String _densityTooltip(CardDensity d) {
+    switch (d) {
+      case CardDensity.big:
+        return "大カード表示";
+      case CardDensity.middle:
+        return "中カード表示";
+      case CardDensity.small:
+        return "小カード表示";
+    }
+  }
 }
 
-//
 // =============================================================
 // 🔥 Infoボタン（色も fgColor に合わせて変更可能に）
 // =============================================================
@@ -250,9 +380,12 @@ class _InfoButtonState extends State<_InfoButton>
   late Animation<double> _opacity;
   late Animation<Offset> _slide;
 
+  Timer? _autoCloseTimer; // ✅ 追加
+
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -275,15 +408,42 @@ class _InfoButtonState extends State<_InfoButton>
 
   @override
   void dispose() {
+    // ✅ 重要：破棄される時に overlay を必ず remove
+    _autoCloseTimer?.cancel();
+    _removeOverlayImmediately();
+
     _controller.dispose();
     super.dispose();
   }
 
-  void _showTooltip(BuildContext context) {
+  void _removeOverlayImmediately() {
+    try {
+      _overlay?.remove();
+    } catch (_) {}
+    _overlay = null;
+  }
+
+  Future<void> _closeOverlay() async {
+    _autoCloseTimer?.cancel();
+    if (_overlay == null) return;
+
+    try {
+      await _controller.reverse();
+    } catch (_) {}
+
+    _removeOverlayImmediately();
+  }
+
+  void _showTooltip(BuildContext context) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final box = context.findRenderObject() as RenderBox;
+    // ✅ 既に出てるなら先に閉じる（更新/連打対策）
+    await _closeOverlay();
+
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
 
@@ -342,15 +502,15 @@ class _InfoButtonState extends State<_InfoButton>
       ),
     );
 
-    Overlay.of(context).insert(_overlay!);
-    _controller.forward();
+    final overlay = Overlay.of(context);
+    overlay.insert(_overlay!);
 
-    Future.delayed(const Duration(seconds: 4), () async {
-      if (_overlay != null) {
-        await _controller.reverse();
-        _overlay?.remove();
-        _overlay = null;
-      }
+    await _controller.forward();
+
+    // ✅ 自動クローズも Timer で管理（更新でdisposeされてもcancelできる）
+    _autoCloseTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      _closeOverlay();
     });
   }
 

@@ -14,7 +14,7 @@
     "noVideosFound": "動画が見つかりません",
     "genreScreenTitle": "ジャンル別人気",
     "genreSearchHeader": "検索して探す",
-    "genreSearchHint": "検索ワードを入力...",
+
     "genreNetworkError": "ネットワークに接続できません",
     "genreBrowseHeader": "ジャンルから探す",
 
@@ -45,12 +45,6 @@
     "favoriteLimitClose": "閉じる",
     "favoriteLimitUpgrade": "上限を拡張する",
 
-    "genrePopularTitle": "人気：{genre}",
-    "@genrePopularTitle": {
-        "placeholders": {
-          "genre": {}
-        }
-    },
     "update": "更新",
     "settingsTitle": "設定",
     "settingsTheme": "テーマ",
@@ -98,6 +92,10 @@
     "settingsRegionSubtitle": "アプリで表示する国を選択",
     "regionJapan": "日本",
     "regionUnitedStates": "アメリカ",
+    "regionUnitedKingdom": "イギリス",
+    "regionGermany": "ドイツ",
+    "regionFrance": "フランス",
+    "regionIndia": "インド",
 
     "repeatStatusOff": "OFF",
     "repeatStatusAscending": "ON (昇順)",

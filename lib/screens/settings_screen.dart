@@ -8,7 +8,7 @@ import '../data/region_option.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/custom_glass_app_bar.dart';
+import '../widgets/light_flat_app_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -301,6 +301,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // Phase2対応
   void _showRegionDialog(BuildContext context) {
     final provider = context.read<RegionProvider>();
     final theme = Theme.of(context);
@@ -361,6 +362,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _settingsCard({
+    required BuildContext context,
+    required VoidCallback onTap,
+    required Widget leading,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onSurface = theme.colorScheme.onSurface;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface, // ✅ 白さ維持のキモ
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.05), // ✅ Genreと同じ
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          splashFactory: InkSparkle.splashFactory,
+          onTap: onTap,
+          child: ListTile(
+            leading: leading,
+            title: Text(
+              title,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            subtitle: subtitle == null
+                ? null
+                : Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+            trailing:
+                trailing ?? Icon(Icons.chevron_right_rounded, color: onSurface),
+          ),
+        ),
+      ),
+    );
+  }
+
   // -------------------------------------------------------------------
 
   @override
@@ -379,8 +438,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             snap: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 70,
-            flexibleSpace: CustomGlassAppBar(
+            expandedHeight: 65,
+            flexibleSpace: LightFlatAppBar(
               title: AppLocalizations.of(context)!.settingsTitle,
             ),
           ),
@@ -395,224 +454,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 5),
 
                       // 1️⃣ テーマ
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          leading: Icon(Icons.dark_mode, color: onSurface),
-                          title: Text(
-                            AppLocalizations.of(context)!.settingsTheme,
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            _themeLabel(themeProvider.themeMode),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          trailing: Icon(Icons.chevron_right_rounded,
-                              color: onSurface),
-                          onTap: () => _showThemeDialog(context, themeProvider),
-                        ),
+                      _settingsCard(
+                        context: context,
+                        onTap: () => _showThemeDialog(context, themeProvider),
+                        leading:
+                            Icon(Icons.brightness_6_outlined, color: onSurface),
+                        title: AppLocalizations.of(context)!.settingsTheme,
+                        subtitle: _themeLabel(themeProvider.themeMode),
                       ),
 
                       // 2️⃣ お気に入り削除
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          leading:
-                              Icon(Icons.favorite_rounded, color: onSurface),
-                          title: Text(
-                            AppLocalizations.of(context)!
-                                .settingsFavoriteDeleteTitle,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            _skipDeleteConfirm
-                                ? AppLocalizations.of(context)!
-                                    .settingsFavoriteDeleteOff
-                                : AppLocalizations.of(context)!
-                                    .settingsFavoriteDeleteOn,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          trailing: Icon(Icons.chevron_right_rounded,
-                              color: onSurface),
-                          onTap: () => _showDeleteConfirmDialog(context),
-                        ),
+                      _settingsCard(
+                        context: context,
+                        onTap: () => _showDeleteConfirmDialog(context),
+                        leading: Icon(Icons.favorite_rounded, color: onSurface),
+                        title: AppLocalizations.of(context)!
+                            .settingsFavoriteDeleteTitle,
+                        subtitle: _skipDeleteConfirm
+                            ? AppLocalizations.of(context)!
+                                .settingsFavoriteDeleteOff
+                            : AppLocalizations.of(context)!
+                                .settingsFavoriteDeleteOn,
                       ),
 
                       // 3️⃣ ショップ
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          leading: Icon(Icons.storefront, color: onSurface),
-                          title: Text(
-                            AppLocalizations.of(context)!.settingsShop,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
+                      _settingsCard(
+                        context: context,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ShopScreen()),
+                          );
+                        },
+                        leading: Icon(Icons.storefront, color: onSurface),
+                        title: AppLocalizations.of(context)!.settingsShop,
+                        subtitle:
                             AppLocalizations.of(context)!.settingsShopSubtitle,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: Icon(Icons.chevron_right_rounded,
-                              color: onSurface),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ShopScreen(),
-                              ),
-                            );
-                          },
-                        ),
                       ),
 
-                      // 4️⃣ 地域（YouTube ランキング）
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Consumer<RegionProvider>(
-                          builder: (context, provider, _) {
-                            final l = AppLocalizations.of(context)!;
-                            final current = regionOptions.firstWhere(
-                                (r) => r.code == provider.regionCode);
-
-                            return ListTile(
-                              leading: Icon(Icons.public, color: onSurface),
-                              title: Text(
-                                AppLocalizations.of(context)!.settingsRegion,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                "${current.flag}  ${current.label(l)}",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: onSurface.withValues(alpha: 0.7),
-                                ),
-                              ),
-                              trailing: Icon(
-                                Icons.chevron_right_rounded,
-                                color: onSurface,
-                              ),
-                              onTap: () => _showRegionDialog(context),
-                            );
-                          },
-                        ),
-                      ),
+                      // 4️⃣ 地域（YouTube ランキング）-Phase2
+                      // Consumer<RegionProvider>(
+                      //   builder: (context, provider, _) {
+                      //     final l = AppLocalizations.of(context)!;
+                      //     final current = regionOptions
+                      //         .firstWhere((r) => r.code == provider.regionCode);
+                      //
+                      //     return _settingsCard(
+                      //       context: context,
+                      //       onTap: () => _showRegionDialog(context),
+                      //       leading: Icon(Icons.public, color: onSurface),
+                      //       title: AppLocalizations.of(context)!.settingsRegion,
+                      //       subtitle: "${current.flag}  ${current.label(l)}",
+                      //     );
+                      //   },
+                      // ),
 
                       // 5️⃣ 各種ポリシー
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          leading: Icon(Icons.policy, color: onSurface),
-                          title: Text(
-                            AppLocalizations.of(context)!.settingsPolicies,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            AppLocalizations.of(context)!
-                                .settingsPoliciesSubtitle,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: Icon(Icons.chevron_right_rounded,
-                              color: onSurface),
-                          onTap: () => _showPolicyDialog(context),
-                        ),
+                      _settingsCard(
+                        context: context,
+                        onTap: () => _showPolicyDialog(context),
+                        leading: Icon(Icons.policy, color: onSurface),
+                        title: AppLocalizations.of(context)!.settingsPolicies,
+                        subtitle: AppLocalizations.of(context)!
+                            .settingsPoliciesSubtitle,
                       ),
 
                       const SizedBox(height: 20),

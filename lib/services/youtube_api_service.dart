@@ -47,6 +47,9 @@ class YouTubeApiService {
     String? videoCategoryId,
     bool forceRefresh = false,
   }) async {
+    logger.w(
+        "🌐 fetchPopularVideos called region=$regionCode max=$maxResults force=$forceRefresh time=${DateTime.now()}");
+
     final now = DateTime.now();
 
     // 👇 maxResults & category をキャッシュキーに含める

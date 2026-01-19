@@ -11,7 +11,7 @@ import '../data/genre_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/custom_glass_app_bar.dart';
+import '../widgets/light_flat_app_bar.dart';
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class GenreScreen extends StatefulWidget {
 }
 
 class _GenreScreenState extends State<GenreScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   String _lastRegion = "JP";
 
   final YouTubeApiService _apiService = YouTubeApiService();
@@ -37,14 +37,19 @@ class _GenreScreenState extends State<GenreScreen>
   Timer? _debounce;
   List<String> _suggestions = [];
   bool _isLoadingSuggest = false;
+  bool _isSearchingFromSuggest = false;
 
   bool _isScrollingDown = false;
 
-  bool _isSearchingFromSuggest = false;
-
   late AnimationController _tapAnim;
   late Animation<double> _scaleAnim;
-  Brightness? _lastBrightness;
+
+  // Brightness? _lastBrightness;
+  // late final RegionProvider _regionProvider;
+  bool _didInitialJump = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -64,6 +69,10 @@ class _GenreScreenState extends State<GenreScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    if (_didInitialJump) return;
+    _didInitialJump = true;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(0);
@@ -111,7 +120,6 @@ class _GenreScreenState extends State<GenreScreen>
     });
 
     await Future.delayed(const Duration(milliseconds: 300));
-
     if (!mounted) return;
 
     await Navigator.push(
@@ -143,14 +151,14 @@ class _GenreScreenState extends State<GenreScreen>
       if (text.isEmpty) {
         setState(() {
           _suggestions = [];
-          _networkError = false; // リセット
+          _networkError = false;
         });
         return;
       }
 
       setState(() {
         _isLoadingSuggest = true;
-        _networkError = false; // 通信前にクリア
+        _networkError = false;
       });
 
       try {
@@ -173,14 +181,14 @@ class _GenreScreenState extends State<GenreScreen>
         setState(() {
           _isLoadingSuggest = false;
           _suggestions = [];
-          _networkError = true; // ← ★ エラーフラグON
+          _networkError = true;
         });
       }
     });
   }
 
   // ----------------------------------------------------
-  // 🔍 検索フォーム（Dark対応）
+  // 🔍 検索フォーム（hint位置調整済み）
   // ----------------------------------------------------
   Widget _buildSearchField() {
     final theme = Theme.of(context);
@@ -204,7 +212,7 @@ class _GenreScreenState extends State<GenreScreen>
             borderRadius: BorderRadius.circular(14),
             color: Colors.transparent,
             child: Container(
-              height: 44, // ← 高さ固定（ズレ防止の要）
+              height: 44,
               decoration: BoxDecoration(
                 color: searchBg,
                 borderRadius: BorderRadius.circular(14),
@@ -216,21 +224,18 @@ class _GenreScreenState extends State<GenreScreen>
               ),
               child: Row(
                 children: [
-                  // ==================
                   // 🔍 入力欄
-                  // ==================
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                       child: Stack(
                         children: [
-                          // ▶ TextField 本体
                           TextField(
                             controller: _searchCtrl,
                             focusNode: _focusNode,
                             onChanged: (text) {
                               _onSearchChanged(text);
-                              setState(() {}); // ← X の表示更新
+                              setState(() {});
                             },
                             style: TextStyle(
                               color: isDark
@@ -240,17 +245,18 @@ class _GenreScreenState extends State<GenreScreen>
                             decoration: InputDecoration(
                               border: InputBorder.none,
                               hintText:
-                                  AppLocalizations.of(context)!.genreSearchHint,
+                                  // AppLocalizations.of(context)!.genreSearchHint,
+                                  AppLocalizations.of(context)!
+                                      .genreSearchHeader,
                               hintStyle: TextStyle(
                                 color: isDark ? Colors.white60 : Colors.black54,
                               ),
-                              // 🔥 上下の高さを調整（ズレ防止）
+
+                              // ✅ hint中央寄せチューニング
                               contentPadding:
-                                  const EdgeInsets.fromLTRB(0, 2, 36, 0),
+                                  const EdgeInsets.fromLTRB(0, -1, 36, 0),
                             ),
                           ),
-
-                          // ▶ クリア(X)
                           if (_searchCtrl.text.isNotEmpty)
                             Positioned(
                               right: 0,
@@ -290,14 +296,12 @@ class _GenreScreenState extends State<GenreScreen>
                     ),
                   ),
 
-                  // ==================
-                  // 🔘 右側アクション
-                  // ==================
+                  // 右アクション
                   Container(
-                    width: 52, // ← 少し広げる（44 → 52）
+                    width: 52,
                     height: double.infinity,
                     decoration: BoxDecoration(
-                      color: actionBg, // ← 背景を濃く
+                      color: actionBg,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(14),
                         bottomRight: Radius.circular(14),
@@ -310,14 +314,14 @@ class _GenreScreenState extends State<GenreScreen>
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white, // ← ローディングも白で統一
+                                color: Colors.white,
                               ),
                             )
                           : IconButton(
                               icon: const Icon(
                                 Icons.search,
                                 size: 22,
-                                color: Colors.white, // ← 検索アイコン白
+                                color: Colors.white,
                               ),
                               onPressed: () {
                                 _executeSearch(_searchCtrl.text);
@@ -335,143 +339,11 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 サジェスト一覧（Dark対応）
-  // ----------------------------------------------------
-  Widget _buildSuggestions() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
-
-    // -------------------------
-    // 💥 ネットワークエラー表示
-    // -------------------------
-    if (_networkError) {
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.4)
-                  : Colors.black.withValues(alpha: 0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.wifi_off_rounded,
-              color: theme.colorScheme.error,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                AppLocalizations.of(context)!.genreNetworkError,
-                style: TextStyle(
-                  color: theme.colorScheme.error,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // -------------------------
-    // 📭 空 or サジェストなし → 非表示
-    // -------------------------
-    if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // -------------------------
-    // 🔄 ローディング
-    // -------------------------
-    if (_isLoadingSuggest) {
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.4)
-                  : Colors.black.withValues(alpha: 0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
-    // -------------------------
-    // 🔍 サジェストリスト
-    // -------------------------
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.4)
-                : Colors.black.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ..._suggestions.map(
-            (s) => ListTile(
-              dense: true,
-              leading: Icon(
-                Icons.search,
-                size: 20,
-                color: isDark ? Colors.white70 : Colors.grey[700],
-              ),
-              title: Text(
-                s,
-                style: TextStyle(color: theme.colorScheme.onSurface),
-              ),
-              onTap: () async {
-                _searchCtrl.text = s;
-                _executeSearch(s);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ----------------------------------------------------
-  // 🔥 グループセクション（Dark対応）
+  // 🔥 グループセクション
   // ----------------------------------------------------
   Widget _buildGroupSection(GenreGroup group) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -480,7 +352,7 @@ class _GenreScreenState extends State<GenreScreen>
         children: [
           // 見出し
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
                 Icon(group.icon, color: group.color, size: 22),
@@ -496,16 +368,28 @@ class _GenreScreenState extends State<GenreScreen>
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           // 各カテゴリ
           ...group.items.map((cat) {
             return Container(
               margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-              child: Material(
-                color: cardColor,
-                elevation: 2,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.black.withValues(alpha: 0.05),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
@@ -535,7 +419,7 @@ class _GenreScreenState extends State<GenreScreen>
                       );
                     }
                   },
-                  child: Container(
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
@@ -572,43 +456,154 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  Widget _buildSuggestionsPinned() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+
+    // ✅ ネットワークエラー
+    if (_networkError) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.wifi_off_rounded,
+                color: theme.colorScheme.error, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)!.genreNetworkError,
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ✅ ローディング
+    if (_isLoadingSuggest) {
+      return Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(14),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    // ✅ サジェスト無し → 空
+    if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // ✅ ここが重要：必ずスクロールできるListViewにする（Column禁止）
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 0,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          itemCount: _suggestions.length,
+          separatorBuilder: (_, __) => Divider(
+            height: 1,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
+          itemBuilder: (_, idx) {
+            final s = _suggestions[idx];
+            return ListTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -2),
+              leading: Icon(
+                Icons.search,
+                size: 18,
+                color: isDark ? Colors.white70 : Colors.grey[700],
+              ),
+              title: Text(
+                s,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () {
+                _searchCtrl.text = s;
+                _executeSearch(s);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   // ----------------------------------------------------
-  // 🧩 本体（Darkテーマ背景対応）
+  // 🧩 本体
   // ----------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final theme = Theme.of(context);
-
     final region = context.watch<RegionProvider>().regionCode;
-
-    // 🌎 地域変更 → サジェストもリセット
     if (region != _lastRegion) {
       _lastRegion = region;
-
-      setState(() {
-        _suggestions = [];
-        _networkError = false;
-      });
-
-      // 入力中なら自動でサジェスト再取得
-      if (_searchCtrl.text.isNotEmpty) {
-        _onSearchChanged(_searchCtrl.text);
-      }
-    }
-
-    final brightness = Theme.of(context).brightness;
-
-    if (_lastBrightness != brightness) {
-      _lastBrightness = brightness;
-
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(0);
+        if (!mounted) return;
+        setState(() {
+          _suggestions = [];
+          _networkError = false;
+        });
+        if (_searchCtrl.text.isNotEmpty) {
+          _onSearchChanged(_searchCtrl.text);
         }
       });
     }
 
     final groups = getGenreGroupsForRegion(region);
+
+    final bool showSuggest = _networkError ||
+        _isLoadingSuggest ||
+        (_searchCtrl.text.isNotEmpty && _suggestions.isNotEmpty);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -616,49 +611,45 @@ class _GenreScreenState extends State<GenreScreen>
         controller: _scrollController,
         slivers: [
           SliverAppBar(
+            primary: true,
             floating: true,
             snap: false,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 70,
-            flexibleSpace: CustomGlassAppBar(
+            expandedHeight: 65,
+            flexibleSpace: LightFlatAppBar(
               title: AppLocalizations.of(context)!.genreScreenTitle,
             ),
           ),
 
-          // --- 見出し ---
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                AppLocalizations.of(context)!.genreSearchHeader,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-
-          // ===============================
-          // 🔒 検索フォーム固定
-          // ===============================
           SliverPersistentHeader(
             pinned: true,
-            delegate: SearchHeaderDelegate(
-              height: 72, // ← 実測で余裕を持たせる
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: _buildSearchField(), // ← margin を剥がしたもの
+            delegate: PinnedSearchHeaderDelegate(
+              safeTop: MediaQuery.of(context).padding.top,
+              showSuggestions: showSuggest,
+              suggestionsCount: _suggestions.length,
+              isLoading: _isLoadingSuggest,
+              isError: _networkError,
+              searchField: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSearchField(),
+              ),
+              suggestions: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSuggestionsPinned(),
               ),
             ),
           ),
-          SliverToBoxAdapter(child: _buildSuggestions()),
+
+          // ✅ pinnedフォーム直後に少し余白
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+          // ✅ 検索ブロックと次見出しの間の余白
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Text(
                 AppLocalizations.of(context)!.genreBrowseHeader,
                 style: TextStyle(
@@ -686,46 +677,94 @@ class _GenreScreenState extends State<GenreScreen>
   }
 }
 
-class SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  final double height;
+class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget searchField;
+  final Widget suggestions;
 
-  SearchHeaderDelegate({
-    required this.child,
-    required this.height,
+  final double safeTop;
+  final bool showSuggestions;
+
+  final int suggestionsCount;
+  final bool isLoading;
+  final bool isError;
+
+  PinnedSearchHeaderDelegate({
+    required this.searchField,
+    required this.suggestions,
+    required this.safeTop,
+    required this.showSuggestions,
+    required this.suggestionsCount,
+    required this.isLoading,
+    required this.isError,
   });
 
-  @override
-  double get minExtent => height + _extraTopPadding;
+  static const double _topPadding = 6;
+  static const double _fieldHeight = 46;
+  static const double _gap = 6;
+
+  static const double _suggestMaxHeight = 220;
+
+  // ✅ ListTile(dense)想定。visualDensity調整してるなら 40〜48で微調整
+  static const double _suggestRowHeight = 44;
+
+  // Container padding: vertical 6 + 6、divider等を加味
+  static const double _suggestOuterPadding = 16;
+
+  double get _suggestHeight {
+    if (!showSuggestions) return 0;
+
+    // ✅ ローディング/エラーは高さ固定でOK
+    if (isLoading || isError) return 72;
+
+    // ✅ 候補が少ないときは「内容分だけ」
+    final raw = suggestionsCount * _suggestRowHeight + _suggestOuterPadding;
+
+    return raw.clamp(0, _suggestMaxHeight);
+  }
 
   @override
-  double get maxExtent => height + _extraTopPadding;
+  double get minExtent =>
+      safeTop +
+      _topPadding +
+      _fieldHeight +
+      (showSuggestions ? _gap + _suggestHeight : 0);
 
-  double get _extraTopPadding => 8; // ← 好みで 6〜10px 調整OK
+  @override
+  double get maxExtent => minExtent;
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     final bg = Theme.of(context).scaffoldBackgroundColor;
+    final safeTopAdjusted = (safeTop * 0.70).clamp(14.0, 28.0);
 
     return Container(
       color: bg,
       child: Column(
         children: [
-          SizedBox(height: _extraTopPadding), // 👈 上だけ余白
-          SizedBox(
-            height: height, // 👈 検索フォーム本来の高さは固定
-            child: child,
-          ),
+          SizedBox(height: safeTopAdjusted),
+          const SizedBox(height: _topPadding),
+          SizedBox(height: _fieldHeight, child: searchField),
+          if (showSuggestions) ...[
+            const SizedBox(height: _gap),
+            SizedBox(
+              height: _suggestHeight,
+              child: suggestions,
+            ),
+          ],
         ],
       ),
     );
   }
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      true;
+  bool shouldRebuild(covariant PinnedSearchHeaderDelegate old) {
+    return safeTop != old.safeTop ||
+        showSuggestions != old.showSuggestions ||
+        suggestionsCount != old.suggestionsCount ||
+        isLoading != old.isLoading ||
+        isError != old.isError ||
+        searchField != old.searchField ||
+        suggestions != old.suggestions;
+  }
 }

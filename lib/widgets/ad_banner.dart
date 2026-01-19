@@ -84,6 +84,9 @@ class _AdBannerState extends State<AdBanner> {
     // ★ どちらにせよ高さは 50px で統一
     return SizedBox(
       height: 50,
+      // For capture
+      // child: _buildDummyBannerGlass(context),
+
       child: (_isLoaded && banner != null) && !debugMode
           ? AdWidget(ad: banner)
           : _buildDummyBannerGlass(context), // ← バナーなし時はこれ

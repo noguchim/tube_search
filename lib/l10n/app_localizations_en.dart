@@ -38,9 +38,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get genreSearchHeader => 'Search videos';
 
   @override
-  String get genreSearchHint => 'Type a keyword...';
-
-  @override
   String get genreNetworkError => 'Cannot connect to the network';
 
   @override
@@ -95,11 +92,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoriteLimitUpgrade => 'Limit upgrade';
-
-  @override
-  String genrePopularTitle(Object genre) {
-    return 'Trending: $genre';
-  }
 
   @override
   String get update => 'updated';
@@ -225,6 +217,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get regionUnitedStates => 'United States';
+
+  @override
+  String get regionUnitedKingdom => 'United Kingdom';
+
+  @override
+  String get regionGermany => 'Germany';
+
+  @override
+  String get regionFrance => 'France';
+
+  @override
+  String get regionIndia => 'India';
 
   @override
   String get repeatStatusOff => 'OFF';

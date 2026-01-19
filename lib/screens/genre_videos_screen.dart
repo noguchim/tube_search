@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:intl/intl.dart';
@@ -8,9 +10,13 @@ import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/custom_glass_app_bar.dart';
+import '../utils/app_logger.dart';
+import '../utils/card_density_prefs.dart';
+import '../widgets/light_flat_app_bar.dart';
 import '../widgets/network_error_view.dart';
 import '../widgets/video_list_tile.dart';
+import '../widgets/video_list_tile_middle.dart';
+import '../widgets/video_list_tile_small.dart';
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
@@ -38,13 +44,36 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   bool _isRefreshing = false;
   bool _isScrollingDown = false;
   DateTime? _fetchedAt;
-  int _lastLimit = 10;
+  int _lastLimit = 20;
+  static const _densityKey = 'popular_card_density';
+  CardDensity _density = CardDensity.big;
+
+  bool _isSearching = false;
+  Completer<List<Map<String, dynamic>>>? _activeRequest;
 
   @override
   void initState() {
     super.initState();
     _futureVideos = _loadVideos();
     _scrollController.addListener(_onScroll);
+    _initDensity();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final iap = context.watch<IapProvider>();
+    final currentLimit = LimitService.videoListLimit(iap);
+
+    if (currentLimit != _lastLimit) {
+      _lastLimit = currentLimit;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _futureVideos = _loadVideos(forceRefresh: true));
+      });
+    }
   }
 
   @override
@@ -52,6 +81,18 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initDensity() async {
+    final d = await CardDensityPrefs.load(key: _densityKey);
+    if (!mounted) return;
+    setState(() => _density = d);
+  }
+
+  void _toggleDensity() {
+    final next = CardDensityPrefs.next(_density);
+    setState(() => _density = next);
+    CardDensityPrefs.save(next, key: _densityKey);
   }
 
   // ---------------------------------------------------------
@@ -70,98 +111,159 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     }
   }
 
-  String shortTitle(String t) => t.length > 8 ? '${t.substring(0, 8)}…' : t;
+  String shortTitle(String t) => t.length > 12 ? '${t.substring(0, 12)}…' : t;
 
   // ---------------------------------------------------------
   // 🔥 API 統合フェッチ（キーワード or 人気ジャンル）
   // ---------------------------------------------------------
-  Future<List<Map<String, dynamic>>> _loadVideos(
-      {bool forceRefresh = false}) async {
-    final kw = widget.keyword?.trim();
-    final cat = widget.categoryId == "0" ? "" : widget.categoryId;
-    final iap = context.read<IapProvider>();
-    final limit = LimitService.videoListLimit(iap);
+  Future<List<Map<String, dynamic>>> _loadVideos({bool forceRefresh = false}) {
+    // ✅ すでに検索中 → 同じFutureを返して二重実行を防ぐ
+    if (_isSearching && _activeRequest != null) {
+      return _activeRequest!.future;
+    }
 
-    List<Map<String, dynamic>> videos = [];
+    _isSearching = true;
+    _activeRequest = Completer<List<Map<String, dynamic>>>();
 
-    try {
-      if (kw != null && kw.isNotEmpty) {
-        // キーワード検索 → IDs → 詳細
-        final region = context.read<RegionProvider>().regionCode;
-        final search = await _apiService.searchWithStats(
-          categoryId: cat,
-          keyword: kw,
-          maxResults: limit,
-          regionCode: region,
-          forceRefresh: forceRefresh,
-        );
+    () async {
+      final kw = widget.keyword?.trim();
+      final cat = widget.categoryId == "0" ? "" : widget.categoryId;
 
-        if (search.isEmpty) {
-          _fetchedAt = DateTime.now();
-          return [];
+      final iap = context.read<IapProvider>();
+      final limit = LimitService.videoListLimit(iap);
+
+      List<Map<String, dynamic>> videos = [];
+
+      logger.w("🧮 limit=$limit (IAP purchased=${iap.isPurchased})");
+
+
+
+
+      try {
+        logger.i("🎯 loadVideos: kw=${kw ?? '(null)'} / cat=$cat");
+
+        if (kw != null && kw.isNotEmpty) {
+          // キーワード検索
+
+          logger.i("🔎 mode=keywordSearch");
+
+          final region = context.read<RegionProvider>().regionCode;
+
+          var search = await _apiService.searchWithStats(
+            categoryId: cat,
+            keyword: kw,
+            maxResults: limit,
+            regionCode: region,
+            forceRefresh: forceRefresh,
+          );
+
+          logger.w("📌 [kw]searchCount=${search.length}");
+
+          // 0件ならカテゴリ無しでフォールバック
+          if (search.isEmpty && cat.isNotEmpty) {
+            search = await _apiService.searchWithStats(
+              categoryId: "",
+              keyword: kw,
+              maxResults: limit,
+              regionCode: region,
+              forceRefresh: forceRefresh,
+            );
+          }
+
+          if (search.isEmpty) {
+            _fetchedAt = DateTime.now();
+            _activeRequest?.complete([]);
+            return;
+          }
+
+          final ids = search.map((v) => v.id).join(',');
+          logger.w("📌 [kw]idsCount=${ids.split(',').length}");
+          final detail = await _apiService.fetchVideosByIds(ids);
+
+          videos = detail
+              .map((v) => {
+            'id': v.id,
+            'title': v.title,
+            'thumbnailUrl': v.thumbnailUrl,
+            'channelTitle': v.channelTitle,
+            'publishedAt': v.publishedAt?.toIso8601String(),
+            'viewCount': v.viewCount ?? 0,
+            'durationSeconds': v.durationSeconds ?? 0,
+          })
+              .toList();
+
+          logger.w("📌 [kw]detailCount=${detail.length}");
+        } else {
+          // 人気ジャンル一覧
+
+          logger.i("🔥 mode=popularGenreList");
+
+          final region = context.read<RegionProvider>().regionCode;
+
+          final list = await _apiService.fetchPopularVideos(
+            videoCategoryId: cat,
+            maxResults: limit,
+            regionCode: region,
+            forceRefresh: forceRefresh,
+          );
+
+          videos = list
+              .map((v) => {
+            'id': v.id,
+            'title': v.title,
+            'thumbnailUrl': v.thumbnailUrl,
+            'channelTitle': v.channelTitle,
+            'publishedAt': v.publishedAt?.toIso8601String(),
+            'viewCount': v.viewCount ?? 0,
+            'durationSeconds': v.durationSeconds ?? 0,
+          })
+              .toList();
+
+          logger.w("📌 [gr]listCount=${list.length}");
         }
 
-        final ids = search.map((v) => v.id).join(',');
-        final detail = await _apiService.fetchVideosByIds(ids);
-
-        videos = detail
-            .map((v) => {
-                  'id': v.id,
-                  'title': v.title,
-                  'thumbnailUrl': v.thumbnailUrl,
-                  'channelTitle': v.channelTitle,
-                  'publishedAt': v.publishedAt?.toIso8601String(),
-                  'viewCount': v.viewCount ?? 0,
-                  'durationSeconds': v.durationSeconds ?? 0,
-                })
-            .toList();
-      } else {
-        // 人気ジャンル一覧
-        final region = context.read<RegionProvider>().regionCode;
-
-        final list = await _apiService.fetchPopularVideos(
-          videoCategoryId: cat,
-          maxResults: limit,
-          regionCode: region,
-          forceRefresh: forceRefresh,
+        // ソート & 更新時間
+        videos.sort(
+              (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int),
         );
 
-        videos = list
-            .map((v) => {
-                  'id': v.id,
-                  'title': v.title,
-                  'thumbnailUrl': v.thumbnailUrl,
-                  'channelTitle': v.channelTitle,
-                  'publishedAt': v.publishedAt?.toIso8601String(),
-                  'viewCount': v.viewCount ?? 0,
-                  'durationSeconds': v.durationSeconds ?? 0,
-                })
-            .toList();
-      }
+        videos = videos.take(limit).toList();
 
-      // ソート & 更新時間
-      videos.sort(
-          (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
-      _fetchedAt = DateTime.now();
-      return videos;
-    } catch (e) {
-      rethrow;
-    }
+        _fetchedAt = DateTime.now();
+        _activeRequest?.complete(videos);
+
+      } catch (e, st) {
+        // ✅ FutureBuilderに伝播できるようエラーもcompleteError
+        if (!(_activeRequest?.isCompleted ?? true)) {
+          _activeRequest?.completeError(e, st);
+        }
+      } finally {
+        _isSearching = false;
+        _activeRequest = null;
+      }
+    }();
+
+    return _activeRequest!.future;
   }
 
   // ---------------------------------------------------------
   // 🔥 Pull-to-refresh（setState は同期のみ）
   // ---------------------------------------------------------
   Future<void> _refreshVideos() async {
+    if (_isSearching) return; // ✅ 追加
+
     setState(() => _isRefreshing = true);
 
     try {
-      final data = await _loadVideos();
+      final data = await _loadVideos(forceRefresh: true); // ✅ refreshは強制fresh推奨
+      if (!mounted) return;
+
       setState(() {
         _futureVideos = Future.value(data);
         _isRefreshing = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isRefreshing = false);
       rethrow;
     }
@@ -181,18 +283,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
-
-    final iap = context.watch<IapProvider>();
-    final currentLimit = LimitService.videoListLimit(iap);
-
-    // 🟣 上限が変わったら自動で再取得（IAP購入直後に即反映）
-    if (currentLimit != _lastLimit) {
-      _lastLimit = currentLimit;
-
-      setState(() {
-        _futureVideos = _loadVideos();
-      });
-    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -240,13 +330,16 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                       backgroundColor: Colors.transparent,
                       expandedHeight: 70,
                       automaticallyImplyLeading: false,
-                      flexibleSpace: CustomGlassAppBar(
-                        title: AppLocalizations.of(context)!.genrePopularTitle(
-                          shortTitle(widget.categoryTitle),
-                        ),
+                      flexibleSpace: LightFlatAppBar(
+                        title: shortTitle(widget.categoryTitle),
                         showRefreshButton: true,
                         isRefreshing: _isRefreshing,
                         onRefreshPressed: _refreshVideos,
+                        showDensityButton: true,
+                        density: _density,
+                        onToggleDensity: _toggleDensity,
+                        titleAlign: AppBarTitleAlign.left,
+                        reserveLeadingSpace: true,
                       ),
                     ),
                     if (_fetchedAt != null)
@@ -280,15 +373,27 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                       ),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, i) => VideoListTile(
-                          video: videos[i],
-                          rank: i + 1,
-                        ),
+                        (context, i) {
+                          final video = videos[i];
+
+                          switch (_density) {
+                            case CardDensity.big:
+                              return VideoListTile(video: video, rank: i + 1);
+
+                            case CardDensity.middle:
+                              return VideoListTileMiddle(
+                                  video: video, rank: i + 1);
+
+                            case CardDensity.small:
+                              return VideoListTileSmall(
+                                  video: video, rank: i + 1);
+                          }
+                        },
                         childCount: videos.length,
                       ),
                     ),
                     const SliverToBoxAdapter(
-                      child: SafeArea(top: false, child: SizedBox(height: 0)),
+                      child: SafeArea(top: false, child: SizedBox(height: 50)),
                     ),
                   ],
                 ),
@@ -298,7 +403,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           // 🔙 戻るボタン（GlassAppBar外）
           Positioned(
-            top: MediaQuery.of(context).padding.top + 25,
+            top: MediaQuery.of(context).padding.top + 24,
             left: 8,
             child: Material(
               color: Theme.of(context).scaffoldBackgroundColor,

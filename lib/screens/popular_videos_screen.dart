@@ -9,10 +9,12 @@ import '../providers/region_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/custom_glass_app_bar.dart';
+import '../utils/card_density_prefs.dart';
+import '../widgets/light_flat_app_bar.dart';
 import '../widgets/network_error_view.dart';
-import '../widgets/repeat_settings_panel.dart';
 import '../widgets/video_list_tile.dart';
+import '../widgets/video_list_tile_middle.dart';
+import '../widgets/video_list_tile_small.dart';
 
 class PopularVideosScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
@@ -33,21 +35,60 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   bool _isRefreshing = false;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
-  int _lastLimit = 10;
+  int _lastLimit = 20;
+  static const _densityKey = 'popular_card_density';
+  CardDensity _density = CardDensity.big;
+  late final IapProvider _iapProvider;
+  late final RegionProvider _regionProvider;
+  DateTime? _lastFetchedAt;
 
   @override
   void initState() {
     super.initState();
+    _initDensity();
     _futureVideos = _fetchVideos();
+    _lastFetchedAt = DateTime.now();
     _scrollController.addListener(_onScroll);
+  }
+
+  bool _didBind = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didBind) return;
+    _didBind = true;
+
+    _iapProvider = context.read<IapProvider>();
+    _regionProvider = context.read<RegionProvider>();
+
+    _lastLimit = LimitService.videoListLimit(_iapProvider);
+    _currentRegion = _regionProvider.regionCode;
+
+    _iapProvider.addListener(_onIapChanged);
+    _regionProvider.addListener(_onRegionChanged);
   }
 
   @override
   void dispose() {
+    _iapProvider.removeListener(_onIapChanged);
+    _regionProvider.removeListener(_onRegionChanged);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _initDensity() async {
+    final d = await CardDensityPrefs.load(key: _densityKey);
+    if (!mounted) return;
+    setState(() => _density = d);
+  }
+
+  void _toggleDensity() {
+    final next = CardDensityPrefs.next(_density);
+    setState(() => _density = next);
+    CardDensityPrefs.save(next, key: _densityKey);
   }
 
   void _onScroll() {
@@ -65,12 +106,15 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   Future<List<Map<String, dynamic>>> _fetchVideos(
       {bool forceRefresh = false}) async {
     final iap = context.read<IapProvider>();
+    final limit = LimitService.videoListLimit(iap);
     final region = context.read<RegionProvider>().regionCode;
     final videos = await _apiService.fetchPopularVideos(
       maxResults: LimitService.videoListLimit(iap),
       regionCode: region,
       forceRefresh: forceRefresh, // ← 重要
     );
+
+    _lastFetchedAt = DateTime.now();
 
     final mapped = videos.map((v) {
       return {
@@ -87,7 +131,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     mapped.sort(
         (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
 
-    return mapped;
+    return mapped.take(limit).toList();
   }
 
   Future<void> _refreshVideos() async {
@@ -124,9 +168,12 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
       mapped.sort(
           (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
 
+      final trimmed = mapped.take(limit).toList();
+
       // 🔥 成功 → FutureBuilder にデータを渡す
       setState(() {
-        _futureVideos = Future.value(mapped);
+        _futureVideos = Future.value(trimmed);
+        _lastFetchedAt = DateTime.now();
       });
     } catch (e) {
       // ❗ 例外時 → FutureBuilder にエラーを渡す
@@ -138,11 +185,42 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     }
   }
 
+  void _setFutureVideos(Future<List<Map<String, dynamic>>> future) {
+    setState(() {
+      _futureVideos = future;
+      _lastFetchedAt = DateTime.now(); // ✅ "表示用" 更新時刻
+    });
+  }
+
   Future<bool> _isOnline() async {
     final result = await Connectivity().checkConnectivity();
     return result == ConnectivityResult.mobile ||
         result == ConnectivityResult.wifi ||
         result == ConnectivityResult.ethernet;
+  }
+
+  void _onIapChanged() {
+    if (!mounted) return;
+    final currentLimit = LimitService.videoListLimit(_iapProvider);
+    if (currentLimit == _lastLimit) return;
+
+    _lastLimit = currentLimit;
+    // setState(() {
+    //   _futureVideos = _fetchVideos(forceRefresh: true);
+    // });
+    _setFutureVideos(_fetchVideos(forceRefresh: true));
+  }
+
+  void _onRegionChanged() {
+    if (!mounted) return;
+    final region = _regionProvider.regionCode;
+    if (region == _currentRegion) return;
+
+    _currentRegion = region;
+    // setState(() {
+    //   _futureVideos = _fetchVideos(forceRefresh: true);
+    // });
+    _setFutureVideos(_fetchVideos(forceRefresh: true));
   }
 
   @override
@@ -151,28 +229,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
     // ★ Favorite 状態変化を購読して同期
     context.watch<FavoritesService>();
-
-    // 上限（IAP反映）を監視
-    final iap = context.watch<IapProvider>();
-    final currentLimit = LimitService.videoListLimit(iap);
-
-    // 🟣 上限が変わったら自動で再取得（＝キャッシュ無視で最新取得）
-    if (currentLimit != _lastLimit) {
-      _lastLimit = currentLimit;
-
-      setState(() {
-        _futureVideos = _fetchVideos(forceRefresh: true);
-      });
-    }
-
-    // 🌎 地域変更 → 再取得（＝キャッシュ無視で最新取得）
-    final region = context.watch<RegionProvider>().regionCode;
-    if (region != _currentRegion) {
-      _currentRegion = region;
-      setState(() {
-        _futureVideos = _fetchVideos(forceRefresh: true);
-      });
-    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -188,9 +244,10 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           if (snapshot.hasError) {
             return NetworkErrorView(
               onRetry: () {
-                setState(() {
-                  _futureVideos = _fetchVideos(forceRefresh: true);
-                });
+                // setState(() {
+                //   _futureVideos = _fetchVideos(forceRefresh: true);
+                // });
+                _setFutureVideos(_fetchVideos(forceRefresh: true));
               },
             );
           }
@@ -222,70 +279,91 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                   snap: true,
                   elevation: 0,
                   backgroundColor: Colors.transparent,
-                  expandedHeight: 70,
-                  flexibleSpace: CustomGlassAppBar(
+                  expandedHeight: 65,
+                  flexibleSpace: LightFlatAppBar(
                     title: AppLocalizations.of(context)!.popularTitle,
                     showRefreshButton: true,
                     isRefreshing: _isRefreshing,
                     showInfoButton: true,
                     onRefreshPressed: _refreshVideos,
+                    showDensityButton: true,
+                    density: _density,
+                    onToggleDensity: _toggleDensity,
+                    titleAlign: AppBarTitleAlign.center,
+                    reserveLeadingSpace: false,
+                    fetchedAt: _lastFetchedAt,
                   ),
                 ),
 
                 // Phase2対応(連続再生)
                 // SliverToBoxAdapter(
-                //   child: Container(
-                //     margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                //     padding: const EdgeInsets.all(20),
-                //     decoration: BoxDecoration(
-                //       color: Theme.of(context).colorScheme.surface,
-                //       borderRadius: BorderRadius.circular(12),
-                //       border: Border.all(
-                //         color: Theme.of(context)
-                //             .colorScheme
-                //             .onSurface
-                //             .withValues(alpha: 0.08),
-                //       ),
-                //     ),
-                //     child: Center(
-                //       child: ElevatedButton(
-                //         onPressed: () async {
-                //           // Navigator.pop(context); // もしダイアログ上なら閉じる
-                //
-                //           await showRepeatSettingsPanel(
-                //             context: context,
-                //             videos: videos,
-                //           );
-                //         },
-                //         child: const Text("連続再生を始める"),
+                //   child: Padding(
+                //     padding: const EdgeInsets.only(top: 12, bottom: 8),
+                //     // ✅ 上下Margin
+                //     child: Padding(
+                //       padding: const EdgeInsets.symmetric(horizontal: 16),
+                //       // ✅ 横余白
+                //       child: SizedBox(
+                //         width: double.infinity, // ✅ 幅を広げる（親幅いっぱい）
+                //         child: ElevatedButton.icon(
+                //           onPressed: () async {
+                //             await showRepeatSettingsPanel(
+                //               context: context,
+                //               videos: videos,
+                //             );
+                //           },
+                //           icon: const Icon(
+                //             Icons.play_circle_fill_rounded, // ✅ アイコン
+                //             size: 22,
+                //           ),
+                //           label: const Text(
+                //             "連続再生を始める",
+                //             style: TextStyle(
+                //               fontSize: 16,
+                //               fontWeight: FontWeight.w800,
+                //               letterSpacing: 0.4,
+                //             ),
+                //           ),
+                //           style: ElevatedButton.styleFrom(
+                //             backgroundColor: const Color(0xFFE67E22),
+                //             // ✅ ボタン色
+                //             foregroundColor: Colors.white,
+                //             padding: const EdgeInsets.symmetric(vertical: 14),
+                //             // ✅ 高さ
+                //             elevation: 0,
+                //             shape: RoundedRectangleBorder(
+                //               borderRadius: BorderRadius.circular(12),
+                //             ),
+                //           ),
+                //         ),
                 //       ),
                 //     ),
                 //   ),
                 // ),
 
-                SliverToBoxAdapter(
-                  child: Center(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Navigator.pop(context); // もしダイアログ上なら閉じる
-
-                        await showRepeatSettingsPanel(
-                          context: context,
-                          videos: videos,
-                        );
-                      },
-                      child: const Text("連続再生を始める"),
-                    ),
-                  ),
+                // --- 動画リスト ---
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 8),
                 ),
 
-                // --- 動画リスト ---
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => VideoListTile(
-                      video: videos[index],
-                      rank: index + 1,
-                    ),
+                    (context, index) {
+                      final video = videos[index];
+
+                      switch (_density) {
+                        case CardDensity.big:
+                          return VideoListTile(video: video, rank: index + 1);
+
+                        case CardDensity.middle:
+                          return VideoListTileMiddle(
+                              video: video, rank: index + 1);
+
+                        case CardDensity.small:
+                          return VideoListTileSmall(
+                              video: video, rank: index + 1);
+                      }
+                    },
                     childCount: videos.length,
                   ),
                 ),

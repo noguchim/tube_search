@@ -12,11 +12,11 @@ import '../utils/app_logger.dart';
 import '../utils/favorite_delete_helper.dart';
 import 'app_dialog.dart';
 
-class VideoListTile extends StatelessWidget {
+class VideoListTileMiddle extends StatelessWidget {
   final Map<String, dynamic> video;
   final int rank;
 
-  const VideoListTile({
+  const VideoListTileMiddle({
     super.key,
     required this.video,
     required this.rank,
@@ -28,7 +28,6 @@ class VideoListTile extends StatelessWidget {
 
     final locale = Localizations.localeOf(context).languageCode;
 
-    // 🇯🇵 日本形式（万 / 億）
     if (locale == 'ja') {
       if (number < 10000) {
         return '${number.toInt()}回視聴';
@@ -42,7 +41,6 @@ class VideoListTile extends StatelessWidget {
       }
     }
 
-    // 🌎 英語形式（K / M / B）
     if (number < 1000) {
       return '${number.toInt()} views';
     } else if (number < 1000000) {
@@ -61,6 +59,7 @@ class VideoListTile extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // ✅ 統一トーン
     final Color cardColor = theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
@@ -68,17 +67,23 @@ class VideoListTile extends StatelessWidget {
 
     final BorderSide borderSide = BorderSide(
       color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
+          ? Colors.white.withValues(alpha: 0.08)
           : Colors.black.withValues(alpha: 0.05),
       width: 1,
     );
 
     final List<BoxShadow> shadows = [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.55),
-        blurRadius: 16,
-        offset: const Offset(0, 10),
+        color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.06),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
       ),
+      if (isDark)
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.55),
+          blurRadius: 16,
+          offset: const Offset(0, 10),
+        ),
     ];
 
     final id = video['id'] ?? "";
@@ -94,7 +99,6 @@ class VideoListTile extends StatelessWidget {
     Future<void> pushPlayer() async {
       if (isPushing) return;
       isPushing = true;
-
       try {
         logger.w("🚨 PUSH VideoPlayerScreen id=${video['id']}");
         await Navigator.push(
@@ -111,148 +115,130 @@ class VideoListTile extends StatelessWidget {
       }
     }
 
+    Future<void> toggleFav() async {
+      final fav = context.read<FavoritesService>();
+      final iap = context.read<IapProvider>();
+
+      final isFavNow = fav.isFavoriteSync(id);
+
+      if (isFavNow) {
+        await FavoriteDeleteHelper.confirmOrDelete(context, video);
+        return;
+      }
+
+      final ok = await fav.tryAddFavorite(id, video, iap);
+      if (!ok) _showLimitDialog(context, iap);
+    }
+
     final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: Container(
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: borderRadius,
           border: Border.fromBorderSide(borderSide),
           boxShadow: shadows,
-          gradient: isDark
-              ? LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.02),
-                    Colors.transparent,
-                  ],
-                )
-              : null,
         ),
         clipBehavior: Clip.antiAlias,
         child: Material(
           color: Colors.transparent,
 
-          // ✅ ここでは InkWell を使わない（＝カード全体タップを禁止）
+          // ✅ カード全体タップ禁止（誤タップ対策の本体）
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ---------------- サムネイル（タップ領域：ここだけpush） ----------------
+              // =========================================================
+              // ✅ サムネイルだけタップで再生
+              // =========================================================
               Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: pushPlayer,
-                  borderRadius: borderRadius,
                   child: Ink(
-                    child: ClipRRect(
-                      borderRadius: borderRadius,
-                      child: Stack(
-                        children: [
-                          AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: thumbOk
-                                ? Ink.image(
-                                    image:
-                                        CachedNetworkImageProvider(thumbnail),
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    child: const SizedBox.expand(), // Ink描画のため
-                                  )
-                                : Container(
-                                    width: double.infinity,
-                                    color: isDark
-                                        ? Colors.grey[850]
-                                        : Colors.grey[300],
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.wifi_off_rounded,
-                                        size: 36,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
+                    child: Stack(
+                      children: [
+                        SizedBox(
+                          height: 170,
+                          width: double.infinity,
+                          child: thumbOk
+                              ? Ink.image(
+                                  image: CachedNetworkImageProvider(thumbnail),
+                                  fit: BoxFit.cover,
+                                  child: const SizedBox.expand(),
+                                )
+                              : Container(
+                                  color: isDark
+                                      ? Colors.grey[850]
+                                      : Colors.grey[300],
+                                  child: const Center(
+                                    child: Icon(Icons.wifi_off_rounded,
+                                        size: 32, color: Colors.grey),
                                   ),
+                                ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IgnorePointer(
+                            ignoring: true,
+                            child: _buildRankBadge(context, isDark),
                           ),
-
-                          // ✅ Rankバッジ
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: IgnorePointer(
-                              ignoring: true, // バッジが波紋を邪魔しない
-                              child: _buildRankBadge(context, isDark),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
 
-              // =========================================================
-              // ✅ 情報部分はタップしても再生しない
-              // =========================================================
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
+              // ---------------- 情報部分（余白削減） ----------------
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // タイトル（2行に）
                     Text(
                       title,
-                      maxLines: 3,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
                         color: onSurface,
+                        height: 1.15,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
+
+                    // チャンネル名
                     Text(
                       channel,
                       textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         color: onSurface.withValues(alpha: 0.72),
                       ),
                     ),
+
                     // const SizedBox(height: 4),
+
+                    // ❤️ + 再生数
                     Row(
                       children: [
-                        // ✅ タップ領域を44x44に拡張（誤タップ防止の本命）
+                        // ✅ 44x44のタップ領域（誤タップ激減）
                         SizedBox(
                           width: 44,
                           height: 44,
                           child: InkResponse(
-                            onTap: () async {
-                              final fav = context.read<FavoritesService>();
-                              final iap = context.read<IapProvider>();
-
-                              final isFavNow = fav.isFavoriteSync(id);
-
-                              if (isFavNow) {
-                                await FavoriteDeleteHelper.confirmOrDelete(
-                                  context,
-                                  video,
-                                );
-                                return;
-                              }
-
-                              final ok =
-                                  await fav.tryAddFavorite(id, video, iap);
-
-                              if (!ok) {
-                                _showLimitDialog(context, iap);
-                              }
-                            },
+                            onTap: toggleFav,
                             radius: 24,
                             child: Center(
                               child: AnimatedScale(
-                                scale: isFav ? 1.18 : 1.0,
+                                scale: isFav ? 1.12 : 1.0,
                                 duration: const Duration(milliseconds: 150),
                                 curve: Curves.easeOut,
                                 child: Icon(
@@ -264,22 +250,22 @@ class VideoListTile extends StatelessWidget {
                                       : (isDark
                                           ? Colors.white70
                                           : Colors.grey.shade600),
-                                  size: isFav ? 30 : 28,
+                                  size: isFav ? 26 : 24,
                                 ),
                               ),
                             ),
                           ),
                         ),
 
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
 
                         Expanded(
                           child: Text(
                             viewText,
                             textAlign: TextAlign.right,
                             style: TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
                               color: onSurface,
                             ),
                           ),
@@ -347,7 +333,6 @@ class VideoListTile extends StatelessWidget {
     );
   }
 
-  /// Rankバッジ（既存維持）
   Widget _buildRankBadge(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
     final rank = this.rank;
@@ -374,8 +359,8 @@ class VideoListTile extends StatelessWidget {
     }
 
     return Container(
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38, // ✅ 少し小さく
       decoration: BoxDecoration(
         color: baseColor,
         borderRadius: BorderRadius.circular(8),
@@ -387,7 +372,7 @@ class VideoListTile extends StatelessWidget {
           style: TextStyle(
             color: textColor,
             fontWeight: FontWeight.w900,
-            fontSize: 20,
+            fontSize: 19,
           ),
         ),
       ),

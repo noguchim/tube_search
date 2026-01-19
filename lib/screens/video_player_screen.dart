@@ -37,7 +37,8 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen>
+    with WidgetsBindingObserver {
   late WebViewController _controller;
 
   bool _hasError = false;
@@ -46,6 +47,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   /// ⭐ キュー管理（現在位置）
   int _currentIndex = 0;
   Timer? _nextTimer;
+
+  // ✅ ページロードタイムアウト
+  Timer? _loadTimeoutTimer;
+  static const _loadTimeout = Duration(seconds: 20);
 
   /// ⭐ 実際に再生する動画（単体 or キュー中の動画）
   Map<String, dynamic> get _currentVideo {
@@ -64,6 +69,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     super.initState();
 
+    WidgetsBinding.instance.addObserver(this);
     _setupWebView();
     _loadCurrentVideo();
 
@@ -87,9 +93,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nextTimer?.cancel();
     _hideTimer?.cancel();
+    _loadTimeoutTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // ✅ 復帰時に軽く再読込（音が戻りやすい）
+      _controller.reload();
+    }
   }
 
   void _setupWebView() {
@@ -98,14 +114,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
+            if (!mounted) return;
             setState(() {
               _isLoading = true;
               _hasError = false;
             });
+            // ✅ ロード開始＝タイムアウト開始
+            _startLoadTimeout();
           },
-          onPageFinished: (_) => setState(() => _isLoading = false),
+          onPageFinished: (_) {
+            // ✅ ロード成功＝タイムアウト停止
+            _stopLoadTimeout();
+
+            if (!mounted) return;
+            setState(() => _isLoading = false);
+          },
           onWebResourceError: (error) {
             logger.i("❌ WebView Error: $error");
+
+            // ✅ ロード失敗＝タイムアウト停止
+            _stopLoadTimeout();
+
+            if (!mounted) return;
             setState(() {
               _hasError = true;
               _isLoading = false;
@@ -113,6 +143,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           },
         ),
       );
+  }
+
+  void _startLoadTimeout() {
+    _loadTimeoutTimer?.cancel();
+    _loadTimeoutTimer = Timer(_loadTimeout, () {
+      if (!mounted) return;
+
+      logger.w("⏰ WebView load timeout ($_loadTimeout) → show error");
+
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+    });
+  }
+
+  void _stopLoadTimeout() {
+    _loadTimeoutTimer?.cancel();
+    _loadTimeoutTimer = null;
   }
 
   /// ⭐ 指定された動画をロード
@@ -151,7 +200,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   /// ⭐ 次の動画へ
-  void _playNext() {
+  void _playNext() async {
     if (widget.queue == null) return;
 
     if (_currentIndex >= widget.queue!.length - 1) {
@@ -165,14 +214,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final id = widget.queue![_currentIndex]['id'];
     logger.i("⏭ Next: index=$_currentIndex id=$id");
 
-    _controller.loadRequest(
+    await _loadBlank();
+
+    await _controller.loadRequest(
       Uri.parse("https://www.youtube.com/watch?v=$id"),
     );
 
     _scheduleNext();
   }
 
+  Future<void> _loadBlank() async {
+    await _controller
+        .loadHtmlString("<html><body style='background:black;'></body></html>");
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
   void _retry() {
+    _stopLoadTimeout();
     setState(() {
       _hasError = false;
       _isLoading = true;

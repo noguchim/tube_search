@@ -1,7 +1,7 @@
 name: tube_search
 description: youtube search
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.2+4
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -24,6 +24,16 @@ dependencies:
   in_app_purchase: ^3.1.11
   url_launcher: ^6.3.0
   cached_network_image: ^3.4.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+  # Android 13 (adaptive icon)
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 flutter:
   uses-material-design: true
@@ -31,6 +41,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/coming_soon.png
+    - assets/images/splash_icon.png
 
   fonts:
     - family: NotoSansJP
@@ -42,6 +53,18 @@ flutter:
   generate: true
 
 dev_dependencies:
+  flutter_native_splash: ^2.4.4
   flutter_lints: ^3.0.1
   flutter_test:
     sdk: flutter
+
+flutter_native_splash:
+  color: "#0B3BDF"
+  image: assets/images/splash_icon.png
+  android: true
+  ios: true
+
+  android_12:
+    color: "#0B3BDF"
+    image: assets/images/splash_icon_android12_white.png
+    icon_background_color: "#0B3BDF"

@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
-import 'package:tube_search/providers/repeat_provider.dart';
+import 'package:tube_search/screens/video_player_screen.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
@@ -22,7 +22,6 @@ import 'screens/favorites_screen.dart';
 import 'screens/genre_screen.dart';
 import 'screens/popular_videos_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/splash_screen.dart';
 import 'services/favorites_service.dart';
 import 'theme/app_theme.dart';
 
@@ -109,7 +108,6 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => RepeatProvider()..init()),
         ChangeNotifierProvider(create: (_) => RegionProvider()),
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
@@ -172,7 +170,7 @@ class MyApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       // ← Provider で切替
 
-      home: const SplashScreen(),
+      home: const MainNavigationScreen(),
     );
   }
 }
@@ -195,12 +193,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<FavoritesScreenState> _favKey =
       GlobalKey<FavoritesScreenState>();
 
-  late final List<Widget> _screens = [
-    PopularVideosScreen(onScrollChanged: _onScrollChanged),
-    GenreScreen(onScrollChanged: _onScrollChanged),
-    FavoritesScreen(key: _favKey),
-    const SettingsScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ 起動直後にバックグラウンドでPreload
+    Future.microtask(() async {
+      try {
+        await VideoPlayerScreen.preloadController();
+      } catch (e, st) {
+        // 失敗しても起動は継続させる
+        logger.w("preloadController error: $e");
+        logger.w("$st");
+      }
+    });
+
+    _screens = [
+      PopularVideosScreen(onScrollChanged: _onScrollChanged),
+      GenreScreen(onScrollChanged: _onScrollChanged),
+      FavoritesScreen(key: _favKey),
+      const SettingsScreen(),
+    ];
+  }
 
   void _onScrollChanged(bool isScrollingDown) {
     if (_isScrollingDown != isScrollingDown && mounted) {
@@ -355,7 +371,7 @@ class _BottomAdDivider extends StatelessWidget {
 
 class GlassDockNavigationBar extends StatelessWidget {
   final int selectedIndex;
-  final Function(int) onTabSelected;
+  final ValueChanged<int> onTabSelected;
 
   const GlassDockNavigationBar({
     super.key,
@@ -365,11 +381,14 @@ class GlassDockNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final isDark = theme.brightness == Brightness.dark;
 
-    // ---------------------------------------------------------
-    // 🎨 Light / Dark 背景グラデーション
-    // ---------------------------------------------------------
+    // -------------------------------------------------------------
+    // ✅ AppBarと同じガラス背景（流用）
+    // -------------------------------------------------------------
     final List<Color> bgGradient = isDark
         ? [
             const Color(0xCC111111),
@@ -382,178 +401,148 @@ class GlassDockNavigationBar extends StatelessWidget {
             const Color(0x99D0D4D9),
           ];
 
+    // ✅ BottomNavは“霧っぽく”見えやすいので、まずはAppBarより少し薄くして開始
+    // （AppBar 0.85 → BottomNavは 0.78 くらいが起点として安全）
     final Color bgColor = isDark
-        ? const Color(0xFF111111).withValues(alpha: 0.85)
-        : const Color(0xFFF9FAFB).withValues(alpha: 0.85);
+        ? const Color(0xFF111111).withValues(alpha: 0.78)
+        : const Color(0xFFF9FAFB).withValues(alpha: 0.78);
 
-    final Color borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.7);
-
-    final Color shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.4)
-        : Colors.black.withValues(alpha: 0.07);
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFECECEC);
 
     return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          height: 65,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: bgGradient,
-            ),
-            color: bgColor,
-            border: Border(
-              top: BorderSide(
-                color: borderColor,
-                width: 0.8,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // -------------------------------------------------------------
+          // 🪩 ガラス背景（AppBarと同型）
+          // -------------------------------------------------------------
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: 65,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: bgGradient,
+                  ),
+                  color: bgColor,
+                  border: Border(
+                    top: BorderSide(color: borderColor, width: 1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTab(
+                      context,
+                      index: 0,
+                      icon: Icons.local_fire_department_rounded,
+                      label: l.navPopular,
+                      activeColor: cs.primary,
+                    ),
+                    _buildTab(
+                      context,
+                      index: 1,
+                      icon: Icons.category_rounded,
+                      label: l.navGenre,
+                      activeColor: cs.primary,
+                    ),
+                    _buildTab(
+                      context,
+                      index: 2,
+                      icon: Icons.favorite_rounded,
+                      label: l.navFavorites,
+                      activeColor: cs.primary,
+                      iconYOffset: 2.0,
+                      activeIconSize: 21,
+                    ),
+                    _buildTab(
+                      context,
+                      index: 3,
+                      icon: Icons.settings_rounded,
+                      label: l.navSettings,
+                      activeColor: cs.primary,
+                    ),
+                  ],
+                ),
               ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor,
-                blurRadius: 12,
-                offset: const Offset(0, -2),
-              ),
-            ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildTab(context, 0, Icons.local_fire_department_rounded),
-              _buildTab(context, 1, Icons.category_rounded),
-              _buildTab(context, 2, Icons.favorite_rounded),
-              _buildTab(context, 3, Icons.settings_rounded),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
 
   // ---------------------------------------------------------
-  // 🔥 タブ描画（花瓶問題を解消した“丸い”バブル）
+  // 🔥 タブ描画（現行のまま維持：視認性担保）
   // ---------------------------------------------------------
-  Widget _buildTab(BuildContext context, int index, IconData icon) {
-    final bool isActive = selectedIndex == index;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildTab(
+    BuildContext context, {
+    required int index,
+    required IconData icon,
+    required String label,
+    required Color activeColor,
+    double iconYOffset = 0.0,
+    double activeIconSize = 28,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isActive = selectedIndex == index;
 
-    final Color primary = Theme.of(context).colorScheme.primary;
-    final Color inactiveIcon =
-        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
-    final Color inactiveText =
-        isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+    final inactiveIcon = isDark
+        ? Colors.white.withValues(alpha: 0.70)
+        : Colors.black.withValues(alpha: 0.62);
 
-    final l = AppLocalizations.of(context)!;
+    final inactiveText = isDark
+        ? Colors.white.withValues(alpha: 0.62)
+        : Colors.black.withValues(alpha: 0.52);
 
-    final labels = [
-      l.navPopular,
-      l.navGenre,
-      l.navFavorites,
-      l.navSettings,
-    ];
+    final iconColor = isActive ? activeColor : inactiveIcon;
+    final textColor = isActive ? activeColor : inactiveText;
 
-    // ❤️ お気に入りだけ 1pt 小さく & 少し下げる補正は維持
-    final double iconSize = isActive ? (index == 2 ? 21 : 22) : 18;
-
-    final double iconYOffset = (index == 2) ? 2.0 : 0.0;
-
-    // ✨ ライトテーマでは発光強め、ダークでは現状維持寄り
-    final double bubbleInnerAlpha = isDark ? 0.28 : 0.55;
-    final double bubbleOuterAlpha = isDark ? 0.08 : 0.20;
-    final double glowAlpha = isDark ? 0.25 : 0.35;
+    final double iconSize = isActive ? activeIconSize.toDouble() : 20.0;
 
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => onTabSelected(index),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: 30,
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  // 🟣 ぼかし入りの丸いバブル
-                  if (isActive)
-                    ClipOval(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white
-                                    .withValues(alpha: bubbleInnerAlpha),
-                                Colors.white
-                                    .withValues(alpha: bubbleOuterAlpha),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withValues(
-                                alpha: isDark ? 0.30 : 0.55,
-                              ),
-                              width: 1.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 🌕 足元の発光（ライトでかなり強め）
-                  if (isActive)
-                    Positioned(
-                      bottom: 0,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            radius: 0.95,
-                            colors: [
-                              primary.withValues(alpha: glowAlpha),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 🖼 アイコン本体（お気に入りだけ少し下げて描画）
-                  Transform.translate(
+      child: Semantics(
+        button: true,
+        selected: isActive,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => onTabSelected(index),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: 30,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Transform.translate(
                     offset: Offset(0, iconYOffset),
                     child: Icon(
                       icon,
                       size: iconSize,
-                      color: isActive ? primary : inactiveIcon,
+                      color: iconColor,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 1),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? primary : inactiveText,
+              const SizedBox(height: 1),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 150),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: textColor,
+                ),
+                child: Text(label),
               ),
-              child: Text(labels[index]),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

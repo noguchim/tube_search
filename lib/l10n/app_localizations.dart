@@ -152,12 +152,6 @@ abstract class AppLocalizations {
   /// **'Search videos'**
   String get genreSearchHeader;
 
-  /// No description provided for @genreSearchHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Type a keyword...'**
-  String get genreSearchHint;
-
   /// No description provided for @genreNetworkError.
   ///
   /// In en, this message translates to:
@@ -259,12 +253,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Limit upgrade'**
   String get favoriteLimitUpgrade;
-
-  /// No description provided for @genrePopularTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Trending: {genre}'**
-  String genrePopularTitle(Object genre);
 
   /// No description provided for @update.
   ///
@@ -505,6 +493,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'United States'**
   String get regionUnitedStates;
+
+  /// No description provided for @regionUnitedKingdom.
+  ///
+  /// In en, this message translates to:
+  /// **'United Kingdom'**
+  String get regionUnitedKingdom;
+
+  /// No description provided for @regionGermany.
+  ///
+  /// In en, this message translates to:
+  /// **'Germany'**
+  String get regionGermany;
+
+  /// No description provided for @regionFrance.
+  ///
+  /// In en, this message translates to:
+  /// **'France'**
+  String get regionFrance;
+
+  /// No description provided for @regionIndia.
+  ///
+  /// In en, this message translates to:
+  /// **'India'**
+  String get regionIndia;
 
   /// No description provided for @repeatStatusOff.
   ///

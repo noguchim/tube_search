@@ -38,9 +38,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get genreSearchHeader => '検索して探す';
 
   @override
-  String get genreSearchHint => '検索ワードを入力...';
-
-  @override
   String get genreNetworkError => 'ネットワークに接続できません';
 
   @override
@@ -95,11 +92,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get favoriteLimitUpgrade => '上限を拡張する';
-
-  @override
-  String genrePopularTitle(Object genre) {
-    return '人気：$genre';
-  }
 
   @override
   String get update => '更新';
@@ -222,6 +214,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get regionUnitedStates => 'アメリカ';
+
+  @override
+  String get regionUnitedKingdom => 'イギリス';
+
+  @override
+  String get regionGermany => 'ドイツ';
+
+  @override
+  String get regionFrance => 'フランス';
+
+  @override
+  String get regionIndia => 'インド';
 
   @override
   String get repeatStatusOff => 'OFF';
