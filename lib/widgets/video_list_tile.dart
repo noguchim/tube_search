@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../screens/shop_screen.dart';
-import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
 import '../utils/favorite_delete_helper.dart';
+import '../utils/open_in_custom_tabs.dart';
 import 'app_dialog.dart';
 
 class VideoListTile extends StatelessWidget {
@@ -94,18 +94,13 @@ class VideoListTile extends StatelessWidget {
     Future<void> pushPlayer() async {
       if (isPushing) return;
       isPushing = true;
-
       try {
-        logger.w("🚨 PUSH VideoPlayerScreen id=${video['id']}");
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VideoPlayerScreen(
-              video: video,
-              isRepeat: false,
-            ),
-          ),
-        );
+        final id = (video['id'] ?? '').toString();
+        logger.w("🚨 OPEN CCT id=$id");
+
+        if (id.isEmpty) return;
+
+        await openYouTubePreferApp(context, videoId: id);
       } finally {
         isPushing = false;
       }

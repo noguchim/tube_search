@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:tube_search/screens/video_player_screen.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
+import '../utils/open_in_custom_tabs.dart';
 import '../widgets/light_flat_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -20,6 +20,7 @@ class FavoritesScreen extends StatefulWidget {
 class FavoritesScreenState extends State<FavoritesScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _list = [];
+  bool _isPushing = false;
 
   @override
   void initState() {
@@ -265,13 +266,23 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: InkWell(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VideoPlayerScreen(
-                                  video: video, isRepeat: false),
-                            ),
-                          ),
+                          // onTap: () => Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (_) => VideoPlayerScreen(
+                          //         video: video, isRepeat: false),
+                          //   ),
+                          // ),
+                          onTap: () {
+                            final id = (video["videoId"] ??
+                                    video["id"] ??
+                                    video["youtubeId"] ??
+                                    "")
+                                .toString();
+
+                            _pushPlayerById(context, id);
+                          },
+
                           splashColor: Colors.white.withValues(alpha: 0.22),
                           highlightColor: Colors.white.withValues(alpha: 0.08),
                           child: Ink.image(
@@ -352,6 +363,19 @@ class FavoritesScreenState extends State<FavoritesScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _pushPlayerById(BuildContext context, String id) async {
+    if (_isPushing) return;
+    _isPushing = true;
+    try {
+      final videoId = id.trim();
+      if (videoId.isEmpty) return;
+
+      await openYouTubePreferApp(context, videoId: videoId);
+    } finally {
+      _isPushing = false;
+    }
   }
 
   // -------------------------------------------------------------

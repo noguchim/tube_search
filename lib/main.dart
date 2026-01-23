@@ -10,7 +10,6 @@ import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
-import 'package:tube_search/screens/video_player_screen.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
@@ -202,7 +201,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     // ✅ 起動直後にバックグラウンドでPreload
     Future.microtask(() async {
       try {
-        await VideoPlayerScreen.preloadController();
+        // await VideoPlayerScreen.preloadController();
       } catch (e, st) {
         // 失敗しても起動は継続させる
         logger.w("preloadController error: $e");

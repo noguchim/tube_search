@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../utils/app_logger.dart';
+import '../utils/open_in_custom_tabs.dart';
 import '../widgets/network_error_view.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -22,37 +22,26 @@ class VideoPlayerScreen extends StatefulWidget {
     required this.isRepeat,
   });
 
-  static Future<void> preloadController() async {
-    try {
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
-      await controller.loadRequest(Uri.parse('https://www.google.com'));
-      logger.i("✅ WebView preload complete");
-    } catch (e) {
-      logger.i("⚠️ WebView preload failed: $e");
-    }
-  }
-
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     with WidgetsBindingObserver {
-  late WebViewController _controller;
-
   bool _hasError = false;
-  bool _isLoading = true;
+  bool _isOpening = false;
 
   /// ⭐ キュー管理（現在位置）
   int _currentIndex = 0;
-  Timer? _nextTimer;
 
-  // ✅ ページロードタイムアウト
-  Timer? _loadTimeoutTimer;
-  static const _loadTimeout = Duration(seconds: 20);
+  /// ⭐ 連続再生用 UI
+  bool _showControls = true;
+  bool _collapsed = false;
+  Timer? _hideTimer;
 
-  /// ⭐ 実際に再生する動画（単体 or キュー中の動画）
+  /// 自動で開くのは初回だけ（次へ/前へはユーザー操作）
+  bool _openedOnce = false;
+
   Map<String, dynamic> get _currentVideo {
     if (widget.isRepeat && (widget.queue?.isNotEmpty ?? false)) {
       return widget.queue![_currentIndex];
@@ -60,21 +49,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return widget.video;
   }
 
-  /// ⭐ 連続再生用 UI
-  bool _showControls = true; // 起動時は ON（→ 一度だけ見せる）
-  bool _collapsed = false; // 折りたたみ状態
-  Timer? _hideTimer;
+  String get _currentVideoId => (_currentVideo['id'] ?? '').toString();
+
+  String get _currentTitle => (_currentVideo['title'] ?? '').toString();
+
+  bool get _hasQueue => widget.isRepeat && (widget.queue?.isNotEmpty ?? false);
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addObserver(this);
-    _setupWebView();
-    _loadCurrentVideo();
 
-    // ⭐ 連続再生のときだけ UI を一度表示
-    if (widget.isRepeat && (widget.queue?.isNotEmpty ?? false)) {
+    // 初回だけUIを一度表示
+    if (_hasQueue) {
       _showControls = true;
       _collapsed = false;
 
@@ -88,164 +75,92 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       });
     }
 
+    // ✅ 再生画面に入ったら自動で開く（元の挙動を維持）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openCurrentVideo(auto: true);
+    });
+
     logger.i("📜 Received queue length=${widget.queue?.length ?? 0}");
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _nextTimer?.cancel();
     _hideTimer?.cancel();
-    _loadTimeoutTimer?.cancel();
     super.dispose();
   }
 
+  // 端末復帰時に再オープンはしない（勝手に開くのはUX悪化＆審査的にも微妙）
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // ✅ 復帰時に軽く再読込（音が戻りやすい）
-      _controller.reload();
-    }
+    // no-op
   }
 
-  void _setupWebView() {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) {
-            if (!mounted) return;
-            setState(() {
-              _isLoading = true;
-              _hasError = false;
-            });
-            // ✅ ロード開始＝タイムアウト開始
-            _startLoadTimeout();
-          },
-          onPageFinished: (_) {
-            // ✅ ロード成功＝タイムアウト停止
-            _stopLoadTimeout();
-
-            if (!mounted) return;
-            setState(() => _isLoading = false);
-          },
-          onWebResourceError: (error) {
-            logger.i("❌ WebView Error: $error");
-
-            // ✅ ロード失敗＝タイムアウト停止
-            _stopLoadTimeout();
-
-            if (!mounted) return;
-            setState(() {
-              _hasError = true;
-              _isLoading = false;
-            });
-          },
-        ),
-      );
-  }
-
-  void _startLoadTimeout() {
-    _loadTimeoutTimer?.cancel();
-    _loadTimeoutTimer = Timer(_loadTimeout, () {
-      if (!mounted) return;
-
-      logger.w("⏰ WebView load timeout ($_loadTimeout) → show error");
-
-      setState(() {
-        _hasError = true;
-        _isLoading = false;
-      });
-    });
-  }
-
-  void _stopLoadTimeout() {
-    _loadTimeoutTimer?.cancel();
-    _loadTimeoutTimer = null;
-  }
-
-  /// ⭐ 指定された動画をロード
-  void _loadCurrentVideo() {
-    final videoId = _currentVideo['id'];
-    logger.i("▶️ Play video: $videoId (index=$_currentIndex)");
-
-    _controller.loadRequest(
-      Uri.parse('https://www.youtube.com/watch?v=$videoId'),
-    );
-
-    if (widget.isRepeat && widget.queue != null) {
-      logger.i("🎯 Start timing for next video");
-      _scheduleNext();
-    }
-  }
-
-  void _scheduleNext() {
-    if (!widget.isRepeat || widget.queue == null) return;
-
-    final v = widget.queue![_currentIndex];
-    final duration = v['durationSeconds'] ?? 0;
-
-    logger
-        .i("🕒 durationSeconds(raw)=${v['durationSeconds']} parsed=$duration");
-
-    if (duration == 0) {
-      logger.w("⛔ duration=0 → 自動再生スキップ");
+  Future<void> _openCurrentVideo({required bool auto}) async {
+    final id = _currentVideoId;
+    if (id.isEmpty) {
+      setState(() => _hasError = true);
       return;
     }
 
-    logger.i("⏳ Schedule next in ${duration}s");
+    // autoオープンは初回だけ
+    if (auto && _openedOnce) return;
+    _openedOnce = true;
 
-    _nextTimer?.cancel();
-    _nextTimer = Timer(Duration(seconds: duration + 3), _playNext);
-  }
-
-  /// ⭐ 次の動画へ
-  void _playNext() async {
-    if (widget.queue == null) return;
-
-    if (_currentIndex >= widget.queue!.length - 1) {
-      logger.i("🎬 Queue finished");
-      _nextTimer?.cancel();
-      return;
-    }
-
-    _currentIndex++;
-
-    final id = widget.queue![_currentIndex]['id'];
-    logger.i("⏭ Next: index=$_currentIndex id=$id");
-
-    await _loadBlank();
-
-    await _controller.loadRequest(
-      Uri.parse("https://www.youtube.com/watch?v=$id"),
-    );
-
-    _scheduleNext();
-  }
-
-  Future<void> _loadBlank() async {
-    await _controller
-        .loadHtmlString("<html><body style='background:black;'></body></html>");
-    await Future.delayed(const Duration(milliseconds: 200));
-  }
-
-  void _retry() {
-    _stopLoadTimeout();
     setState(() {
       _hasError = false;
-      _isLoading = true;
+      _isOpening = true;
     });
-    _loadCurrentVideo();
+
+    try {
+      logger.i("🌐 Open in CCT: $id title=$_currentTitle");
+      await openYouTubePreferApp(context, videoId: id);
+
+      // CustomTabsを閉じて戻ってきた後
+      if (!mounted) return;
+
+      // ✅ 連続再生じゃないときだけ一覧へ戻す
+      if (!widget.isRepeat) {
+        Navigator.pop(context);
+        return;
+      }
+
+      setState(() => _isOpening = false);
+    } catch (e) {
+      logger.w("❌ CustomTabs open failed: $e");
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        _isOpening = false;
+      });
+    }
   }
 
+  Future<void> _playPrev() async {
+    if (!_hasQueue) return;
+    if (_currentIndex <= 0) return;
+
+    setState(() => _currentIndex--);
+    // 次へ/前へは「押したら開く」でOK
+    await _openCurrentVideo(auto: false);
+  }
+
+  Future<void> _playNext() async {
+    if (!_hasQueue) return;
+    if (_currentIndex >= widget.queue!.length - 1) return;
+
+    setState(() => _currentIndex++);
+    await _openCurrentVideo(auto: false);
+  }
+
+  void _retry() => _openCurrentVideo(auto: false);
+
   // =========================================================
-  // 連続再生 UI  (本体)
+  // Repeat UI
   // =========================================================
 
   Widget _buildRepeatControls() {
-    if (!widget.isRepeat || widget.queue == null) {
-      return const SizedBox.shrink();
-    }
+    if (!_hasQueue) return const SizedBox.shrink();
 
     final isFirst = _currentIndex == 0;
     final isLast = _currentIndex == widget.queue!.length - 1;
@@ -260,43 +175,68 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.85),
-      ),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.85)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 進捗
+          Row(
+            children: [
+              Text(
+                "${_currentIndex + 1}/${widget.queue!.length}",
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _currentTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 操作ボタン
           Row(
             children: [
               if (!isFirst)
                 _buildNavButton(
-                  label: "前の動画へ",
+                  label: "前へ",
                   icon: Icons.fast_rewind,
                   iconAfter: false,
-                  onTap: () {
-                    _nextTimer?.cancel();
-                    setState(() => _currentIndex--);
-                    _loadCurrentVideo();
-                  },
+                  onTap: _playPrev,
                 )
               else
                 const SizedBox(width: 90),
               const Spacer(),
+              _buildNavButton(
+                label: "開く",
+                icon: Icons.open_in_browser,
+                iconAfter: true,
+                onTap: () => _openCurrentVideo(auto: false),
+              ),
+              const Spacer(),
               if (!isLast)
                 _buildNavButton(
-                  label: "次の動画へ",
+                  label: "次へ",
                   icon: Icons.fast_forward,
                   iconAfter: true,
-                  onTap: () {
-                    _nextTimer?.cancel();
-                    _playNext();
-                  },
+                  onTap: _playNext,
                 )
               else
                 const SizedBox(width: 90),
             ],
           ),
+
           const SizedBox(height: 10),
+
+          // サムネ（前後）
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -368,10 +308,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     required String label,
     required IconData icon,
     required bool iconAfter,
-    required VoidCallback onTap,
+    required Future<void> Function() onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () async {
+        setState(() {
+          _collapsed = false;
+          _showControls = true;
+        });
+        await onTap();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -396,20 +342,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
-  // =========================================================
-  // オーバーレイ（ハンドル付き・開閉＋フェード）
-  // =========================================================
   Widget _buildRepeatOverlay() {
-    if (!widget.isRepeat || widget.queue == null) {
-      return const SizedBox.shrink();
-    }
+    if (!_hasQueue) return const SizedBox.shrink();
 
     return SafeArea(
       top: false,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ⭐ つまみ（常に見える）
+          // つまみ（常に見える）
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _toggleControls,
@@ -432,8 +373,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               ),
             ),
           ),
-
-          // ⭐ UI 本体（ここだけスライドで隠す）
           AnimatedSlide(
             duration: const Duration(milliseconds: 250),
             offset: _collapsed ? const Offset(0, 1.0) : Offset.zero,
@@ -483,34 +422,60 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (widget.isRepeat && widget.queue != null)
-            IconButton(
-              icon: Icon(
-                Icons.queue_play_next,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-              tooltip: "連続再生の操作",
-              onPressed: () {
-                setState(() {
-                  _collapsed = !_collapsed;
-                  _showControls = !_collapsed;
-                });
-
-                // 👇 AppBar から開いた場合はタイマーを止める
-                _hideTimer?.cancel();
-              },
+          // 手動再生ボタン（連続再生じゃなくても開けるように）
+          IconButton(
+            icon: Icon(
+              Icons.open_in_browser,
+              color: isDark ? Colors.white : Colors.black87,
             ),
+            tooltip: "YouTubeで開く",
+            onPressed: () => _openCurrentVideo(auto: false),
+          ),
         ],
       ),
       body: Stack(
         children: [
-          if (_hasError) NetworkErrorView(onRetry: _retry),
-          if (!_hasError) WebViewWidget(controller: _controller),
-          if (_isLoading && !_hasError)
-            const Center(child: CircularProgressIndicator()),
+          // ✅ ここは「再生は外部」なので、アプリ内は状態表示に徹する
+          if (_hasError)
+            NetworkErrorView(onRetry: _retry)
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.ondemand_video,
+                        size: 44, color: theme.hintColor),
+                    const SizedBox(height: 10),
+                    Text(
+                      "YouTubeで再生します",
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "「開く」を押すと動画ページを表示します。",
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.hintColor),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      onPressed: _isOpening
+                          ? null
+                          : () => _openCurrentVideo(auto: false),
+                      icon: const Icon(Icons.open_in_browser),
+                      label: Text(_isOpening ? "開いています..." : "開く"),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          if (_isOpening) const Center(child: CircularProgressIndicator()),
 
           // ⭐ 連続再生 UI オーバーレイ
-          if (widget.isRepeat && widget.queue != null)
+          if (_hasQueue)
             Positioned(
               left: 0,
               right: 0,

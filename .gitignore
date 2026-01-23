@@ -68,3 +68,7 @@ app.*.map.json
 devtools_options.yaml
 ios/Runner.xcodeproj/project.xcworkspace/
 ios/Runner.xcodeproj/project.xcworkspace/**
+
+key.properties
+*.jks
+*.keystore

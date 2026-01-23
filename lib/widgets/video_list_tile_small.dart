@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../screens/shop_screen.dart';
-import '../screens/video_player_screen.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
 import '../utils/favorite_delete_helper.dart';
+import '../utils/open_in_custom_tabs.dart';
 import 'app_dialog.dart';
 
 class VideoListTileSmall extends StatelessWidget {
@@ -98,16 +98,12 @@ class VideoListTileSmall extends StatelessWidget {
       if (isPushing) return;
       isPushing = true;
       try {
-        logger.w("🚨 PUSH VideoPlayerScreen id=${video['id']}");
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VideoPlayerScreen(
-              video: video,
-              isRepeat: false,
-            ),
-          ),
-        );
+        final id = (video['id'] ?? '').toString();
+        logger.w("🚨 OPEN CCT id=$id");
+
+        if (id.isEmpty) return;
+
+        await openYouTubePreferApp(context, videoId: id);
       } finally {
         isPushing = false;
       }
@@ -299,240 +295,6 @@ class VideoListTileSmall extends StatelessWidget {
       ),
     );
   }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   final fav = context.watch<FavoritesService>();
-  //
-  //   final theme = Theme.of(context);
-  //   final isDark = theme.brightness == Brightness.dark;
-  //
-  //   // ✅ 統一トーン
-  //   final Color cardColor = theme.colorScheme.surface;
-  //   final Color onSurface = theme.colorScheme.onSurface;
-  //
-  //   final BorderRadius borderRadius = BorderRadius.circular(12);
-  //
-  //   final BorderSide borderSide = BorderSide(
-  //     color: isDark
-  //         ? Colors.white.withValues(alpha: 0.10)
-  //         : Colors.black.withValues(alpha: 0.07),
-  //     width: 1,
-  //   );
-  //
-  //   final List<BoxShadow> shadows = isDark
-  //       ? [
-  //           // ✅ Dark：黒モヤ回避（薄く・近く）
-  //           BoxShadow(
-  //             color: Colors.black.withValues(alpha: 0.22), // 0.35 → 0.22
-  //             blurRadius: 8, // 10 → 8
-  //             offset: const Offset(0, 3), // 6 → 3
-  //           ),
-  //         ]
-  //       : [
-  //           // ✅ Light：立体感は影だけで作る（境界をぼかさない）
-  //           BoxShadow(
-  //             color: Colors.black.withValues(alpha: 0.10), // 0.08 → 0.10
-  //             blurRadius: 10,
-  //             offset: const Offset(0, 5),
-  //           ),
-  //         ];
-  //
-  //   final id = video['id'] ?? "";
-  //   final title = video['title'] ?? '';
-  //   final thumbnail = video['thumbnailUrl'] ?? '';
-  //   final channel = video['channelTitle'] ?? '';
-  //   final viewText =
-  //       _formatViewCount(context, (video['viewCount'] ?? '0').toString());
-  //   final isFav = fav.isFavoriteSync(id);
-  //
-  //   const double thumbW = 120;
-  //   const double thumbH = 68;
-  //   bool isPushing = false;
-  //
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-  //     child: Container(
-  //       decoration: BoxDecoration(
-  //         color: cardColor,
-  //         borderRadius: borderRadius,
-  //         border: Border.fromBorderSide(borderSide),
-  //         boxShadow: shadows,
-  //
-  //         // ✅ 追加：Darkだけ上面ハイライトでカード境界を出す
-  //         gradient: isDark
-  //             ? LinearGradient(
-  //                 begin: Alignment.topCenter,
-  //                 end: Alignment.bottomCenter,
-  //                 colors: [
-  //                   Colors.white.withValues(alpha: 0.045),
-  //                   Colors.transparent,
-  //                 ],
-  //               )
-  //             : null,
-  //       ),
-  //       clipBehavior: Clip.antiAlias,
-  //       child: Material(
-  //         color: Colors.transparent,
-  //         child: InkWell(
-  //           onTap: () async {
-  //             if (isPushing) return;
-  //             isPushing = true;
-  //
-  //             try {
-  //               logger.w("🚨 PUSH VideoPlayerScreen id=${video['id']}");
-  //               await Navigator.push(
-  //                 context,
-  //                 MaterialPageRoute(
-  //                   builder: (_) => VideoPlayerScreen(
-  //                     video: video,
-  //                     isRepeat: false,
-  //                   ),
-  //                 ),
-  //               );
-  //             } finally {
-  //               isPushing = false;
-  //             }
-  //           },
-  //           child: Padding(
-  //             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-  //             child: Row(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 // ✅ サムネ（No.をoverlay）
-  //                 ClipRRect(
-  //                   borderRadius: BorderRadius.circular(8),
-  //                   child: Stack(
-  //                     children: [
-  //                       SizedBox(
-  //                         width: thumbW,
-  //                         height: thumbH,
-  //                         child: CachedNetworkImage(
-  //                           imageUrl: thumbnail,
-  //                           fit: BoxFit.cover,
-  //                           placeholder: (_, __) => Container(
-  //                             color:
-  //                                 isDark ? Colors.grey[800] : Colors.grey[300],
-  //                           ),
-  //                           errorWidget: (_, __, ___) => Container(
-  //                             color:
-  //                                 isDark ? Colors.grey[850] : Colors.grey[300],
-  //                             child: const Icon(
-  //                               Icons.wifi_off_rounded,
-  //                               size: 20,
-  //                               color: Colors.grey,
-  //                             ),
-  //                           ),
-  //                         ),
-  //                       ),
-  //
-  //                       // ✅ Rank badge overlay（1位 / 2-3位 / それ以降）
-  //                       Positioned(
-  //                         top: 6,
-  //                         left: 6,
-  //                         child: _buildRankBadgeSmall(context, isDark),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //
-  //                 const SizedBox(width: 10),
-  //
-  //                 // ✅ 情報（Overflowしない設計：固定高を廃止）
-  //                 Expanded(
-  //                   child: Column(
-  //                     mainAxisSize: MainAxisSize.min,
-  //                     crossAxisAlignment: CrossAxisAlignment.start,
-  //                     children: [
-  //                       // タイトル（最大2行）
-  //                       Text(
-  //                         title,
-  //                         maxLines: 2,
-  //                         overflow: TextOverflow.ellipsis,
-  //                         textAlign: TextAlign.left,
-  //                         style: TextStyle(
-  //                           fontSize: 14,
-  //                           fontWeight: FontWeight.w800,
-  //                           height: 1.12,
-  //                           color: onSurface,
-  //                         ),
-  //                       ),
-  //                       const SizedBox(height: 6),
-  //
-  //                       // チャンネル名（右寄せ）
-  //                       Align(
-  //                         alignment: Alignment.centerRight,
-  //                         child: Text(
-  //                           channel,
-  //                           maxLines: 1,
-  //                           overflow: TextOverflow.ellipsis,
-  //                           style: TextStyle(
-  //                             fontSize: 12,
-  //                             color: onSurface.withValues(alpha: 0.70),
-  //                           ),
-  //                         ),
-  //                       ),
-  //                       const SizedBox(height: 6),
-  //
-  //                       // ❤️ + 再生数
-  //                       Row(
-  //                         children: [
-  //                           GestureDetector(
-  //                             behavior: HitTestBehavior.opaque,
-  //                             onTap: () async {
-  //                               final fav = context.read<FavoritesService>();
-  //                               final iap = context.read<IapProvider>();
-  //
-  //                               final isFavNow = fav.isFavoriteSync(id);
-  //
-  //                               if (isFavNow) {
-  //                                 await FavoriteDeleteHelper.confirmOrDelete(
-  //                                     context, video);
-  //                                 return;
-  //                               }
-  //
-  //                               final ok =
-  //                                   await fav.tryAddFavorite(id, video, iap);
-  //
-  //                               if (!ok) _showLimitDialog(context, iap);
-  //                             },
-  //                             child: Icon(
-  //                               isFav
-  //                                   ? Icons.favorite_rounded
-  //                                   : Icons.favorite_border_rounded,
-  //                               size: 22,
-  //                               color: isFav
-  //                                   ? Colors.red
-  //                                   : (isDark
-  //                                       ? Colors.white70
-  //                                       : Colors.grey.shade600),
-  //                             ),
-  //                           ),
-  //                           const SizedBox(width: 8),
-  //                           Expanded(
-  //                             child: Text(
-  //                               viewText,
-  //                               textAlign: TextAlign.right,
-  //                               style: TextStyle(
-  //                                 fontSize: 16,
-  //                                 fontWeight: FontWeight.w900,
-  //                                 color: onSurface,
-  //                               ),
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   void _showLimitDialog(BuildContext context, IapProvider iap) {
     final purchased = iap.isPurchased(IapProducts.limitUpgrade.id);
