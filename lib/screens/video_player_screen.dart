@@ -114,7 +114,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     try {
       logger.i("🌐 Open in CCT: $id title=$_currentTitle");
-      await openYouTubePreferApp(context, videoId: id);
+      await openYouTubeInInAppBrowser(context, videoId: id);
 
       // CustomTabsを閉じて戻ってきた後
       if (!mounted) return;

@@ -103,7 +103,7 @@ class VideoListTileSmall extends StatelessWidget {
 
         if (id.isEmpty) return;
 
-        await openYouTubePreferApp(context, videoId: id);
+        await openYouTubeInInAppBrowser(context, videoId: id);
       } finally {
         isPushing = false;
       }

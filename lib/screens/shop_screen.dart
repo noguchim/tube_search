@@ -25,6 +25,7 @@ class _ShopScreenState extends State<ShopScreen> {
   String _priceLimit = "—";
   bool _hasError = false;
   bool _isLoading = true;
+  bool _suppressIapSnack = false;
 
   @override
   void initState() {
@@ -112,6 +113,16 @@ class _ShopScreenState extends State<ShopScreen> {
 
     final remove = provider.isPurchased(IapProducts.removeAds.id);
     final limit = provider.isPurchased(IapProducts.limitUpgrade.id);
+
+    // ✅ 復元中は「個別購入メッセージ」を出さない（復元ボタン側で1回だけ出す）
+    if (_suppressIapSnack) {
+      logger.i("復元中ルート → return");
+      _lastRemoveAds = remove;
+      _lastLimit = limit;
+      return;
+    } else {
+      logger.i("通常MSGルート → 各MSG");
+    }
 
     if (!_lastRemoveAds && remove) {
       _showSnack(
@@ -349,11 +360,105 @@ class _ShopScreenState extends State<ShopScreen> {
                           const SizedBox(height: 50),
 
                           // ===== Restore =====
+                          // Center(
+                          //   child: OutlinedButton.icon(
+                          //     onPressed: () async {
+                          //       final messenger = ScaffoldMessenger.of(context);
+                          //       setState(() => isProcessing = true);
+                          //       try {
+                          //         final iap = context.read<IapProvider>();
+                          //
+                          //         final beforeRemove =
+                          //             iap.isPurchased(IapProducts.removeAds.id);
+                          //         final beforeLimit = iap
+                          //             .isPurchased(IapProducts.limitUpgrade.id);
+                          //
+                          //         await iap.service.restore();
+                          //
+                          //         final afterRemove =
+                          //             iap.isPurchased(IapProducts.removeAds.id);
+                          //         final afterLimit = iap
+                          //             .isPurchased(IapProducts.limitUpgrade.id);
+                          //
+                          //         final restoredNow =
+                          //             (!beforeRemove && afterRemove) ||
+                          //                 (!beforeLimit && afterLimit);
+                          //
+                          //         final alreadyOwned =
+                          //             afterRemove || afterLimit;
+                          //
+                          //         if (restoredNow) {
+                          //           messenger.showSnackBar(
+                          //             SnackBar(
+                          //               content: Text(
+                          //                 AppLocalizations.of(context)!
+                          //                     .shopRestoreDone,
+                          //               ),
+                          //             ),
+                          //           );
+                          //         } else if (alreadyOwned) {
+                          //           messenger.showSnackBar(
+                          //             SnackBar(
+                          //               content: Text(
+                          //                 AppLocalizations.of(context)!
+                          //                     .shopRestoreAlready,
+                          //               ),
+                          //             ),
+                          //           );
+                          //         } else {
+                          //           messenger.showSnackBar(
+                          //             SnackBar(
+                          //               content: Text(
+                          //                 AppLocalizations.of(context)!
+                          //                     .shopRestoreNothing,
+                          //               ),
+                          //             ),
+                          //           );
+                          //         }
+                          //       } finally {
+                          //         if (mounted) {
+                          //           setState(() => isProcessing = false);
+                          //         }
+                          //       }
+                          //     },
+                          //     icon: const Icon(
+                          //       Icons.restore,
+                          //       size: 18,
+                          //       color: Colors.white70,
+                          //     ),
+                          //     label: Text(
+                          //       AppLocalizations.of(context)!.shopRestore,
+                          //       style: const TextStyle(
+                          //         color: Colors.white70,
+                          //         fontSize: 14,
+                          //         fontWeight: FontWeight.w500,
+                          //       ),
+                          //     ),
+                          //     style: OutlinedButton.styleFrom(
+                          //       padding: const EdgeInsets.symmetric(
+                          //         horizontal: 24,
+                          //         vertical: 14,
+                          //       ),
+                          //       side: BorderSide(
+                          //         color: Colors.white.withValues(alpha: 0.35),
+                          //         width: 1,
+                          //       ),
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(24),
+                          //       ),
+                          //       backgroundColor:
+                          //           Colors.white.withValues(alpha: 0.05),
+                          //     ),
+                          //   ),
+                          // ),
+
                           Center(
                             child: OutlinedButton.icon(
                               onPressed: () async {
+                                logger.i("-----restore tap-----");
                                 final messenger = ScaffoldMessenger.of(context);
                                 setState(() => isProcessing = true);
+
                                 try {
                                   final iap = context.read<IapProvider>();
 
@@ -362,12 +467,17 @@ class _ShopScreenState extends State<ShopScreen> {
                                   final beforeLimit = iap
                                       .isPurchased(IapProducts.limitUpgrade.id);
 
+                                  _suppressIapSnack = true;
+
+                                  // ✅ restore中に purchaseStream が反映するまで待つ実装になっている前提
                                   await iap.service.restore();
 
                                   final afterRemove =
                                       iap.isPurchased(IapProducts.removeAds.id);
                                   final afterLimit = iap
                                       .isPurchased(IapProducts.limitUpgrade.id);
+
+                                  _suppressIapSnack = false;
 
                                   final restoredNow =
                                       (!beforeRemove && afterRemove) ||
@@ -376,35 +486,35 @@ class _ShopScreenState extends State<ShopScreen> {
                                   final alreadyOwned =
                                       afterRemove || afterLimit;
 
+                                  logger.i("購入を復元タップ後のIAP状態："
+                                      "beforeRemove1^$beforeRemove "
+                                      "beforeLimit=$beforeLimit "
+                                      "afterRemove=$afterRemove "
+                                      "afterLimit=$afterLimit "
+                                      "restoredNow=$restoredNow alreadyOwned=$alreadyOwned");
+
+                                  // ✅ SnackBarはこの1回だけ
+                                  final String msg;
                                   if (restoredNow) {
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          AppLocalizations.of(context)!
-                                              .shopRestoreDone,
-                                        ),
-                                      ),
-                                    );
+                                    msg = AppLocalizations.of(context)!
+                                        .shopRestoreDone;
                                   } else if (alreadyOwned) {
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          AppLocalizations.of(context)!
-                                              .shopRestoreAlready,
-                                        ),
-                                      ),
-                                    );
+                                    msg = AppLocalizations.of(context)!
+                                        .shopRestoreAlready;
                                   } else {
-                                    messenger.showSnackBar(
+                                    msg = AppLocalizations.of(context)!
+                                        .shopRestoreNothing;
+                                  }
+
+                                  messenger
+                                    ..hideCurrentSnackBar()
+                                    ..showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          AppLocalizations.of(context)!
-                                              .shopRestoreNothing,
-                                        ),
+                                        content: Text(msg),
                                       ),
                                     );
-                                  }
                                 } finally {
+                                  _suppressIapSnack = false;
                                   if (mounted) {
                                     setState(() => isProcessing = false);
                                   }

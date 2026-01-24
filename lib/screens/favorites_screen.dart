@@ -372,7 +372,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       final videoId = id.trim();
       if (videoId.isEmpty) return;
 
-      await openYouTubePreferApp(context, videoId: videoId);
+      await openYouTubeInInAppBrowser(context, videoId: videoId);
     } finally {
       _isPushing = false;
     }

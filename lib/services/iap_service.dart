@@ -1,5 +1,6 @@
 // lib/services/iap_service.dart
 import 'dart:async';
+
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,9 @@ class IapService {
 
   bool _isRestoring = false;
   bool _initialized = false;
+  Completer<void>? _restoreCompleter;
+  Timer? _restoreTimer;
+  void Function(String productId)? _onRestoredDuringRestore;
 
   /// 👇 UI と同期させるためのフック（Provider が設定する）
   void Function()? onStateChanged;
@@ -38,6 +42,14 @@ class IapService {
     // 保存から復元
     final prefs = await SharedPreferences.getInstance();
     for (final p in IapProducts.all) {
+      if (_isRestoring &&
+          _restoreCompleter != null &&
+          !_restoreCompleter!.isCompleted) {
+        // restored/purchased/pending/error/canceled いずれでも
+        // 「streamが動いた」= restoreの応答が来た と見做して完了
+        _restoreCompleter!.complete();
+      }
+
       final value = prefs.getBool(p.prefKey) ?? false;
       purchased[p.id] = value;
       logger.i('[IAP] restore(local): ${p.id} = $value');
@@ -50,7 +62,7 @@ class IapService {
     }
 
     _subscription = _iap.purchaseStream.listen(
-          (purchases) async {
+      (purchases) async {
         logger.i('[IAP] purchaseStream: ${purchases.length} events');
 
         for (final p in purchases) {
@@ -64,15 +76,32 @@ class IapService {
 
           switch (p.status) {
             case PurchaseStatus.purchased:
-              await _markPurchased(product);   // ← 状態を反映
-              onPurchased(product);           // ← Snackbar などだけ
+              await _markPurchased(product); // ← 状態を反映
+
+              // ✅ restore直後に purchased として来る場合もあるので拾う
+              if (_isRestoring) {
+                _onRestoredDuringRestore?.call(product.id);
+              }
+
+              // ✅ restore中の purchased は「復元」と同等扱いなので UI通知しない
+              // （復元ボタン側で1回だけSnackBarを出すため）
+              if (!_isRestoring) {
+                onPurchased(product); // ← 通常購入だけSnackBar等を出す
+              }
+
               if (p.pendingCompletePurchase) {
                 await _iap.completePurchase(p);
               }
               break;
 
             case PurchaseStatus.restored:
-              await _markPurchased(product);   // ← 状態は即反映（UIも更新）
+              await _markPurchased(product); // ← 状態は即反映（UIも更新）
+
+              // ✅ restore中に restored が来たら記録
+              if (_isRestoring) {
+                _onRestoredDuringRestore?.call(product.id);
+              }
+
               if (p.pendingCompletePurchase) {
                 await _iap.completePurchase(p);
               }
@@ -90,6 +119,15 @@ class IapService {
               onError(p.error?.message ?? '購入中にエラーが発生しました');
               break;
           }
+        }
+
+        // ✅ restore中で、今回purchaseStreamが空でなく何か来たなら
+        // 全件処理し終わってから restore完了扱いにする
+        if (_isRestoring &&
+            purchases.isNotEmpty &&
+            _restoreCompleter != null &&
+            !_restoreCompleter!.isCompleted) {
+          _restoreCompleter!.complete();
         }
       },
       onError: (e) {
@@ -132,12 +170,58 @@ class IapService {
   // ------------------------------------------------------------
   // RESTORE
   // ------------------------------------------------------------
-  Future<void> restore() async {
+  /// restoreした結果「今回 newly purchased 扱いになった productId 一覧」を返す
+  Future<List<String>> restore() async {
     logger.i('[IAP] RESTORE start');
+
+    // ✅ 連打対策（復元中ならスキップ）
+    if (_isRestoring) {
+      logger.w('[IAP] RESTORE skipped (already restoring)');
+      return const [];
+    }
+
     _isRestoring = true;
+
+    // 今回restoreで restored/purchased が来たものを記録
+    final restoredIds = <String>{};
+
+    // ✅ 前回のrestoreが残っている場合だけ完了させる（complete済みにcompleteしない）
+    if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+      _restoreCompleter!.complete();
+    }
+    _restoreCompleter = Completer<void>();
+
+    _restoreTimer?.cancel();
+    _restoreTimer = Timer(const Duration(seconds: 2), () {
+      if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+        logger.w('[IAP] RESTORE timeout (no stream event)');
+        _restoreCompleter!.complete();
+      }
+    });
+
+    // ✅ restore中だけ purchaseStream の処理でここに溜めるためのフラグ
+    void addRestored(String id) => restoredIds.add(id);
+
+    // ✅ temporarily set callback
+    _onRestoredDuringRestore = addRestored;
+
     try {
       await _iap.restorePurchases();
+
+      // ✅ purchaseStream側で complete されるのを待つ
+      await _restoreCompleter!.future;
+
+      logger.i('[IAP] RESTORE collected ids: ${restoredIds.toList()}');
+      return restoredIds.toList();
+    } catch (e) {
+      logger.e('[IAP] RESTORE failed', error: e);
+      return const [];
     } finally {
+      _onRestoredDuringRestore = null;
+
+      _restoreTimer?.cancel();
+      _restoreTimer = null;
+
       _isRestoring = false;
       logger.i('[IAP] RESTORE finished');
     }

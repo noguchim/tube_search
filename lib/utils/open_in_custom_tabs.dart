@@ -1,57 +1,21 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_custom_tabs/flutter_custom_tabs.dart';
-//
-// Future<void> openYouTubeInCustomTabs(
-//   BuildContext context, {
-//   required String videoId,
-// }) async {
-//   // ✅ m.youtube.com の方がモバイルUIで安定しやすい
-//   final url = "https://m.youtube.com/watch?v=$videoId";
-//
-//   await launchUrl(
-//     Uri.parse(url),
-//     customTabsOptions: CustomTabsOptions(
-//       showTitle: true,
-//       urlBarHidingEnabled: true,
-//       shareState: CustomTabsShareState.on,
-//
-//       // 好みで調整（TUBE+は黒系なので）
-//       colorSchemes: CustomTabsColorSchemes.defaults(
-//         toolbarColor: Colors.black,
-//       ),
-//     ),
-//     safariVCOptions: const SafariViewControllerOptions(
-//       barCollapsingEnabled: true,
-//     ),
-//   );
-// }
-
 import 'package:flutter/material.dart';
 import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as ct;
 import 'package:url_launcher/url_launcher.dart' as ul;
 
-Future<void> openYouTubePreferApp(
+/// YouTubeを「アプリでは開かず」
+/// 常に内製ブラウザ（Android: Custom Tabs / iOS: SafariViewController）で開く。
+///
+/// - Phase2（連続再生）を考えると、この挙動が最も安定
+/// - 公式YouTubeアプリで開くボタンはページ側に出るため、導線は担保される
+Future<void> openYouTubeInInAppBrowser(
   BuildContext context, {
   required String videoId,
 }) async {
-  final youtubeAppUrl = Uri.parse('youtube://www.youtube.com/watch?v=$videoId');
-  final webUrl = Uri.parse('https://www.youtube.com/watch?v=$videoId');
+  // ✅ m.youtube.com の方がモバイルUIで安定しやすい
+  // watch は維持しつつ、短縮URLより安定することが多い
+  final webUrl = Uri.parse('https://m.youtube.com/watch?v=$videoId');
 
-  // 1) YouTubeアプリがあれば最優先
-  try {
-    final canOpenApp = await ul.canLaunchUrl(youtubeAppUrl);
-    if (canOpenApp) {
-      final ok = await ul.launchUrl(
-        youtubeAppUrl,
-        mode: ul.LaunchMode.externalApplication,
-      );
-      if (ok) return;
-    }
-  } catch (e) {
-    debugPrint('[openYouTubePreferApp] open youtube app failed: $e');
-  }
-
-  // 2) 次に内製ブラウザ（Android: Custom Tabs / iOS: SafariVC）
+  // ① まず内製ブラウザで開く（常にこれ）
   try {
     await ct.launchUrl(
       webUrl,
@@ -70,10 +34,10 @@ Future<void> openYouTubePreferApp(
     );
     return;
   } catch (e) {
-    debugPrint('[openYouTubePreferApp] CustomTabs/SafariVC failed: $e');
+    debugPrint('[openYouTubeInInAppBrowser] CustomTabs/SafariVC failed: $e');
   }
 
-  // 3) 最後に外部ブラウザ
+  // ② フォールバック：外部ブラウザ（端末既定ブラウザ）
   try {
     final ok = await ul.launchUrl(
       webUrl,
@@ -86,7 +50,7 @@ Future<void> openYouTubePreferApp(
       );
     }
   } catch (e) {
-    debugPrint('[openYouTubePreferApp] external browser failed: $e');
+    debugPrint('[openYouTubeInInAppBrowser] external browser failed: $e');
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ブラウザを開けませんでした')),

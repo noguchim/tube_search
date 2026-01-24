@@ -34,7 +34,9 @@ class YouTubeApiService {
       throw Exception("API Error ${res.statusCode}");
     }
 
-    logger.d("📥 Response: ${res.body}");
+    // 返却結果確認時はコメント解除
+    // logger.d("📥 Response: ${res.body}");
+
     return jsonDecode(res.body);
   }
 
