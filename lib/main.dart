@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -84,6 +85,19 @@ Future<void> _requestConsent() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ★ ステータスバーを「表示モード」に戻す
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.edgeToEdge,
+  );
+
+  // ★ 白アイコン指定（Android）
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
 
   // 👇 ここ（テスト端末登録）
   await MobileAds.instance.updateRequestConfiguration(
@@ -224,26 +238,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   /// 🔥 ダークテーマ対応の背景
-  Widget _buildBackground(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  // Widget _buildBackground(BuildContext context) {
+  //   final theme = Theme.of(context);
+  //   final isDark = theme.brightness == Brightness.dark;
+  //
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       gradient: LinearGradient(
+  //         begin: Alignment.topCenter,
+  //         end: Alignment.bottomCenter,
+  //         colors: isDark
+  //             ? [
+  //                 const Color(0xFF0F0F0F),
+  //                 const Color(0xFF1A1A1A),
+  //               ]
+  //             : [
+  //                 const Color(0xFFE2E8F0),
+  //                 const Color(0xFFF8FAFC),
+  //               ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
+  Widget _buildBackground(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  const Color(0xFF0F0F0F),
-                  const Color(0xFF1A1A1A),
-                ]
-              : [
-                  const Color(0xFFE2E8F0),
-                  const Color(0xFFF8FAFC),
-                ],
-        ),
-      ),
+      // color: Theme.of(context).scaffoldBackgroundColor,
+      color: Colors.transparent,
     );
   }
 
@@ -252,6 +273,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final l = AppLocalizations.of(context)!;
+
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    const double topTabHeight = 45;
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
@@ -262,65 +287,53 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           extendBody: true,
           body: Stack(
             children: [
-              // 背景
-              Positioned.fill(child: _buildBackground(context)),
-
-              // メイン画面
+              // メイン画面（全面）
               Positioned.fill(
                 child: PageView(
                   controller: _pageController,
-                  onPageChanged: (index) {
-                    setState(() => _selectedIndex = index);
-                    _isScrollingDown = false;
-
-                    if (index == 2) {
-                      _favKey.currentState?.reload();
-                    }
-                  },
                   children: _screens,
                 ),
               ),
 
-              // ★ BottomNav（キーボード表示中は隠す）
-              if (!isKeyboardVisible)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: shouldShowBanner ? 50 : 0, // ← 広告分だけ上げる
-                  child: AnimatedOpacity(
-                    opacity: _isScrollingDown ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 250),
-                    child: IgnorePointer(
-                      ignoring: _isScrollingDown,
-                      child: SizedBox(
-                        height: 65,
-                        child: GlassDockNavigationBar(
-                          selectedIndex: _selectedIndex,
-                          onTabSelected: (index) {
-                            setState(() => _selectedIndex = index);
+              // ★ 上部タブ（高さ固定）
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: AnimatedOpacity(
+                  opacity: _isScrollingDown ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: IgnorePointer(
+                    ignoring: _isScrollingDown,
+                    child: SizedBox(
+                      height: 75,
+                      child: GlassDockNavigationBar(
+                        selectedIndex: _selectedIndex,
+                        onTabSelected: (index) {
+                          setState(() => _selectedIndex = index);
 
-                            if (index == 2) {
-                              _favKey.currentState?.reload();
-                            }
+                          if (index == 2) {
+                            _favKey.currentState?.reload();
+                          }
 
-                            _pageController.animateToPage(
-                              index,
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOut,
-                            );
-                          },
-                        ),
+                          _pageController.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOut,
+                          );
+                        },
                       ),
                     ),
                   ),
                 ),
+              ),
 
-              // ★ Divider（広告の直上に 1px）
+              // ★ Divider（広告の直上）
               if (shouldShowBanner)
                 const Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 50, // ← バナーの高さ
+                  bottom: 50,
                   child: _BottomAdDivider(),
                 ),
 
@@ -336,34 +349,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _BottomAdDivider extends StatelessWidget {
-  const _BottomAdDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: 2, // ← ここがポイント（極薄の帯）
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  Colors.white.withValues(alpha: 0.22),
-                  Colors.white.withValues(alpha: 0.05),
-                ]
-              : [
-                  Colors.black.withValues(alpha: 0.10),
-                  Colors.black.withValues(alpha: 0.02),
-                ],
-        ),
-      ),
     );
   }
 }
@@ -395,16 +380,21 @@ class GlassDockNavigationBar extends StatelessWidget {
             const Color(0x991A1A1A),
           ]
         : [
-            const Color(0xE6FFFFFF),
-            const Color(0xCCE5E8EC),
-            const Color(0x99D0D4D9),
+            // const Color(0xE6FFFFFF),
+            // const Color(0xCCE5E8EC),
+            // const Color(0x99D0D4D9),
+            const Color(0xE60B3BDF),
+            const Color(0xE60B3BDF),
+            const Color(0xE60B3BDF),
           ];
 
     // ✅ BottomNavは“霧っぽく”見えやすいので、まずはAppBarより少し薄くして開始
     // （AppBar 0.85 → BottomNavは 0.78 くらいが起点として安全）
-    final Color bgColor = isDark
-        ? const Color(0xFF111111).withValues(alpha: 0.78)
-        : const Color(0xFFF9FAFB).withValues(alpha: 0.78);
+    // final Color bgColor = isDark
+    //     ? const Color(0xFF111111).withValues(alpha: 0.78)
+    //     : const Color(0xFFF9FAFB).withValues(alpha: 0.78);
+
+    final Color bgColor = isDark ? Colors.red : Colors.red;
 
     final borderColor =
         isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFECECEC);
@@ -420,7 +410,7 @@ class GlassDockNavigationBar extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                height: 65,
+                height: 75,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -439,30 +429,24 @@ class GlassDockNavigationBar extends StatelessWidget {
                     _buildTab(
                       context,
                       index: 0,
-                      icon: Icons.local_fire_department_rounded,
                       label: l.navPopular,
                       activeColor: cs.primary,
                     ),
                     _buildTab(
                       context,
                       index: 1,
-                      icon: Icons.category_rounded,
                       label: l.navGenre,
                       activeColor: cs.primary,
                     ),
                     _buildTab(
                       context,
                       index: 2,
-                      icon: Icons.favorite_rounded,
                       label: l.navFavorites,
                       activeColor: cs.primary,
-                      iconYOffset: 2.0,
-                      activeIconSize: 21,
                     ),
                     _buildTab(
                       context,
                       index: 3,
-                      icon: Icons.settings_rounded,
                       label: l.navSettings,
                       activeColor: cs.primary,
                     ),
@@ -482,28 +466,22 @@ class GlassDockNavigationBar extends StatelessWidget {
   Widget _buildTab(
     BuildContext context, {
     required int index,
-    required IconData icon,
     required String label,
     required Color activeColor,
-    double iconYOffset = 0.0,
-    double activeIconSize = 28,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isActive = selectedIndex == index;
 
-    final inactiveIcon = isDark
-        ? Colors.white.withValues(alpha: 0.70)
-        : Colors.black.withValues(alpha: 0.62);
+    // final inactiveText = isDark
+    //     ? Colors.white.withValues(alpha: 0.62)
+    //     : Colors.black.withValues(alpha: 0.52);
+    //
+    // final textColor = isActive ? activeColor : inactiveText;
 
-    final inactiveText = isDark
-        ? Colors.white.withValues(alpha: 0.62)
-        : Colors.black.withValues(alpha: 0.52);
+    const inactiveText = Colors.white;
 
-    final iconColor = isActive ? activeColor : inactiveIcon;
-    final textColor = isActive ? activeColor : inactiveText;
-
-    final double iconSize = isActive ? activeIconSize.toDouble() : 20.0;
+    final textColor = Colors.white;
 
     return Expanded(
       child: Semantics(
@@ -516,25 +494,25 @@ class GlassDockNavigationBar extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: 30,
-                child: Align(
-                  alignment: Alignment.center,
-                  child: Transform.translate(
-                    offset: Offset(0, iconYOffset),
-                    child: Icon(
-                      icon,
-                      size: iconSize,
-                      color: iconColor,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 1),
+              // SizedBox(
+              //   height: 30,
+              //   child: Align(
+              //     alignment: Alignment.center,
+              //     child: Transform.translate(
+              //       offset: Offset(0, iconYOffset),
+              //       child: Icon(
+              //         icon,
+              //         size: iconSize,
+              //         color: iconColor,
+              //       ),
+              //     ),
+              //   ),
+              // ),
+              const SizedBox(height: 40),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 150),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                   color: textColor,
                 ),
@@ -542,6 +520,34 @@ class GlassDockNavigationBar extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomAdDivider extends StatelessWidget {
+  const _BottomAdDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 2, // ← ここがポイント（極薄の帯）
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.22),
+                  Colors.white.withValues(alpha: 0.05),
+                ]
+              : [
+                  Colors.black.withValues(alpha: 0.10),
+                  Colors.black.withValues(alpha: 0.02),
+                ],
         ),
       ),
     );

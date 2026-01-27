@@ -10,7 +10,7 @@ import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/card_density_prefs.dart';
-import '../widgets/light_flat_app_bar.dart';
+import '../widgets/density_fab.dart';
 import '../widgets/network_error_view.dart';
 import '../widgets/video_list_tile.dart';
 import '../widgets/video_list_tile_middle.dart';
@@ -205,9 +205,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     if (currentLimit == _lastLimit) return;
 
     _lastLimit = currentLimit;
-    // setState(() {
-    //   _futureVideos = _fetchVideos(forceRefresh: true);
-    // });
     _setFutureVideos(_fetchVideos(forceRefresh: true));
   }
 
@@ -217,9 +214,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     if (region == _currentRegion) return;
 
     _currentRegion = region;
-    // setState(() {
-    //   _futureVideos = _fetchVideos(forceRefresh: true);
-    // });
     _setFutureVideos(_fetchVideos(forceRefresh: true));
   }
 
@@ -232,6 +226,14 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 60), // ← AdMob分持ち上げ
+        child: DensityFab(
+          density: _density,
+          onToggle: _toggleDensity,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _futureVideos,
         builder: (context, snapshot) {
@@ -244,9 +246,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
           if (snapshot.hasError) {
             return NetworkErrorView(
               onRetry: () {
-                // setState(() {
-                //   _futureVideos = _fetchVideos(forceRefresh: true);
-                // });
                 _setFutureVideos(_fetchVideos(forceRefresh: true));
               },
             );
@@ -274,24 +273,9 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                SliverAppBar(
-                  floating: true,
-                  snap: true,
-                  elevation: 0,
-                  backgroundColor: Colors.transparent,
-                  expandedHeight: 65,
-                  flexibleSpace: LightFlatAppBar(
-                    title: AppLocalizations.of(context)!.popularTitle,
-                    showRefreshButton: true,
-                    isRefreshing: _isRefreshing,
-                    showInfoButton: true,
-                    onRefreshPressed: _refreshVideos,
-                    showDensityButton: true,
-                    density: _density,
-                    onToggleDensity: _toggleDensity,
-                    titleAlign: AppBarTitleAlign.center,
-                    reserveLeadingSpace: false,
-                    fetchedAt: _lastFetchedAt,
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 30 + MediaQuery.of(context).padding.top,
                   ),
                 ),
 
