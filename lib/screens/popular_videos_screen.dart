@@ -2,6 +2,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
+import 'package:tube_search/widgets/video_list_tile_top_rank.dart';
+import 'package:tube_search/widgets/video_overlay_card.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
@@ -11,9 +13,9 @@ import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/card_density_prefs.dart';
 import '../widgets/density_fab.dart';
+import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
-import '../widgets/video_list_tile.dart';
-import '../widgets/video_list_tile_middle.dart';
+import '../widgets/video_grid_tile.dart';
 import '../widgets/video_list_tile_small.dart';
 
 class PopularVideosScreen extends StatefulWidget {
@@ -41,6 +43,8 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   late final IapProvider _iapProvider;
   late final RegionProvider _regionProvider;
   DateTime? _lastFetchedAt;
+  Map<String, dynamic>? _expandedVideo;
+  int? _expandedRank;
 
   @override
   void initState() {
@@ -93,6 +97,8 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+
+    // ===== 既存：スクロール方向検知 =====
     final direction = _scrollController.position.userScrollDirection;
     if (direction == ScrollDirection.reverse && !_isScrollingDown) {
       _isScrollingDown = true;
@@ -217,6 +223,93 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     _setFutureVideos(_fetchVideos(forceRefresh: true));
   }
 
+  Widget _buildBigSliver(List<Map<String, dynamic>> videos) {
+    if (videos.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final topVideo = videos.first;
+    final restVideos = videos.length > 1 ? videos.sublist(1) : [];
+
+    return SliverList(
+      delegate: SliverChildListDelegate(
+        [
+          VideoListTileTopRank(
+            video: topVideo,
+            rank: 1,
+          ),
+          if (restVideos.isNotEmpty)
+            Transform.translate(
+              // NOTE:
+              // 視覚的なカード連続感を出すために
+              // Grid を BigCard に少し重ねている(-20)。
+              // レイアウト上の余白ではなく視覚補正。
+              offset: const Offset(0, -20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: restVideos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 16 / 9,
+                  ),
+                  itemBuilder: (context, index) {
+                    final video = restVideos[index];
+                    final rank = index + 2;
+
+                    return VideoGridTile(
+                      video: video,
+                      rank: rank,
+                      onTap: () {
+                        setState(() {
+                          _expandedVideo = video;
+                          _expandedRank = rank;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNormalSliver(List<Map<String, dynamic>> videos) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final video = videos[index];
+          final rank = index + 1;
+
+          switch (_density) {
+            case CardDensity.middle:
+              return VideoOverlayCard(
+                video: video,
+                rank: rank,
+              );
+
+            case CardDensity.small:
+              return VideoListTileSmall(
+                video: video,
+                rank: rank,
+              );
+
+            case CardDensity.big:
+              // BIG はここに来ない設計
+              return const SizedBox.shrink();
+          }
+        },
+        childCount: videos.length,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -227,7 +320,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 60), // ← AdMob分持ち上げ
+        padding: const EdgeInsets.only(bottom: 45), // ← AdMob分持ち上げ
         child: DensityFab(
           density: _density,
           onToggle: _toggleDensity,
@@ -268,95 +361,49 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
           final videos = snapshot.data!;
 
-          return RefreshIndicator(
-            onRefresh: _refreshVideos,
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 30 + MediaQuery.of(context).padding.top,
-                  ),
+          return Stack(
+            children: [
+              // =============================
+              // 背面：既存のリスト（今のコードそのまま）
+              // =============================
+              RefreshIndicator(
+                onRefresh: _refreshVideos,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 50 + MediaQuery.of(context).padding.top,
+                      ),
+                    ),
+                    if (_density == CardDensity.big)
+                      _buildBigSliver(videos)
+                    else
+                      _buildNormalSliver(videos),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 70),
+                    ),
+                  ],
                 ),
+              ),
 
-                // Phase2対応(連続再生)
-                // SliverToBoxAdapter(
-                //   child: Padding(
-                //     padding: const EdgeInsets.only(top: 12, bottom: 8),
-                //     // ✅ 上下Margin
-                //     child: Padding(
-                //       padding: const EdgeInsets.symmetric(horizontal: 16),
-                //       // ✅ 横余白
-                //       child: SizedBox(
-                //         width: double.infinity, // ✅ 幅を広げる（親幅いっぱい）
-                //         child: ElevatedButton.icon(
-                //           onPressed: () async {
-                //             await showRepeatSettingsPanel(
-                //               context: context,
-                //               videos: videos,
-                //             );
-                //           },
-                //           icon: const Icon(
-                //             Icons.play_circle_fill_rounded, // ✅ アイコン
-                //             size: 22,
-                //           ),
-                //           label: const Text(
-                //             "連続再生を始める",
-                //             style: TextStyle(
-                //               fontSize: 16,
-                //               fontWeight: FontWeight.w800,
-                //               letterSpacing: 0.4,
-                //             ),
-                //           ),
-                //           style: ElevatedButton.styleFrom(
-                //             backgroundColor: const Color(0xFFE67E22),
-                //             // ✅ ボタン色
-                //             foregroundColor: Colors.white,
-                //             padding: const EdgeInsets.symmetric(vertical: 14),
-                //             // ✅ 高さ
-                //             elevation: 0,
-                //             shape: RoundedRectangleBorder(
-                //               borderRadius: BorderRadius.circular(12),
-                //             ),
-                //           ),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
-
-                // --- 動画リスト ---
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 8),
-                ),
-
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final video = videos[index];
-
-                      switch (_density) {
-                        case CardDensity.big:
-                          return VideoListTile(video: video, rank: index + 1);
-
-                        case CardDensity.middle:
-                          return VideoListTileMiddle(
-                              video: video, rank: index + 1);
-
-                        case CardDensity.small:
-                          return VideoListTileSmall(
-                              video: video, rank: index + 1);
-                      }
+              // =============================
+              // 前面：Expanded Overlay
+              // =============================
+              if (_expandedVideo != null)
+                Positioned.fill(
+                  child: ExpandedVideoOverlay(
+                    video: _expandedVideo!,
+                    rank: _expandedRank!,
+                    onClose: () {
+                      setState(() {
+                        _expandedVideo = null;
+                        _expandedRank = null;
+                      });
                     },
-                    childCount: videos.length,
                   ),
                 ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 120),
-                ),
-              ],
-            ),
+            ],
           );
         },
       ),

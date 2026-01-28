@@ -20,7 +20,7 @@
 
     "favoritesTitle": "お気に入り",
     "favoritesEmptyTitle": "お気に入りがありません",
-    "favoritesEmptyHint": "アイコンタップでお気に入りに追加！",
+    "favoritesEmptyHint": "❤️アイコンタップでお気に入りに追加！",
     "favoritesTapHere": "ここをタップ！",
     "favoritesRegisteredSuffix": "登録",
     "favoritesCountMessage": "お気に入り登録数：{current} / {limit} 件",

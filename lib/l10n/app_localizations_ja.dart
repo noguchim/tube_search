@@ -50,7 +50,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get favoritesEmptyTitle => 'お気に入りがありません';
 
   @override
-  String get favoritesEmptyHint => 'アイコンタップでお気に入りに追加！';
+  String get favoritesEmptyHint => '❤️アイコンタップでお気に入りに追加！';
 
   @override
   String get favoritesTapHere => 'ここをタップ！';

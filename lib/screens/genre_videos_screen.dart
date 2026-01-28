@@ -6,17 +6,26 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../providers/banner_ad_provider.dart';
 import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
+import '../services/favorites_service.dart';
+import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
-import '../widgets/light_flat_app_bar.dart';
+import '../widgets/ad_banner.dart';
+import '../widgets/density_fab.dart';
+import '../widgets/expanded_video_overlay.dart';
+
 import '../widgets/network_error_view.dart';
-import '../widgets/video_list_tile.dart';
-import '../widgets/video_list_tile_middle.dart';
+import '../widgets/top_bar.dart';
+import '../widgets/video_grid_tile.dart';
+
 import '../widgets/video_list_tile_small.dart';
+import '../widgets/video_list_tile_top_rank.dart';
+import '../widgets/video_overlay_card.dart';
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
@@ -50,6 +59,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
   bool _isSearching = false;
   Completer<List<Map<String, dynamic>>>? _activeRequest;
+  Map<String, dynamic>? _expandedVideo;
+  int? _expandedRank;
+  bool _showTopBar = true;
 
   @override
   void initState() {
@@ -102,12 +114,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     if (!_scrollController.hasClients) return;
     final d = _scrollController.position.userScrollDirection;
 
-    if (d == ScrollDirection.reverse && !_isScrollingDown) {
-      _isScrollingDown = true;
-      widget.onScrollChanged?.call(true);
-    } else if (d == ScrollDirection.forward && _isScrollingDown) {
-      _isScrollingDown = false;
-      widget.onScrollChanged?.call(false);
+    if (d == ScrollDirection.reverse && _showTopBar) {
+      setState(() => _showTopBar = false);
+    } else if (d == ScrollDirection.forward && !_showTopBar) {
+      setState(() => _showTopBar = true);
     }
   }
 
@@ -269,10 +279,91 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     }
   }
 
-  String _formatFetchedAt() {
-    if (_fetchedAt == null) return "";
-    return "${DateFormat("M/d HH:mm").format(_fetchedAt!)} "
-        "${AppLocalizations.of(context)!.update}";
+  Widget _buildBigSliver(List<Map<String, dynamic>> videos) {
+    if (videos.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final topVideo = videos.first;
+    final restVideos = videos.length > 1 ? videos.sublist(1) : [];
+
+    return SliverList(
+      delegate: SliverChildListDelegate(
+        [
+          VideoListTileTopRank(
+            video: topVideo,
+            rank: 1,
+          ),
+          if (restVideos.isNotEmpty)
+            Transform.translate(
+              // NOTE:
+              // 視覚的なカード連続感を出すために
+              // Grid を BigCard に少し重ねている(-20)。
+              // レイアウト上の余白ではなく視覚補正。
+              offset: const Offset(0, -20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: restVideos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 16 / 9,
+                  ),
+                  itemBuilder: (context, index) {
+                    final video = restVideos[index];
+                    final rank = index + 2;
+
+                    return VideoGridTile(
+                      video: video,
+                      rank: rank,
+                      onTap: () {
+                        setState(() {
+                          _expandedVideo = video;
+                          _expandedRank = rank;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNormalSliver(List<Map<String, dynamic>> videos) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+            (context, index) {
+          final video = videos[index];
+          final rank = index + 1;
+
+          switch (_density) {
+            case CardDensity.middle:
+              return VideoOverlayCard(
+                video: video,
+                rank: rank,
+              );
+
+            case CardDensity.small:
+              return VideoListTileSmall(
+                video: video,
+                rank: rank,
+              );
+
+            case CardDensity.big:
+            // BIG はここに来ない設計
+              return const SizedBox.shrink();
+          }
+        },
+        childCount: videos.length,
+      ),
+    );
   }
 
   // ---------------------------------------------------------
@@ -283,11 +374,35 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
+    final String topTitle =
+    (widget.keyword != null && widget.keyword!.isNotEmpty)
+        ? widget.keyword!
+        : widget.categoryTitle;
+
+    // ★ Favorite 状態変化を購読して同期
+    context.watch<FavoritesService>();
+    final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
+    final adsRemoved =
+    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final bool shouldShowBanner =
+        (!adsRemoved) && bannerLoaded;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 45), // ← AdMob分持ち上げ
+        child: DensityFab(
+          density: _density,
+          onToggle: _toggleDensity,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
       body: Stack(
         children: [
+          // =============================
+          // 背面：FutureBuilder + Scroll
+          // =============================
           FutureBuilder<List<Map<String, dynamic>>>(
             future: _futureVideos,
             builder: (context, snap) {
@@ -307,122 +422,118 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
               final videos = snap.data ?? [];
 
-              if (videos.isEmpty) {
-                return Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.noVideosFound,
-                    style: TextStyle(
-                      color: onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: _refreshVideos,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    SliverAppBar(
-                      floating: true,
-                      snap: true,
-                      elevation: 0,
-                      backgroundColor: Colors.transparent,
-                      expandedHeight: 70,
-                      automaticallyImplyLeading: false,
-                      flexibleSpace: LightFlatAppBar(
-                        title: shortTitle(widget.categoryTitle),
-                        showRefreshButton: true,
-                        isRefreshing: _isRefreshing,
-                        onRefreshPressed: _refreshVideos,
-                        showDensityButton: true,
-                        density: _density,
-                        onToggleDensity: _toggleDensity,
-                        titleAlign: AppBarTitleAlign.left,
-                        reserveLeadingSpace: true,
-                      ),
-                    ),
-                    if (_fetchedAt != null)
-                      SliverToBoxAdapter(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : const Color(0xFFE4E8EC),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Icon(Icons.access_time,
-                                  size: 14,
-                                  color: onSurface.withValues(alpha: 0.7)),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatFetchedAt(),
-                                style: TextStyle(
-                                  color: onSurface.withValues(alpha: 0.8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+              return Stack(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: _refreshVideos,
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: 55 + MediaQuery.of(context).padding.top,
                           ),
                         ),
-                      ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) {
-                          final video = videos[i];
+                        if (_density == CardDensity.big)
+                          _buildBigSliver(videos)
+                        else
+                          _buildNormalSliver(videos),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 70),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                          switch (_density) {
-                            case CardDensity.big:
-                              return VideoListTile(video: video, rank: i + 1);
-
-                            case CardDensity.middle:
-                              return VideoListTileMiddle(
-                                  video: video, rank: i + 1);
-
-                            case CardDensity.small:
-                              return VideoListTileSmall(
-                                  video: video, rank: i + 1);
-                          }
+                  // Expanded Overlay
+                  if (_expandedVideo != null)
+                    Positioned.fill(
+                      child: ExpandedVideoOverlay(
+                        video: _expandedVideo!,
+                        rank: _expandedRank!,
+                        onClose: () {
+                          setState(() {
+                            _expandedVideo = null;
+                            _expandedRank = null;
+                          });
                         },
-                        childCount: videos.length,
                       ),
                     ),
-                    const SliverToBoxAdapter(
-                      child: SafeArea(top: false, child: SizedBox(height: 50)),
-                    ),
-                  ],
-                ),
+
+
+                ],
               );
             },
           ),
 
-          // 🔙 戻るボタン（GlassAppBar外）
+          // ★ Divider（広告の直上）
+          if (shouldShowBanner)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 50,
+              child: _BottomAdDivider(),
+            ),
+
+          // ★ バナー広告
+          if (shouldShowBanner)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AdBanner(),
+            ),
+
+          // =============================
+          // 🧭 TopBar（最前面・固定）
+          // =============================
           Positioned(
-            top: MediaQuery.of(context).padding.top + 24,
-            left: 8,
-            child: Material(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              shape: const CircleBorder(),
-              elevation: 2,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(8), // ← 10 → 8 に縮小
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 18, // ← 22 → 18 に縮小
-                  ),
-                ),
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: _showTopBar ? Offset.zero : const Offset(0, -1.1),
+              child: TopBar(
+                mode: TopBarMode.back,
+                title: topTitle,
+                onBack: () {
+                  Navigator.of(context).pop();
+                },
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+}
+
+class _BottomAdDivider extends StatelessWidget {
+  const _BottomAdDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 2, // ← ここがポイント（極薄の帯）
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+            Colors.white.withValues(alpha: 0.22),
+            Colors.white.withValues(alpha: 0.05),
+          ]
+              : [
+            Colors.black.withValues(alpha: 0.10),
+            Colors.black.withValues(alpha: 0.02),
+          ],
+        ),
       ),
     );
   }

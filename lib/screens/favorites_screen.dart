@@ -8,7 +8,6 @@ import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
-import '../widgets/light_flat_app_bar.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -105,89 +104,89 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   const SizedBox(height: 20),
 
                   // ✅ 空状態カード（サイズは維持しつつ）
-                  AnimatedScale(
-                    scale: 1.00,
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutBack,
-                    child: Container(
-                      width: 200,
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.4)
-                                : Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.hardEdge,
-                      child: Column(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            height: 100,
-                            color: isDark
-                                ? Colors.grey[800]
-                                : const Color(0xFFB5B9BE),
-                            child: const Center(
-                              child: Icon(
-                                Icons.play_circle_fill,
-                                size: 42,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 10),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isDark
-                                    ? [
-                                        Colors.white.withValues(alpha: 0.05),
-                                        Colors.white.withValues(alpha: 0.02),
-                                      ]
-                                    : [
-                                        Colors.pinkAccent.shade100
-                                            .withValues(alpha: 0.12),
-                                        Colors.pinkAccent.shade100
-                                            .withValues(alpha: 0.04),
-                                      ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.favorite_border_rounded,
-                                    color: Colors.pinkAccent, size: 22),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.arrow_left_rounded,
-                                    color: Colors.pinkAccent, size: 26),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    AppLocalizations.of(context)!
-                                        .favoritesTapHere,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: onSurface.withValues(alpha: 0.7),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
+                  // AnimatedScale(
+                  //   scale: 1.00,
+                  //   duration: const Duration(milliseconds: 700),
+                  //   curve: Curves.easeOutBack,
+                  //   child: Container(
+                  //     width: 200,
+                  //     decoration: BoxDecoration(
+                  //       color: cardColor,
+                  //       borderRadius: BorderRadius.circular(12),
+                  //       boxShadow: [
+                  //         BoxShadow(
+                  //           color: isDark
+                  //               ? Colors.black.withValues(alpha: 0.4)
+                  //               : Colors.black.withValues(alpha: 0.06),
+                  //           blurRadius: 10,
+                  //           offset: const Offset(0, 3),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //     clipBehavior: Clip.hardEdge,
+                  //     child: Column(
+                  //       children: [
+                  //         Container(
+                  //           width: double.infinity,
+                  //           height: 100,
+                  //           color: isDark
+                  //               ? Colors.grey[800]
+                  //               : const Color(0xFFB5B9BE),
+                  //           child: const Center(
+                  //             child: Icon(
+                  //               Icons.play_circle_fill,
+                  //               size: 42,
+                  //               color: Colors.white,
+                  //             ),
+                  //           ),
+                  //         ),
+                  //         Container(
+                  //           width: double.infinity,
+                  //           padding: const EdgeInsets.symmetric(
+                  //               vertical: 10, horizontal: 10),
+                  //           decoration: BoxDecoration(
+                  //             gradient: LinearGradient(
+                  //               colors: isDark
+                  //                   ? [
+                  //                       Colors.white.withValues(alpha: 0.05),
+                  //                       Colors.white.withValues(alpha: 0.02),
+                  //                     ]
+                  //                   : [
+                  //                       Colors.pinkAccent.shade100
+                  //                           .withValues(alpha: 0.12),
+                  //                       Colors.pinkAccent.shade100
+                  //                           .withValues(alpha: 0.04),
+                  //                     ],
+                  //               begin: Alignment.topCenter,
+                  //               end: Alignment.bottomCenter,
+                  //             ),
+                  //           ),
+                  //           child: Row(
+                  //             children: [
+                  //               const Icon(Icons.favorite_border_rounded,
+                  //                   color: Colors.pinkAccent, size: 22),
+                  //               const SizedBox(width: 6),
+                  //               const Icon(Icons.arrow_left_rounded,
+                  //                   color: Colors.pinkAccent, size: 26),
+                  //               const SizedBox(width: 4),
+                  //               Expanded(
+                  //                 child: Text(
+                  //                   AppLocalizations.of(context)!
+                  //                       .favoritesTapHere,
+                  //                   style: TextStyle(
+                  //                     fontSize: 12,
+                  //                     fontWeight: FontWeight.w600,
+                  //                     color: onSurface.withValues(alpha: 0.7),
+                  //                   ),
+                  //                 ),
+                  //               ),
+                  //             ],
+                  //           ),
+                  //         )
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
 
                   const Spacer(),
                   const SizedBox(height: 90),
@@ -392,17 +391,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            floating: false,
-            snap: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            toolbarHeight: 65,
-            flexibleSpace: LightFlatAppBar(
-              title: AppLocalizations.of(context)!.favoritesTitle,
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 88)),
 
           // 🔹 0件のときは表示しない
           if (!_isLoading && currentCount > 0)
@@ -451,7 +440,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                     : _buildFavoritesList(),
           ),
           const SliverToBoxAdapter(
-            child: SizedBox(height: 120),
+            child: SizedBox(height: 70),
           ),
         ],
       ),

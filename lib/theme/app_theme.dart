@@ -4,6 +4,13 @@ import 'package:flutter/material.dart';
 /// ------------------------------------------------------------
 /// 🌞 Light Theme（フラット確定：F2F2F6背景 / EF4444はピンポイント）
 /// ------------------------------------------------------------
+
+// Spotify参考
+// const Color colorDarkGray  = Color(0xFF282828);
+// const Color colorGray      = Color(0xFFB3B3B3);
+// const Color colorLightGray = Color(0xFFEEEEEE);
+// const Color colorLightBlue = Color(0xFFD3E3FD);
+
 final ThemeData appLightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,

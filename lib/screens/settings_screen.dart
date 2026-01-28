@@ -8,7 +8,6 @@ import '../data/region_option.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/light_flat_app_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -433,16 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            expandedHeight: 65,
-            flexibleSpace: LightFlatAppBar(
-              title: AppLocalizations.of(context)!.settingsTitle,
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 95)),
           SliverToBoxAdapter(
             child: _loading
                 ? const Padding(

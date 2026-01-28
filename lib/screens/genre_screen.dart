@@ -11,7 +11,6 @@ import '../data/genre_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../services/youtube_api_service.dart';
-import '../widgets/light_flat_app_bar.dart';
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -64,6 +63,12 @@ class _GenreScreenState extends State<GenreScreen>
     _scaleAnim = Tween<double>(begin: 1.0, end: 1.03).animate(
       CurvedAnimation(parent: _tapAnim, curve: Curves.easeOut),
     );
+
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        Feedback.forTap(context);
+      }
+    });
   }
 
   @override
@@ -610,17 +615,7 @@ class _GenreScreenState extends State<GenreScreen>
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          SliverAppBar(
-            primary: true,
-            floating: true,
-            snap: false,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            expandedHeight: 65,
-            flexibleSpace: LightFlatAppBar(
-              title: AppLocalizations.of(context)!.genreScreenTitle,
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 80)),
 
           SliverPersistentHeader(
             pinned: true,
@@ -642,10 +637,10 @@ class _GenreScreenState extends State<GenreScreen>
           ),
 
           // ✅ pinnedフォーム直後に少し余白
-          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          // const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
           // ✅ 検索ブロックと次見出しの間の余白
-          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          // const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
           SliverToBoxAdapter(
             child: Padding(
@@ -698,7 +693,7 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.isError,
   });
 
-  static const double _topPadding = 6;
+  static const double _topPadding = 16;
   static const double _fieldHeight = 46;
   static const double _gap = 6;
 

@@ -1,9 +1,7 @@
 // lib/main.dart
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -15,6 +13,7 @@ import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
+import 'package:tube_search/widgets/top_bar.dart';
 
 import 'l10n/app_localizations.dart';
 import 'providers/theme_provider.dart';
@@ -86,18 +85,18 @@ Future<void> _requestConsent() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ★ ステータスバーを「表示モード」に戻す
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.edgeToEdge,
-  );
-
-  // ★ 白アイコン指定（Android）
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
+  // // ★ ステータスバーを「表示モード」に戻す
+  // SystemChrome.setEnabledSystemUIMode(
+  //   SystemUiMode.edgeToEdge,
+  // );
+  //
+  // // ★ 白アイコン指定（Android）
+  // SystemChrome.setSystemUIOverlayStyle(
+  //   const SystemUiOverlayStyle(
+  //     statusBarColor: Colors.transparent,
+  //     statusBarIconBrightness: Brightness.light,
+  //   ),
+  // );
 
   // 👇 ここ（テスト端末登録）
   await MobileAds.instance.updateRequestConfiguration(
@@ -207,6 +206,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       GlobalKey<FavoritesScreenState>();
 
   late final List<Widget> _screens;
+  double _pageProgress = 0.0;
+  bool _isTapNavigating = false;
 
   @override
   void initState() {
@@ -223,6 +224,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
     });
 
+    _pageController.addListener(() {
+      if (_isTapNavigating) return; // ★ ここが肝
+
+      setState(() {
+        _pageProgress = _pageController.page ?? _selectedIndex.toDouble();
+      });
+    });
+
     _screens = [
       PopularVideosScreen(onScrollChanged: _onScrollChanged),
       GenreScreen(onScrollChanged: _onScrollChanged),
@@ -237,46 +246,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  /// 🔥 ダークテーマ対応の背景
-  // Widget _buildBackground(BuildContext context) {
-  //   final theme = Theme.of(context);
-  //   final isDark = theme.brightness == Brightness.dark;
-  //
-  //   return Container(
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         begin: Alignment.topCenter,
-  //         end: Alignment.bottomCenter,
-  //         colors: isDark
-  //             ? [
-  //                 const Color(0xFF0F0F0F),
-  //                 const Color(0xFF1A1A1A),
-  //               ]
-  //             : [
-  //                 const Color(0xFFE2E8F0),
-  //                 const Color(0xFFF8FAFC),
-  //               ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget _buildBackground(BuildContext context) {
-    return Container(
-      // color: Theme.of(context).scaffoldBackgroundColor,
-      color: Colors.transparent,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
-    final l = AppLocalizations.of(context)!;
-
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-    const double topTabHeight = 45;
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
@@ -291,6 +265,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               Positioned.fill(
                 child: PageView(
                   controller: _pageController,
+                  onPageChanged: (index) {
+                    if (_selectedIndex == index) return;
+
+                    setState(() => _selectedIndex = index);
+
+                    if (index == 2) {
+                      _favKey.currentState?.reload();
+                    }
+                  },
                   children: _screens,
                 ),
               ),
@@ -306,21 +289,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: IgnorePointer(
                     ignoring: _isScrollingDown,
                     child: SizedBox(
-                      height: 75,
-                      child: GlassDockNavigationBar(
+                      height: 88,
+                      child: TopBar(
+                        mode: TopBarMode.tabs,
                         selectedIndex: _selectedIndex,
+                        pageProgress: _pageProgress,
+                        isTapNavigating: _isTapNavigating,
                         onTabSelected: (index) {
-                          setState(() => _selectedIndex = index);
+                          Feedback.forTap(context);
+
+                          setState(() {
+                            _isTapNavigating = true;
+                            _selectedIndex = index;
+                            _pageProgress = index.toDouble();
+                          });
 
                           if (index == 2) {
                             _favKey.currentState?.reload();
                           }
 
-                          _pageController.animateToPage(
-                            index,
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOut,
-                          );
+                          _pageController.jumpToPage(index);
+
+                          if (mounted) {
+                            setState(() {
+                              _isTapNavigating = false;
+                              _pageProgress = index.toDouble();
+                            });
+                          }
                         },
                       ),
                     ),
@@ -349,179 +344,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class GlassDockNavigationBar extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onTabSelected;
-
-  const GlassDockNavigationBar({
-    super.key,
-    required this.selectedIndex,
-    required this.onTabSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final l = AppLocalizations.of(context)!;
-    final isDark = theme.brightness == Brightness.dark;
-
-    // -------------------------------------------------------------
-    // ✅ AppBarと同じガラス背景（流用）
-    // -------------------------------------------------------------
-    final List<Color> bgGradient = isDark
-        ? [
-            const Color(0xCC111111),
-            const Color(0xB31A1A1A),
-            const Color(0x991A1A1A),
-          ]
-        : [
-            // const Color(0xE6FFFFFF),
-            // const Color(0xCCE5E8EC),
-            // const Color(0x99D0D4D9),
-            const Color(0xE60B3BDF),
-            const Color(0xE60B3BDF),
-            const Color(0xE60B3BDF),
-          ];
-
-    // ✅ BottomNavは“霧っぽく”見えやすいので、まずはAppBarより少し薄くして開始
-    // （AppBar 0.85 → BottomNavは 0.78 くらいが起点として安全）
-    // final Color bgColor = isDark
-    //     ? const Color(0xFF111111).withValues(alpha: 0.78)
-    //     : const Color(0xFFF9FAFB).withValues(alpha: 0.78);
-
-    final Color bgColor = isDark ? Colors.red : Colors.red;
-
-    final borderColor =
-        isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFECECEC);
-
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // -------------------------------------------------------------
-          // 🪩 ガラス背景（AppBarと同型）
-          // -------------------------------------------------------------
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                height: 75,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: bgGradient,
-                  ),
-                  color: bgColor,
-                  border: Border(
-                    top: BorderSide(color: borderColor, width: 1),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildTab(
-                      context,
-                      index: 0,
-                      label: l.navPopular,
-                      activeColor: cs.primary,
-                    ),
-                    _buildTab(
-                      context,
-                      index: 1,
-                      label: l.navGenre,
-                      activeColor: cs.primary,
-                    ),
-                    _buildTab(
-                      context,
-                      index: 2,
-                      label: l.navFavorites,
-                      activeColor: cs.primary,
-                    ),
-                    _buildTab(
-                      context,
-                      index: 3,
-                      label: l.navSettings,
-                      activeColor: cs.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------
-  // 🔥 タブ描画（現行のまま維持：視認性担保）
-  // ---------------------------------------------------------
-  Widget _buildTab(
-    BuildContext context, {
-    required int index,
-    required String label,
-    required Color activeColor,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isActive = selectedIndex == index;
-
-    // final inactiveText = isDark
-    //     ? Colors.white.withValues(alpha: 0.62)
-    //     : Colors.black.withValues(alpha: 0.52);
-    //
-    // final textColor = isActive ? activeColor : inactiveText;
-
-    const inactiveText = Colors.white;
-
-    final textColor = Colors.white;
-
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: isActive,
-        label: label,
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => onTabSelected(index),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // SizedBox(
-              //   height: 30,
-              //   child: Align(
-              //     alignment: Alignment.center,
-              //     child: Transform.translate(
-              //       offset: Offset(0, iconYOffset),
-              //       child: Icon(
-              //         icon,
-              //         size: iconSize,
-              //         color: iconColor,
-              //       ),
-              //     ),
-              //   ),
-              // ),
-              const SizedBox(height: 40),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 150),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                  color: textColor,
-                ),
-                child: Text(label),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

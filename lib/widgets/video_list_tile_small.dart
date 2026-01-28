@@ -2,15 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_localizations.dart';
-import '../providers/iap_provider.dart';
-import '../screens/shop_screen.dart';
 import '../services/favorites_service.dart';
-import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
-import '../utils/favorite_delete_helper.dart';
+import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
-import 'app_dialog.dart';
+import '../utils/view_count_formatter.dart';
+import 'favorite_button_overlay.dart';
 
 class VideoListTileSmall extends StatelessWidget {
   final Map<String, dynamic> video;
@@ -21,31 +18,6 @@ class VideoListTileSmall extends StatelessWidget {
     required this.video,
     required this.rank,
   });
-
-  String _formatViewCount(BuildContext context, String value) {
-    final num? number = num.tryParse(value);
-    if (number == null) return '0';
-
-    final locale = Localizations.localeOf(context).languageCode;
-
-    if (locale == 'ja') {
-      if (number < 10000) return '${number.toInt()}回視聴';
-      if (number < 100000000) {
-        final man = number / 10000;
-        final formatted = man.toStringAsFixed(man < 10 ? 1 : 0);
-        return '$formatted万回視聴';
-      }
-      final oku = number / 100000000;
-      return '${oku.toStringAsFixed(1)}億回視聴';
-    }
-
-    if (number < 1000) return '${number.toInt()} views';
-    if (number < 1000000) return '${(number / 1000).toStringAsFixed(1)}K views';
-    if (number < 1000000000) {
-      return '${(number / 1000000).toStringAsFixed(1)}M views';
-    }
-    return '${(number / 1000000000).toStringAsFixed(1)}B views';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +59,7 @@ class VideoListTileSmall extends StatelessWidget {
     final thumbnail = video['thumbnailUrl'] ?? '';
     final channel = video['channelTitle'] ?? '';
     final viewText =
-        _formatViewCount(context, (video['viewCount'] ?? '0').toString());
+        formatViewCount(context, (video['viewCount'] ?? '0').toString());
     final isFav = fav.isFavoriteSync(id);
 
     const double thumbW = 136;
@@ -107,21 +79,6 @@ class VideoListTileSmall extends StatelessWidget {
       } finally {
         isPushing = false;
       }
-    }
-
-    Future<void> toggleFav() async {
-      final fav = context.read<FavoritesService>();
-      final iap = context.read<IapProvider>();
-
-      final isFavNow = fav.isFavoriteSync(id);
-
-      if (isFavNow) {
-        await FavoriteDeleteHelper.confirmOrDelete(context, video);
-        return;
-      }
-
-      final ok = await fav.tryAddFavorite(id, video, iap);
-      if (!ok) _showLimitDialog(context, iap);
     }
 
     final BorderRadius thumbRadius = BorderRadius.circular(8);
@@ -242,44 +199,36 @@ class VideoListTileSmall extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // const SizedBox(height: 6),
+                      const SizedBox(height: 6),
 
-                      // ❤️ + 再生数
-                      Row(
+                      // =========================
+                      // 再生数 + ❤️（同一行Stack）
+                      // =========================
+                      Stack(
+                        alignment: Alignment.centerRight,
+                        clipBehavior: Clip.none, // ← まず必須
                         children: [
-                          // ✅ 44x44 タップ領域確保
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: InkResponse(
-                              onTap: toggleFav,
-                              radius: 24,
-                              child: Center(
-                                child: Icon(
-                                  isFav
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  size: 22,
-                                  color: isFav
-                                      ? Colors.red
-                                      : (isDark
-                                          ? Colors.white70
-                                          : Colors.grey.shade600),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          Expanded(
+                          Align(
+                            alignment: Alignment.centerRight,
                             child: Text(
                               viewText,
-                              textAlign: TextAlign.right,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
                                 color: onSurface,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: -10,
+                            bottom: -18, // 少し下に逃がす
+                            child: FavoriteButtonOverlay(
+                              isFavorite: isFav,
+                              showBackground: false,
+                              scale: 1.05,
+                              onTap: () => handleFavoriteTap(
+                                context,
+                                video: video,
                               ),
                             ),
                           ),
@@ -293,55 +242,6 @@ class VideoListTileSmall extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showLimitDialog(BuildContext context, IapProvider iap) {
-    final purchased = iap.isPurchased(IapProducts.limitUpgrade.id);
-    final t = AppLocalizations.of(context)!;
-
-    showDialog(
-      context: context,
-      builder: (_) {
-        return AppDialog(
-          title: t.favoriteLimitTitle,
-          message: purchased
-              ? t.favoriteLimitPurchased
-              : t.favoriteLimitNotPurchased,
-          style: AppDialogStyle.info,
-          actions: [
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-              ),
-              child: Text(t.favoriteLimitClose),
-              onPressed: () => Navigator.pop(context),
-            ),
-            if (!purchased)
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ShopScreen()),
-                  );
-                },
-                child: Text(t.favoriteLimitUpgrade),
-              ),
-            const SizedBox(width: 10),
-          ],
-        );
-      },
     );
   }
 
