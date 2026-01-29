@@ -138,6 +138,7 @@ class VideoOverlayCard extends StatelessWidget {
                     right: 8,
                     child: FavoriteButtonOverlay(
                       isFavorite: isFav,
+                      scale: 1.1,
                       onTap: () => handleFavoriteTap(
                         context,
                         video: video,

@@ -41,7 +41,8 @@ Future<void> openYouTubeInInAppBrowser(
   try {
     final ok = await ul.launchUrl(
       webUrl,
-      mode: ul.LaunchMode.externalApplication,
+      // mode: ul.LaunchMode.externalApplication,
+      mode: ul.LaunchMode.inAppWebView,
     );
 
     if (!ok && context.mounted) {

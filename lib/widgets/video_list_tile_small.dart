@@ -54,6 +54,9 @@ class VideoListTileSmall extends StatelessWidget {
             ),
           ];
 
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+
     final id = video['id'] ?? "";
     final title = video['title'] ?? '';
     final thumbnail = video['thumbnailUrl'] ?? '';
@@ -85,165 +88,328 @@ class VideoListTileSmall extends StatelessWidget {
     final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: borderRadius,
-          border: Border.fromBorderSide(borderSide),
-          boxShadow: shadows,
-          gradient: isDark
-              ? LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.045),
-                    Colors.transparent,
-                  ],
-                )
-              : null,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
+      padding: EdgeInsets.symmetric(
+        vertical: isLandscape ? 2 : 5,
+        horizontal: 8,
+      ),
+      child: SizedBox(
+        // height: 115, // ← ★ Smallカードの確定高さ（調整可）
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: borderRadius,
+            border: Border.fromBorderSide(borderSide),
+            boxShadow: shadows,
+            gradient: isDark
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.045),
+                      Colors.transparent,
+                    ],
+                  )
+                : null,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
 
-          // ✅ カード全体タップは禁止（誤タップ根絶）
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // =========================================================
-                // ✅ サムネだけタップで再生
-                // =========================================================
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: pushPlayer,
-                    borderRadius: thumbRadius,
-                    child: Ink(
-                      child: ClipRRect(
-                        borderRadius: thumbRadius,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: thumbW,
-                              height: thumbH,
-                              child: thumbOk
-                                  ? Ink.image(
-                                      image:
-                                          CachedNetworkImageProvider(thumbnail),
-                                      fit: BoxFit.cover,
-                                      child: const SizedBox.expand(),
-                                    )
-                                  : Container(
-                                      color: isDark
-                                          ? Colors.grey[850]
-                                          : Colors.grey[300],
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.wifi_off_rounded,
-                                          size: 20,
-                                          color: Colors.grey,
+            // ✅ カード全体タップは禁止（誤タップ根絶）
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: isLandscape ? 6 : 10,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // =========================================================
+                  // ✅ サムネだけタップで再生
+                  // =========================================================
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: pushPlayer,
+                      borderRadius: thumbRadius,
+                      child: Ink(
+                        child: ClipRRect(
+                          borderRadius: thumbRadius,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: thumbW,
+                                height: thumbH,
+                                child: thumbOk
+                                    ? Ink.image(
+                                        image: CachedNetworkImageProvider(
+                                            thumbnail),
+                                        fit: BoxFit.cover,
+                                        child: const SizedBox.expand(),
+                                      )
+                                    : Container(
+                                        color: isDark
+                                            ? Colors.grey[850]
+                                            : Colors.grey[300],
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.wifi_off_rounded,
+                                            size: 20,
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                            ),
-
-                            // ✅ Rank badge overlay（波紋を邪魔しないようにする）
-                            Positioned(
-                              top: 6,
-                              left: 6,
-                              child: IgnorePointer(
-                                ignoring: true,
-                                child: _buildRankBadgeSmall(context, isDark),
                               ),
-                            ),
-                          ],
+
+                              // ✅ Rank badge overlay（波紋を邪魔しないようにする）
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: IgnorePointer(
+                                  ignoring: true,
+                                  child: _buildRankBadgeSmall(context, isDark),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(width: 10),
+                  const SizedBox(width: 10),
 
-                // ✅ 情報
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          height: 1.12,
-                          color: onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          channel,
-                          maxLines: 1,
+                  // ✅ 情報
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // タイトル
+                        Text(
+                          title,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: onSurface.withValues(alpha: 0.70),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            height: 1.12,
+                            color: onSurface,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
 
-                      // =========================
-                      // 再生数 + ❤️（同一行Stack）
-                      // =========================
-                      Stack(
-                        alignment: Alignment.centerRight,
-                        clipBehavior: Clip.none, // ← まず必須
-                        children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              viewText,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: onSurface,
-                              ),
+                        const SizedBox(height: 4),
+
+                        // チャンネル
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            channel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: onSurface.withValues(alpha: 0.70),
                             ),
                           ),
-                          Positioned(
-                            left: -10,
-                            bottom: -18, // 少し下に逃がす
-                            child: FavoriteButtonOverlay(
-                              isFavorite: isFav,
-                              showBackground: false,
-                              scale: 1.05,
-                              onTap: () => handleFavoriteTap(
-                                context,
-                                video: video,
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ❤️ + 再生数
+                        SizedBox(
+                          height: 18, // ← 10 は小さすぎる。最低 18〜22
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                left: 0,
+                                bottom: -18,
+                                child: FavoriteButtonOverlay(
+                                  isFavorite: isFav,
+                                  showBackground: false,
+                                  scale: 1.1,
+                                  onTap: () =>
+                                      handleFavoriteTap(context, video: video),
+                                ),
                               ),
-                            ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Text(
+                                  viewText,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+  //     child: Container(
+  //       decoration: BoxDecoration(
+  //         color: cardColor,
+  //         borderRadius: borderRadius,
+  //         border: Border.fromBorderSide(borderSide),
+  //         boxShadow: shadows,
+  //         gradient: isDark
+  //             ? LinearGradient(
+  //                 begin: Alignment.topCenter,
+  //                 end: Alignment.bottomCenter,
+  //                 colors: [
+  //                   Colors.white.withValues(alpha: 0.045),
+  //                   Colors.transparent,
+  //                 ],
+  //               )
+  //             : null,
+  //       ),
+  //       clipBehavior: Clip.antiAlias,
+  //       child: Material(
+  //         color: Colors.transparent,
+  //
+  //         // ✅ カード全体タップは禁止（誤タップ根絶）
+  //         child: Padding(
+  //           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+  //           child: Row(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               // =========================================================
+  //               // ✅ サムネだけタップで再生
+  //               // =========================================================
+  //               Material(
+  //                 color: Colors.transparent,
+  //                 child: InkWell(
+  //                   onTap: pushPlayer,
+  //                   borderRadius: thumbRadius,
+  //                   child: Ink(
+  //                     child: ClipRRect(
+  //                       borderRadius: thumbRadius,
+  //                       child: Stack(
+  //                         children: [
+  //                           SizedBox(
+  //                             width: thumbW,
+  //                             height: thumbH,
+  //                             child: thumbOk
+  //                                 ? Ink.image(
+  //                                     image:
+  //                                         CachedNetworkImageProvider(thumbnail),
+  //                                     fit: BoxFit.cover,
+  //                                     child: const SizedBox.expand(),
+  //                                   )
+  //                                 : Container(
+  //                                     color: isDark
+  //                                         ? Colors.grey[850]
+  //                                         : Colors.grey[300],
+  //                                     child: const Center(
+  //                                       child: Icon(
+  //                                         Icons.wifi_off_rounded,
+  //                                         size: 20,
+  //                                         color: Colors.grey,
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                           ),
+  //
+  //                           // ✅ Rank badge overlay（波紋を邪魔しないようにする）
+  //                           Positioned(
+  //                             top: 6,
+  //                             left: 6,
+  //                             child: IgnorePointer(
+  //                               ignoring: true,
+  //                               child: _buildRankBadgeSmall(context, isDark),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //
+  //               const SizedBox(width: 10),
+  //
+  //               // ✅ 情報
+  //               Expanded(
+  //                 child: Column(
+  //                   // mainAxisSize: MainAxisSize.min,
+  //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                   mainAxisSize: MainAxisSize.max,
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     Text(
+  //                       title,
+  //                       maxLines: 2,
+  //                       overflow: TextOverflow.ellipsis,
+  //                       style: TextStyle(
+  //                         fontSize: 14,
+  //                         fontWeight: FontWeight.w800,
+  //                         height: 1.12,
+  //                         color: onSurface,
+  //                       ),
+  //                     ),
+  //                     const SizedBox(height: 6),
+  //
+  //                     Align(
+  //                       alignment: Alignment.centerRight,
+  //                       child: Text(
+  //                         channel,
+  //                         maxLines: 1,
+  //                         overflow: TextOverflow.ellipsis,
+  //                         style: TextStyle(
+  //                           fontSize: 12,
+  //                           color: onSurface.withValues(alpha: 0.70),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     // =========================
+  //                     // ❤️ + 再生数
+  //                     // =========================
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                       children: [
+  //                         FavoriteButtonOverlay(
+  //                           isFavorite: isFav,
+  //                           showBackground: false,
+  //                           scale: 0.9,
+  //                           onTap: () =>
+  //                               handleFavoriteTap(context, video: video),
+  //                         ),
+  //                         Text(
+  //                           viewText,
+  //                           style: TextStyle(
+  //                             fontSize: 14,
+  //                             fontWeight: FontWeight.w800,
+  //                             color: onSurface,
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildRankBadgeSmall(BuildContext context, bool isDark) {
     final theme = Theme.of(context);

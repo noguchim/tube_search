@@ -22,22 +22,55 @@ class ExpandedVideoOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final shortest = media.size.shortestSide;
+
+    final bool isTablet = shortest >= 600;
+    final bool isLargeTablet = shortest >= 900;
+
+    final double maxWidth = isLargeTablet
+        ? 520
+        : isTablet
+            ? 440
+            : 360;
+
+    final double maxHeight = isLargeTablet
+        ? 460
+        : isTablet
+            ? 400
+            : 330;
+
     return Material(
       color: Colors.transparent,
       child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              // maxWidth: 360,
-              // maxHeight: 460,
-              maxWidth: 360,
-              maxHeight: 330,
+        child: Stack(
+          children: [
+            // ===============================
+            // 🔥 背景タップ検知レイヤー
+            // ===============================
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: onClose,
+              ),
             ),
-            child: ExpandedVideoCard(
-              video: video,
-              onClose: onClose, // ← 直呼び
+
+            // ===============================
+            // カード本体（中央）
+            // ===============================
+            Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: maxWidth,
+                  maxHeight: maxHeight,
+                ),
+                child: ExpandedVideoCard(
+                  video: video,
+                  onClose: onClose,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

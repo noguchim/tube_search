@@ -229,85 +229,356 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     }
 
     final topVideo = videos.first;
-    final restVideos = videos.length > 1 ? videos.sublist(1) : [];
+    final restVideos =
+        videos.length > 1 ? videos.sublist(1) : <Map<String, dynamic>>[];
+
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return SliverList(
       delegate: SliverChildListDelegate(
         [
-          VideoListTileTopRank(
-            video: topVideo,
-            rank: 1,
-          ),
-          if (restVideos.isNotEmpty)
-            Transform.translate(
-              // NOTE:
-              // 視覚的なカード連続感を出すために
-              // Grid を BigCard に少し重ねている(-20)。
-              // レイアウト上の余白ではなく視覚補正。
-              offset: const Offset(0, -20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: restVideos.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 16 / 9,
-                  ),
-                  itemBuilder: (context, index) {
-                    final video = restVideos[index];
-                    final rank = index + 2;
+          if (!isLandscape) ...[
+            // =========================
+            // 縦向き（従来通り）
+            // =========================
+            VideoListTileTopRank(
+              video: topVideo,
+              rank: 1,
+            ),
 
-                    return VideoGridTile(
-                      video: video,
-                      rank: rank,
-                      onTap: () {
-                        setState(() {
-                          _expandedVideo = video;
-                          _expandedRank = rank;
-                        });
-                      },
-                    );
-                  },
+            if (restVideos.isNotEmpty)
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: _buildResponsiveGrid(restVideos),
                 ),
               ),
+          ] else ...[
+            // =========================
+            // 横向き（2ペイン）
+            // =========================
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 左：BigCard
+                  Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20), // ← 揃えポイント
+                      child: VideoListTileTopRank(
+                        video: topVideo,
+                        rank: 1,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // 右：Grid
+                  Expanded(
+                    flex: 5,
+                    child: _buildResponsiveGrid(restVideos),
+                  ),
+                ],
+              ),
             ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildNormalSliver(List<Map<String, dynamic>> videos) {
+  Widget _buildResponsiveGrid(List<Map<String, dynamic>> videos) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const double maxCardWidth = 240;
+        const double spacing = 12;
+
+        int crossAxisCount =
+            (constraints.maxWidth / (maxCardWidth + spacing)).floor();
+
+        crossAxisCount = crossAxisCount.clamp(2, 6);
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: videos.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 12,
+            childAspectRatio: 16 / 9,
+          ),
+          itemBuilder: (context, index) {
+            final video = videos[index];
+            final rank = index + 2;
+
+            return VideoGridTile(
+              video: video,
+              rank: rank,
+              onTap: () {
+                setState(() {
+                  _expandedVideo = video;
+                  _expandedRank = rank;
+                });
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOverlayGrid(List<Map<String, dynamic>> videos) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (!isLandscape) {
+      // 縦向き：従来の List
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final video = videos[index];
+            return VideoOverlayCard(
+              video: video,
+              rank: index + 1,
+            );
+          },
+          childCount: videos.length,
+        ),
+      );
+    }
+
+    // 横向き：Grid
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        16,
+        12,
+        0,
+      ),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final video = videos[index];
+            return VideoOverlayCard(
+              video: video,
+              rank: index + 1,
+            );
+          },
+          childCount: videos.length,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, // 横向き2列
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 16 / 9,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResponsiveOverlayGrid(
+    List<Map<String, dynamic>> videos,
+  ) {
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+
+    // ✅ ここが最重要
+    final double shortest = media.size.shortestSide;
+    final bool isPhone = shortest < 600;
+
+    const double mainSpacing = 0;
+    const double crossSpacing = 0;
+
+    final double maxTileWidth = shortest >= 900 ? 360 : 320;
+
+    SliverGridDelegate gridDelegate;
+
+    if (isPhone && !isLandscape) {
+      // 📱 Phone 縦：1列
+      gridDelegate = const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 1,
+        mainAxisSpacing: mainSpacing,
+        crossAxisSpacing: crossSpacing,
+        childAspectRatio: 16 / 9,
+      );
+    } else if (isPhone && isLandscape) {
+      // 📱 Phone 横：2列固定（Pixel7aはここ）
+      gridDelegate = const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: mainSpacing,
+        crossAxisSpacing: crossSpacing,
+        childAspectRatio: 16 / 9,
+      );
+    } else {
+      // 📲 Tablet / 大画面
+      gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: maxTileWidth,
+        mainAxisSpacing: mainSpacing,
+        crossAxisSpacing: crossSpacing,
+        childAspectRatio: 16 / 9,
+      );
+    }
+
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(
+        8,
+        isLandscape ? 8 : 0,
+        8,
+        0,
+      ),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final video = videos[index];
+            return VideoOverlayCard(
+              video: video,
+              rank: index + 1,
+            );
+          },
+          childCount: videos.length,
+        ),
+        gridDelegate: gridDelegate,
+      ),
+    );
+  }
+
+  Widget _buildResponsiveSmallList(List<Map<String, dynamic>> videos) {
+    final mq = MediaQuery.of(context);
+    final isLandscape = mq.orientation == Orientation.landscape;
+    final shortest = mq.size.shortestSide;
+
+    final isPhone = shortest < 600;
+
+    // ✅ Phone 横向き → 2列
+    if (isPhone && isLandscape) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        sliver: SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final video = videos[index];
+              return VideoListTileSmall(
+                video: video,
+                rank: index + 1,
+              );
+            },
+            childCount: videos.length,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            mainAxisExtent: 128, // ✅ 高さ固定
+          ),
+        ),
+      );
+    }
+
+    // ✅ 縦 or Tablet → 1列
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final video = videos[index];
-          final rank = index + 1;
-
-          switch (_density) {
-            case CardDensity.middle:
-              return VideoOverlayCard(
-                video: video,
-                rank: rank,
-              );
-
-            case CardDensity.small:
-              return VideoListTileSmall(
-                video: video,
-                rank: rank,
-              );
-
-            case CardDensity.big:
-              // BIG はここに来ない設計
-              return const SizedBox.shrink();
-          }
+          return VideoListTileSmall(
+            video: video,
+            rank: index + 1,
+          );
         },
         childCount: videos.length,
       ),
     );
+  }
+
+  Widget _buildSmallGrid(List<Map<String, dynamic>> videos) {
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+    final shortestSide = media.size.shortestSide;
+
+    final bool isTablet = shortestSide >= 600;
+
+    // =========================
+    // 列数
+    // =========================
+    final int crossAxisCount = isTablet
+        ? 3
+        : isLandscape
+            ? 2
+            : 1;
+
+    // =========================
+    // 高さ（Smallは密度優先）
+    // =========================
+    final double tileHeight = isTablet
+        ? 112 // ← Tabletでも詰める（重要）
+        : isLandscape
+            ? 104 // Phone 横
+            : 128; // Phone 縦
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        6,
+        20,
+        6,
+        8,
+      ),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            return VideoListTileSmall(
+              video: videos[index],
+              rank: index + 1,
+            );
+          },
+          childCount: videos.length,
+        ),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisExtent: tileHeight,
+          mainAxisSpacing: isLandscape ? 4 : 6,
+          crossAxisSpacing: isLandscape ? 4 : 6,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallList(List<Map<String, dynamic>> videos) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return VideoListTileSmall(
+            video: videos[index],
+            rank: index + 1,
+          );
+        },
+        childCount: videos.length,
+      ),
+    );
+  }
+
+  Widget _densityControl(List<Map<String, dynamic>> videos) {
+    switch (_density) {
+      case CardDensity.big:
+        return _buildBigSliver(videos);
+
+      case CardDensity.middle:
+        return _buildResponsiveOverlayGrid(videos);
+
+      case CardDensity.small:
+        final isLandscape =
+            MediaQuery.of(context).orientation == Orientation.landscape;
+
+        if (isLandscape) {
+          return _buildSmallGrid(videos); // 横 → 2列
+        } else {
+          return _buildSmallList(videos); // 縦 → 1列
+        }
+    }
   }
 
   @override
@@ -376,10 +647,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                         height: 50 + MediaQuery.of(context).padding.top,
                       ),
                     ),
-                    if (_density == CardDensity.big)
-                      _buildBigSliver(videos)
-                    else
-                      _buildNormalSliver(videos),
+                    _densityControl(videos),
                     const SliverToBoxAdapter(
                       child: SizedBox(height: 70),
                     ),
