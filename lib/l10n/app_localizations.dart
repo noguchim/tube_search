@@ -595,6 +595,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select how continuous play should behave.'**
   String get repeatDialogMessage;
+
+  /// No description provided for @favoriteLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is locked'**
+  String get favoriteLockedTitle;
+
+  /// No description provided for @favoriteLockedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is currently locked.\nUnlock it to remove from favorites.'**
+  String get favoriteLockedMessage;
+
+  /// No description provided for @favoriteUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock this video?'**
+  String get favoriteUnlockTitle;
+
+  /// No description provided for @favoriteUnlockMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocking this video will allow it to be removed from favorites.'**
+  String get favoriteUnlockMessage;
+
+  /// No description provided for @favoriteUnlockConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get favoriteUnlockConfirm;
+
+  /// No description provided for @favoriteUnlockCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get favoriteUnlockCancel;
+
+  /// No description provided for @favoriteLock.
+  ///
+  /// In en, this message translates to:
+  /// **'lock'**
+  String get favoriteLock;
+
+  /// No description provided for @favoriteDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'delete'**
+  String get favoriteDelete;
+
+  /// No description provided for @buttonOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get buttonOk;
 }
 
 class _AppLocalizationsDelegate

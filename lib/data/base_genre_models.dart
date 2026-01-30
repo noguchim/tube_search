@@ -19,15 +19,17 @@ class GenreGroup {
 
 /// カテゴリ
 class GenreCategory {
-  final int id; // 公式ID or 独自ID
-  final String name; // 表示名（国別で差し替えOK）
-  final bool isOfficial; // YouTube公式カテゴリ or 独自
-  final String query; // 検索最適化用（国別で変えてOK）
+  final int id;
+  final String name;
+  final bool isOfficial;
+  final String query;
+  final Color? color;
 
   const GenreCategory({
     required this.id,
     required this.name,
     required this.isOfficial,
     required this.query,
+    this.color,
   });
 }

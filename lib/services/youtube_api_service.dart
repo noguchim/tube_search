@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:tube_search/utils/app_logger.dart';
 
-import '../models/youtube_video.dart';
+import '../data/youtube_video.dart';
 
 class YouTubeApiService {
   YouTubeApiService();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,12 @@ import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
+import '../widgets/app_dialog.dart';
+
+enum _FavMenuAction {
+  lock,
+  delete,
+}
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -53,20 +60,12 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  Future<void> _tryDelete(Map<String, dynamic> video) async {
-    await FavoriteDeleteHelper.confirmOrDelete(context, video);
-    await reload(); // ← 解除後の最新一覧を再取得
-  }
-
   // -------------------------------------------------------------
   // 空UI（Light / Dark 対応版に全面改修）
   // -------------------------------------------------------------
   Widget _buildEmptyFavoritesUI() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
-    final cardColor = theme.cardTheme.color ??
-        (isDark ? const Color(0xFF1E1E1E) : Colors.white);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -103,91 +102,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ✅ 空状態カード（サイズは維持しつつ）
-                  // AnimatedScale(
-                  //   scale: 1.00,
-                  //   duration: const Duration(milliseconds: 700),
-                  //   curve: Curves.easeOutBack,
-                  //   child: Container(
-                  //     width: 200,
-                  //     decoration: BoxDecoration(
-                  //       color: cardColor,
-                  //       borderRadius: BorderRadius.circular(12),
-                  //       boxShadow: [
-                  //         BoxShadow(
-                  //           color: isDark
-                  //               ? Colors.black.withValues(alpha: 0.4)
-                  //               : Colors.black.withValues(alpha: 0.06),
-                  //           blurRadius: 10,
-                  //           offset: const Offset(0, 3),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //     clipBehavior: Clip.hardEdge,
-                  //     child: Column(
-                  //       children: [
-                  //         Container(
-                  //           width: double.infinity,
-                  //           height: 100,
-                  //           color: isDark
-                  //               ? Colors.grey[800]
-                  //               : const Color(0xFFB5B9BE),
-                  //           child: const Center(
-                  //             child: Icon(
-                  //               Icons.play_circle_fill,
-                  //               size: 42,
-                  //               color: Colors.white,
-                  //             ),
-                  //           ),
-                  //         ),
-                  //         Container(
-                  //           width: double.infinity,
-                  //           padding: const EdgeInsets.symmetric(
-                  //               vertical: 10, horizontal: 10),
-                  //           decoration: BoxDecoration(
-                  //             gradient: LinearGradient(
-                  //               colors: isDark
-                  //                   ? [
-                  //                       Colors.white.withValues(alpha: 0.05),
-                  //                       Colors.white.withValues(alpha: 0.02),
-                  //                     ]
-                  //                   : [
-                  //                       Colors.pinkAccent.shade100
-                  //                           .withValues(alpha: 0.12),
-                  //                       Colors.pinkAccent.shade100
-                  //                           .withValues(alpha: 0.04),
-                  //                     ],
-                  //               begin: Alignment.topCenter,
-                  //               end: Alignment.bottomCenter,
-                  //             ),
-                  //           ),
-                  //           child: Row(
-                  //             children: [
-                  //               const Icon(Icons.favorite_border_rounded,
-                  //                   color: Colors.pinkAccent, size: 22),
-                  //               const SizedBox(width: 6),
-                  //               const Icon(Icons.arrow_left_rounded,
-                  //                   color: Colors.pinkAccent, size: 26),
-                  //               const SizedBox(width: 4),
-                  //               Expanded(
-                  //                 child: Text(
-                  //                   AppLocalizations.of(context)!
-                  //                       .favoritesTapHere,
-                  //                   style: TextStyle(
-                  //                     fontSize: 12,
-                  //                     fontWeight: FontWeight.w600,
-                  //                     color: onSurface.withValues(alpha: 0.7),
-                  //                   ),
-                  //                 ),
-                  //               ),
-                  //             ],
-                  //           ),
-                  //         )
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
-
                   const Spacer(),
                   const SizedBox(height: 90),
                 ],
@@ -196,171 +110,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           ),
         );
       },
-    );
-  }
-
-  // -------------------------------------------------------------
-  // LIST（ダークテーマ対応）
-  // -------------------------------------------------------------
-  Widget _buildFavoritesList() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return RefreshIndicator(
-      onRefresh: reload,
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        itemCount: _list.length,
-        itemBuilder: (context, i) {
-          final video = _list[i];
-
-          final savedAtRaw = video["savedAt"] ?? "";
-          final savedAt = (savedAtRaw.isNotEmpty)
-              ? DateFormat.yMMMd(Localizations.localeOf(context).toString())
-                  .format(DateTime.parse(savedAtRaw))
-              : "";
-
-          final cardColor = theme.colorScheme.surface;
-          final onSurface = theme.colorScheme.onSurface;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Material(
-              color: cardColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
-                    ? (theme.cardTheme.shape as RoundedRectangleBorder)
-                        .borderRadius
-                    : BorderRadius.circular(12),
-                side: BorderSide(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.05),
-                ),
-              ),
-              elevation: 0, // 影は下のBoxShadowで付ける
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: theme.cardTheme.shape is RoundedRectangleBorder
-                      ? (theme.cardTheme.shape as RoundedRectangleBorder)
-                          .borderRadius
-                      : BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: 0.3)
-                          : Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      // ✅ サムネ（波紋出すなら Ink.image がベスト）
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: InkWell(
-                          // onTap: () => Navigator.push(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //     builder: (_) => VideoPlayerScreen(
-                          //         video: video, isRepeat: false),
-                          //   ),
-                          // ),
-                          onTap: () {
-                            final id = (video["videoId"] ??
-                                    video["id"] ??
-                                    video["youtubeId"] ??
-                                    "")
-                                .toString();
-
-                            _pushPlayerById(context, id);
-                          },
-
-                          splashColor: Colors.white.withValues(alpha: 0.22),
-                          highlightColor: Colors.white.withValues(alpha: 0.08),
-                          child: Ink.image(
-                            image: NetworkImage(video["thumbnailUrl"] ?? ""),
-                            fit: BoxFit.cover,
-                            width: 95,
-                            height: 60,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: IgnorePointer(
-                          ignoring: true,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                video["title"] ?? "",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                video["channelTitle"] ?? "",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "$savedAt ${AppLocalizations.of(context)!.favoritesRegisteredSuffix}",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: onSurface.withValues(alpha: 0.7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () async => _tryDelete(video),
-                          borderRadius: BorderRadius.circular(99),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.delete_outline_rounded,
-                              color: Colors.red.shade400,
-                              size: 30,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -377,12 +126,319 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
+  SliverToBoxAdapter _buildCountHeader(
+    BuildContext context,
+    int current,
+    int limit,
+  ) {
+    final theme = Theme.of(context);
+
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        color: theme.brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.04)
+            : const Color(0xFFE4E8EC),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              AppLocalizations.of(context)!
+                  .favoritesCountMessage(current, limit),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavoriteTile(
+    BuildContext context,
+    Map<String, dynamic> video,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onSurface = theme.colorScheme.onSurface;
+
+    final favService = context.read<FavoritesService>();
+
+    final bool isLocked = video["locked"] == true;
+
+    final savedAtRaw = video["savedAt"] ?? "";
+    final savedAt = savedAtRaw.isNotEmpty
+        ? DateFormat.yMMMd(Localizations.localeOf(context).toString())
+            .format(DateTime.parse(savedAtRaw))
+        : "";
+    final t = AppLocalizations.of(context)!;
+
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            // =========================
+            // 🎬 サムネ（再生はここだけ）
+            // =========================
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    final id = (video["videoId"] ??
+                            video["id"] ??
+                            video["youtubeId"] ??
+                            "")
+                        .toString();
+                    _pushPlayerById(context, id);
+                  },
+                  splashColor: Colors.white.withValues(alpha: 0.22),
+                  highlightColor: Colors.white.withValues(alpha: 0.10),
+                  child: Ink.image(
+                    image: NetworkImage(video["thumbnailUrl"] ?? ""),
+                    width: 88,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // =========================
+            // 📝 テキスト（操作不可）
+            // =========================
+            Expanded(
+              child: IgnorePointer(
+                ignoring: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, // ← 全体は左基準
+                  children: [
+                    // =========================
+                    // 📝 タイトル（左寄せ）
+                    // =========================
+                    Text(
+                      video["title"] ?? "",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: onSurface,
+                      ),
+                    ),
+
+                    // const SizedBox(height: 4),
+
+                    // =========================
+                    // 📄 サブ情報（右寄せブロック）
+                    // =========================
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            video["channelTitle"] ?? "",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: onSurface.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          Text(
+                            savedAt,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 4),
+
+            // =========================
+            // 🔒 / ⋮ 操作エリア
+            // =========================
+            isLocked
+                ? InkWell(
+                    borderRadius: BorderRadius.circular(99),
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+
+                      await showUnlockDialog(
+                        context,
+                        onConfirm: () async {
+                          await favService.toggleLock(video["id"]);
+                          await reload();
+                        },
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.lock_rounded,
+                        size: 30,
+                        color: Colors.amber.shade700,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : PopupMenuButton<_FavMenuAction>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      size: 26,
+                    ),
+                    onSelected: (action) async {
+                      HapticFeedback.lightImpact();
+
+                      switch (action) {
+                        case _FavMenuAction.lock:
+                          await favService.toggleLock(video["id"]);
+                          await reload();
+                          break;
+
+                        case _FavMenuAction.delete:
+                          await FavoriteDeleteHelper.confirmOrDelete(
+                            context,
+                            video,
+                          );
+                          await reload();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _FavMenuAction.lock,
+                        child: ListTile(
+                          leading: const Icon(Icons.lock_outline),
+                          title: Text(t.favoriteLock),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _FavMenuAction.delete,
+                        child: ListTile(
+                          leading: const Icon(Icons.delete_outline),
+                          title: Text(t.favoriteDelete),
+                        ),
+                      ),
+                    ],
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavoritesContent() {
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+    final isTablet = media.size.shortestSide >= 600;
+
+    if (!isLandscape) {
+      // 縦：今まで通り List
+      return ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: _list.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, i) => _buildFavoriteTile(context, _list[i]),
+      );
+    }
+
+    // 横：Smallデザインのまま Grid
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: _list.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isTablet ? 3 : 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        mainAxisExtent: 105, // ← Small感を固定
+      ),
+      itemBuilder: (context, i) => _buildFavoriteTile(context, _list[i]),
+    );
+  }
+
+  Future<void> showUnlockDialog(
+    BuildContext context, {
+    required VoidCallback onConfirm,
+  }) async {
+    final t = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return AppDialog(
+          title: t.favoriteUnlockTitle,
+          message: t.favoriteUnlockMessage,
+          style: AppDialogStyle.info,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                t.favoriteUnlockCancel,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onConfirm();
+              },
+              child: Text(t.favoriteUnlockConfirm),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // -------------------------------------------------------------
   // UI
   // -------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     final iap = context.watch<IapProvider>();
     final favoritesLimit = LimitService.favoritesLimit(iap);
     final currentCount = _list.length;
@@ -392,40 +448,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       body: CustomScrollView(
         slivers: [
           const SliverToBoxAdapter(child: SizedBox(height: 88)),
-
-          // 🔹 0件のときは表示しない
           if (!_isLoading && currentCount > 0)
-            SliverToBoxAdapter(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : const Color(0xFFE4E8EC),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.favoritesCountMessage(
-                        currentCount,
-                        favoritesLimit,
-                      ),
-                      style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
+            _buildCountHeader(context, currentCount, favoritesLimit),
           SliverToBoxAdapter(
             child: _isLoading
                 ? const Padding(
@@ -437,11 +461,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                         height: MediaQuery.of(context).size.height * 0.75,
                         child: _buildEmptyFavoritesUI(),
                       )
-                    : _buildFavoritesList(),
+                    : _buildFavoritesContent(),
           ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 70),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 70)),
         ],
       ),
     );

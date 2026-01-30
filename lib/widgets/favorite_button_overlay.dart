@@ -104,6 +104,9 @@ class _FavoriteButtonOverlayState extends State<FavoriteButtonOverlay>
   }
 
   Color _iconColor(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (widget.isFavorite) {
       return Colors.redAccent;
     }
@@ -112,8 +115,16 @@ class _FavoriteButtonOverlayState extends State<FavoriteButtonOverlay>
       return Colors.white; // Middle（黒丸あり）
     }
 
-    // ★ 背景なしの場合は「縁取り or 黒寄り」
-    return Colors.black.withValues(alpha: 0.85);
+    return isDark
+        ? Colors.white.withValues(alpha: 0.85)
+        : Colors.black.withValues(alpha: 0.85);
+  }
+
+  Color _effectColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? const Color(0xFFFFD54F) // ダークは少し明るめ
+        : const Color(0xFFFFC107); // ライトは標準アンバー
   }
 
   @override
@@ -163,7 +174,7 @@ class _FavoriteButtonOverlayState extends State<FavoriteButtonOverlay>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: _effectColor(context).withValues(alpha: 0.9),
                           width: 2 * widget.scale,
                         ),
                       ),
@@ -219,6 +230,13 @@ class FavoriteBurstParticles extends StatelessWidget {
     this.count = 5,
   });
 
+  Color _effectColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? const Color(0xFFFFD54F) // ダークは少し明るめ
+        : const Color(0xFFFFC107); // ライトは標準アンバー
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -243,7 +261,7 @@ class FavoriteBurstParticles extends StatelessWidget {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: _effectColor(context).withValues(alpha: 0.95),
                     shape: BoxShape.circle,
                   ),
                 ),

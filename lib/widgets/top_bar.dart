@@ -40,7 +40,8 @@ class TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const bgColor = Color(0xFF111111);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
     final borderColor = Colors.white.withValues(alpha: 0.10);
 
     return Container(
@@ -95,25 +96,25 @@ class TopBar extends StatelessWidget {
   }
 
   Widget _buildBack(BuildContext context) {
-    final textColor = Colors.white.withValues(alpha: 0.92);
+    final media = MediaQuery.of(context);
+    final double safeTop = media.padding.top;
 
     return SizedBox(
-      height: 88, // ← TopBar 全体高さと合わせる
+      height: 88,
       child: Padding(
-        padding: const EdgeInsets.only(
-          top: 25,
-          left: 8,
-          right: 8,
+        padding: EdgeInsets.fromLTRB(
+          8,
+          safeTop + 8, // ← ★ここが肝
+          8,
+          0,
         ),
         child: Center(
           child: SizedBox(
-            height: 48, // ← 戻る・タイトル共通の縦基準
+            height: 48,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // -------------------------
-                // 戻るボタン
-                // -------------------------
+                // 戻る
                 InkWell(
                   customBorder: const CircleBorder(),
                   onTap: onBack,
@@ -132,9 +133,7 @@ class TopBar extends StatelessWidget {
 
                 const SizedBox(width: 8),
 
-                // -------------------------
-                // タイトル（縦中央完全一致）
-                // -------------------------
+                // タイトル
                 Expanded(
                   child: Center(
                     child: Text(
@@ -142,7 +141,7 @@ class TopBar extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: textColor,
+                        color: Colors.white.withValues(alpha: 0.92),
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                         letterSpacing: 0.2,
@@ -151,9 +150,6 @@ class TopBar extends StatelessWidget {
                   ),
                 ),
 
-                // -------------------------
-                // 右側ダミー
-                // -------------------------
                 const SizedBox(width: 40),
               ],
             ),
@@ -188,8 +184,8 @@ class TopBar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     // final Color textColor =
-    // isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87;
-    final Color textColor = Colors.white.withValues(alpha: 0.92);
+    //     isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87;
+    const Color textColor = Color(0xFFB3B3B3);
 
     return Expanded(
       child: Semantics(

@@ -349,13 +349,24 @@ class _GenreScreenState extends State<GenreScreen>
   Widget _buildGroupSection(GenreGroup group) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final media = MediaQuery.of(context);
+
+    final bool isLandscape = media.orientation == Orientation.landscape;
+    final bool isTablet = media.size.shortestSide >= 600;
+
+    // =========================
+    // Grid 設定（横向き時）
+    // =========================
+    final int crossAxisCount = isTablet ? 3 : 2;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 見出し
+          // =========================
+          // 見出し（共通）
+          // =========================
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
@@ -375,88 +386,166 @@ class _GenreScreenState extends State<GenreScreen>
           ),
           const SizedBox(height: 8),
 
-          // 各カテゴリ
-          ...group.items.map((cat) {
-            return Container(
-              margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.black.withValues(alpha: 0.05),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+          // =========================
+          // 縦 / 横 切り替え
+          // =========================
+          if (!isLandscape) ...[
+            // ---------- 縦向き：従来 ----------
+            ...group.items.map((cat) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2), // ← ここ
+                  child: _buildCategoryTile(
+                    context,
+                    group,
+                    cat,
+                    isDark,
                   ),
-                ],
+                )),
+          ] else ...[
+            // ---------- 横向き：Grid ----------
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              itemCount: group.items.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisExtent: 56,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 3.4, // ← 横長で読みやすく
               ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    final groupId = group.groupId;
-                    final baseCatId = baseCategoryIdsJa[groupId]!.toString();
-
-                    if (cat.isOfficial) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => GenreVideosScreen(
-                            categoryId: cat.id.toString(),
-                            categoryTitle: cat.name,
-                          ),
-                        ),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => GenreVideosScreen(
-                            categoryId: baseCatId,
-                            categoryTitle: cat.name,
-                            keyword: cat.query,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.label,
-                          size: 22,
-                          color:
-                              isDark ? Colors.white70 : const Color(0xFF607D8B),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            cat.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: isDark ? Colors.white54 : Colors.grey[500],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
+              itemBuilder: (context, index) {
+                final cat = group.items[index];
+                return _buildCategoryTile(
+                  context,
+                  group,
+                  cat,
+                  isDark,
+                );
+              },
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryTile(
+    BuildContext context,
+    GenreGroup group,
+    GenreCategory cat,
+    bool isDark,
+  ) {
+    final theme = Theme.of(context);
+
+    // 🎨 カテゴリ色（未設定ならグループ色にフォールバック）
+    final Color accentColor = cat.color ?? group.color;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: isDark
+            ? [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  blurRadius: 0,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            final groupId = group.groupId;
+            final baseCatId = baseCategoryIdsJa[groupId]!.toString();
+
+            if (cat.isOfficial) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GenreVideosScreen(
+                    categoryId: cat.id.toString(),
+                    categoryTitle: cat.name,
+                  ),
+                ),
+              );
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GenreVideosScreen(
+                    categoryId: baseCatId,
+                    categoryTitle: cat.name,
+                    keyword: cat.query,
+                  ),
+                ),
+              );
+            }
+          },
+          child: Stack(
+            children: [
+              // ===================================
+              // 🎨 左端フルハイト・カテゴリ色バー
+              // ===================================
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                  child: Container(
+                    width: 12,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+
+              // ===================================
+              // 🧱 コンテンツ本体
+              // ===================================
+              Padding(
+                // 左はアクセント分だけ余白追加
+                padding: const EdgeInsets.fromLTRB(12 + 14, 14, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        cat.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      color: isDark ? Colors.white54 : Colors.grey[500],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -637,7 +726,7 @@ class _GenreScreenState extends State<GenreScreen>
           ),
 
           // ✅ pinnedフォーム直後に少し余白
-          // const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
           // ✅ 検索ブロックと次見出しの間の余白
           // const SliverToBoxAdapter(child: SizedBox(height: 10)),
@@ -718,35 +807,55 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get minExtent =>
-      safeTop +
-      _topPadding +
-      _fieldHeight +
-      (showSuggestions ? _gap + _suggestHeight : 0);
+  double get minExtent => safeTop + _topPadding + _fieldHeight;
 
   @override
-  double get maxExtent => minExtent;
+  double get maxExtent =>
+      minExtent + (showSuggestions ? _gap + _suggestHeight : 0);
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
     final bg = Theme.of(context).scaffoldBackgroundColor;
-    final safeTopAdjusted = (safeTop * 0.70).clamp(14.0, 28.0);
 
-    return Container(
+    final safeTopAdjusted = (safeTop * 0.7).clamp(14.0, 28.0);
+
+    return Material(
       color: bg,
-      child: Column(
+      child: Stack(
+        clipBehavior: Clip.none, // ← 重要
         children: [
-          SizedBox(height: safeTopAdjusted),
-          const SizedBox(height: _topPadding),
-          SizedBox(height: _fieldHeight, child: searchField),
-          if (showSuggestions) ...[
-            const SizedBox(height: _gap),
-            SizedBox(
-              height: _suggestHeight,
-              child: suggestions,
+          // =========================
+          // 🔍 検索バー本体（固定）
+          // =========================
+          Positioned(
+            left: 0,
+            right: 0,
+            top: safeTopAdjusted + _topPadding,
+            height: _fieldHeight,
+            child: searchField,
+          ),
+
+          // =========================
+          // 📜 サジェスト（重ね表示）
+          // =========================
+          if (!isLandscape && showSuggestions)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: safeTopAdjusted + _topPadding + _fieldHeight + _gap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: _suggestMaxHeight,
+                ),
+                child: suggestions,
+              ),
             ),
-          ],
         ],
       ),
     );

@@ -15,7 +15,7 @@ class FavoritesService extends ChangeNotifier {
   bool get loaded => _loaded;
 
   // ------------------------------------------------------------
-  // 🔥 内部ロード関数
+  // 🔥 内部ロード
   // ------------------------------------------------------------
   Future<void> _load() async {
     if (_loaded) return;
@@ -25,7 +25,12 @@ class FavoritesService extends ChangeNotifier {
 
     _cache = list.map((e) {
       try {
-        return Map<String, dynamic>.from(json.decode(e));
+        final map = Map<String, dynamic>.from(json.decode(e));
+
+        // ✅ 旧データ互換：locked が無ければ false
+        map["locked"] ??= false;
+
+        return map;
       } catch (_) {
         return <String, dynamic>{};
       }
@@ -35,7 +40,7 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // 🔥 外部公開（main.dart で await）
+  // 🔥 外部公開ロード
   // ------------------------------------------------------------
   Future<void> loadFavorites() async {
     await _load();
@@ -57,8 +62,16 @@ class FavoritesService extends ChangeNotifier {
     return _cache.any((v) => v["id"] == id);
   }
 
+  bool isLockedSync(String id) {
+    final v = _cache.firstWhere(
+      (e) => e["id"] == id,
+      orElse: () => {},
+    );
+    return v["locked"] == true;
+  }
+
   // ------------------------------------------------------------
-  // ❤️ トグル（統合版）
+  // ❤️ トグル（既存）
   // ------------------------------------------------------------
   Future<void> toggle(String id, Map<String, dynamic> video) async {
     await _load();
@@ -69,6 +82,7 @@ class FavoritesService extends ChangeNotifier {
       final withDate = {
         ...video,
         "savedAt": DateTime.now().toString(),
+        "locked": false, // ← 初期は未ロック
       };
       _cache.add(withDate);
     }
@@ -77,30 +91,69 @@ class FavoritesService extends ChangeNotifier {
     notifyListeners();
   }
 
-
   // ------------------------------------------------------------
-  // ❤️ 上限チェック付きで「追加」を試みる
+  // 🔒 ロック切り替え（NEW）
   // ------------------------------------------------------------
-  Future<bool> tryAddFavorite(
-      String id,
-      Map<String, dynamic> video,
-      IapProvider iap,
-      ) async {
+  Future<void> toggleLock(String id) async {
     await _load();
 
-    // 既に登録済みなら true 扱い（何もしない）
+    for (final v in _cache) {
+      if (v["id"] == id) {
+        v["locked"] = !(v["locked"] ?? false);
+        break;
+      }
+    }
+
+    await _save();
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------
+  // 🗑 削除（ロック考慮）
+  // ------------------------------------------------------------
+  Future<bool> tryDelete(String id) async {
+    await _load();
+
+    final target = _cache.firstWhere(
+      (v) => v["id"] == id,
+      orElse: () => {},
+    );
+
+    if (target.isEmpty) return false;
+
+    // 🔒 ロック中は削除不可
+    if (target["locked"] == true) {
+      return false;
+    }
+
+    _cache.removeWhere((v) => v["id"] == id);
+    await _save();
+    notifyListeners();
+    return true;
+  }
+
+  // ------------------------------------------------------------
+  // ❤️ 上限チェック付き追加
+  // ------------------------------------------------------------
+  Future<bool> tryAddFavorite(
+    String id,
+    Map<String, dynamic> video,
+    IapProvider iap,
+  ) async {
+    await _load();
+
     if (isFavoriteSync(id)) return true;
 
     final max = LimitService.favoritesLimit(iap);
 
     if (_cache.length >= max) {
-      // ← ここで “上限到達” を通知
       return false;
     }
 
     final withDate = {
       ...video,
       "savedAt": DateTime.now().toString(),
+      "locked": false,
     };
 
     _cache.add(withDate);
@@ -111,10 +164,19 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // お気に入り取得
+  // 取得（※ 並び替え拡張しやすい）
   // ------------------------------------------------------------
   Future<List<Map<String, dynamic>>> getFavorites() async {
     await _load();
+
+    // 🔒 ロック優先表示したい場合はここ
+    // _cache.sort((a, b) {
+    //   final la = a["locked"] == true;
+    //   final lb = b["locked"] == true;
+    //   if (la != lb) return la ? -1 : 1;
+    //   return 0;
+    // });
+
     return List.from(_cache);
   }
 }

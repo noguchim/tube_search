@@ -106,5 +106,16 @@
     "repeatOptionRandom": "Shuffle play",
     "repeatDialogCancel": "Cancel",
     "repeatDialogSave": "Save",
-    "repeatDialogMessage": "Select how continuous play should behave."
+    "repeatDialogMessage": "Select how continuous play should behave.",
+
+    "favoriteLockedTitle": "This video is locked",
+    "favoriteLockedMessage": "This video is currently locked.\nUnlock it to remove from favorites.",
+    "favoriteUnlockTitle": "Unlock this video?",
+    "favoriteUnlockMessage": "Unlocking this video will allow it to be removed from favorites.",
+    "favoriteUnlockConfirm": "Unlock",
+    "favoriteUnlockCancel": "Cancel",
+    "favoriteLock": "lock",
+    "favoriteDelete": "delete",
+
+    "buttonOk": "OK"
 }

@@ -510,7 +510,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             .settingsPoliciesSubtitle,
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 80),
                     ],
                   ),
           )

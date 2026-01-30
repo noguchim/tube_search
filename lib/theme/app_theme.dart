@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 /// ------------------------------------------------------------
 
 // Spotify参考
-// const Color colorDarkGray  = Color(0xFF282828);
-// const Color colorGray      = Color(0xFFB3B3B3);
+// const Color colorDarkGray = Color(0xFF282828);
+// const Color colorGray = Color(0xFFB3B3B3);
 // const Color colorLightGray = Color(0xFFEEEEEE);
 // const Color colorLightBlue = Color(0xFFD3E3FD);
+const Color splashBack = Color(0xFF4F6BFF);
+const Color splashBack2 = Color(0xFF355CFF);
 
 final ThemeData appLightTheme = ThemeData(
   useMaterial3: true,
@@ -42,17 +44,18 @@ final ThemeData appLightTheme = ThemeData(
     onPrimary: Colors.white,
   ),
 
-  // ✅ AppBar：赤帯はやめる（primaryが強すぎるため）
-  // “背景同化型”にして、必要な箇所だけEF4444を使う設計へ
+  // ✅ AppBar
   appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFFF2F2F6),
-    foregroundColor: Color(0xFF111111),
+    backgroundColor: Color(0xFFEAF0FF),
+    // 明るいブルーグレー
+    foregroundColor: Color(0xFF1F2937),
+    // 濃いグレー（ほぼ黒）
     elevation: 0,
     centerTitle: true,
     titleTextStyle: TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 20,
-      color: Color(0xFF111111),
+      color: Color(0xFF1F2937),
     ),
   ),
 
@@ -124,7 +127,7 @@ final ThemeData appDarkTheme = ThemeData(
 
   // ✅ DarkはGlass AppBar前提
   appBarTheme: const AppBarTheme(
-    backgroundColor: null,
+    backgroundColor: Color(0xFF303030),
     foregroundColor: Colors.white,
     elevation: 0,
     centerTitle: true,

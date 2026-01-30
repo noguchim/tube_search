@@ -7,6 +7,7 @@ class YouTubeVideo {
   final DateTime? publishedAt;
   final int? viewCount;
   final int? durationSeconds;
+  final bool locked;
 
   YouTubeVideo({
     required this.id,
@@ -16,5 +17,6 @@ class YouTubeVideo {
     this.publishedAt,
     this.viewCount,
     this.durationSeconds,
+    this.locked = false,
   });
 }

@@ -19,8 +19,17 @@ Future<void> handleFavoriteTap(
   final id = video['id']?.toString() ?? '';
   if (id.isEmpty) return;
 
-  // すでにお気に入り → 削除確認
+  // =========================
+  // ❤️ すでにお気に入り
+  // =========================
   if (fav.isFavoriteSync(id)) {
+    // 🔒 ロック中 → 削除させない
+    if (fav.isLockedSync(id)) {
+      await _showLockedFavoriteDialog(context);
+      return;
+    }
+
+    // 🔓 ロックされていない → 削除確認へ
     await FavoriteDeleteHelper.confirmOrDelete(
       context,
       video,
@@ -28,12 +37,40 @@ Future<void> handleFavoriteTap(
     return;
   }
 
-  // 追加トライ
+  // =========================
+  // ❤️ 追加トライ
+  // =========================
   final ok = await fav.tryAddFavorite(id, video, iap);
 
   if (!ok) {
     _showFavoriteLimitDialog(context, iap);
   }
+}
+
+Future<void> _showLockedFavoriteDialog(BuildContext context) async {
+  final t = AppLocalizations.of(context)!;
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return AppDialog(
+        title: t.favoriteLockedTitle,
+        message: t.favoriteLockedMessage,
+        style: AppDialogStyle.info,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              t.buttonOk,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 void _showFavoriteLimitDialog(
@@ -54,7 +91,12 @@ void _showFavoriteLimitDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(t.favoriteLimitClose),
+            child: Text(
+              t.favoriteLimitClose,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
           ),
           if (!purchased)
             FilledButton(

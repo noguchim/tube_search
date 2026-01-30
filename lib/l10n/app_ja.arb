@@ -109,5 +109,16 @@
     "repeatOptionRandom": "ランダム再生",
     "repeatDialogCancel": "キャンセル",
     "repeatDialogSave": "保存",
-    "repeatDialogMessage": "連続再生の動作を選択してください。"
+    "repeatDialogMessage": "連続再生の動作を選択してください。",
+
+    "favoriteLockedTitle": "ロック中の動画です",
+    "favoriteLockedMessage": "この動画はロックされています。\n削除するにはロックを解除してください。",
+    "favoriteUnlockTitle": "ロックを解除しますか？",
+    "favoriteUnlockMessage": "この動画のロックを解除すると、\nお気に入りから削除できるようになります。",
+    "favoriteUnlockConfirm": "解除する",
+    "favoriteUnlockCancel": "キャンセル",
+    "favoriteLock": "ロック",
+    "favoriteDelete": "削除",
+
+    "buttonOk": "OK"
 }

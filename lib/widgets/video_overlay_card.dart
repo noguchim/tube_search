@@ -54,7 +54,7 @@ class VideoOverlayCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -68,8 +68,8 @@ class VideoOverlayCard extends StatelessWidget {
                   // =====================================================
                   Positioned.fill(
                     child: thumbOk
-                        ? CachedNetworkImage(
-                            imageUrl: thumbnail,
+                        ? Ink.image(
+                            image: CachedNetworkImageProvider(thumbnail),
                             fit: BoxFit.cover,
                           )
                         : Container(
@@ -128,14 +128,14 @@ class VideoOverlayCard extends StatelessWidget {
                     top: 8,
                     left: 8,
                     child: IgnorePointer(
-                      child: rankBadge(context, isDark, rank),
+                      child: rankBadge(context, rank),
                     ),
                   ),
 
                   // ❤️ お気に入り（右上）
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 0,
+                    right: 4,
                     child: FavoriteButtonOverlay(
                       isFavorite: isFav,
                       scale: 1.1,

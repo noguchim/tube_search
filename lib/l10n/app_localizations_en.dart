@@ -268,4 +268,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get repeatDialogMessage => 'Select how continuous play should behave.';
+
+  @override
+  String get favoriteLockedTitle => 'This video is locked';
+
+  @override
+  String get favoriteLockedMessage =>
+      'This video is currently locked.\nUnlock it to remove from favorites.';
+
+  @override
+  String get favoriteUnlockTitle => 'Unlock this video?';
+
+  @override
+  String get favoriteUnlockMessage =>
+      'Unlocking this video will allow it to be removed from favorites.';
+
+  @override
+  String get favoriteUnlockConfirm => 'Unlock';
+
+  @override
+  String get favoriteUnlockCancel => 'Cancel';
+
+  @override
+  String get favoriteLock => 'lock';
+
+  @override
+  String get favoriteDelete => 'delete';
+
+  @override
+  String get buttonOk => 'OK';
 }

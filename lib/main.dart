@@ -7,8 +7,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
+import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
+import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
@@ -124,6 +126,18 @@ void main() async {
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => BannerAdProvider()),
+
+        ChangeNotifierProvider(
+          create: (_) => ExpandedVideoController(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) {
+            final p = DensityProvider();
+            p.load();
+            return p;
+          },
+        ),
 
         // ★ IapService + IapProvider
         ChangeNotifierProvider(

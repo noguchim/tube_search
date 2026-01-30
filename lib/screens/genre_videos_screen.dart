@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_localizations.dart';
 import '../providers/banner_ad_provider.dart';
+import '../providers/density_provider.dart';
 import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
+import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/limit_service.dart';
@@ -20,12 +20,10 @@ import '../widgets/density_fab.dart';
 import '../widgets/expanded_video_overlay.dart';
 
 import '../widgets/network_error_view.dart';
-import '../widgets/top_bar.dart';
-import '../widgets/video_grid_tile.dart';
-
-import '../widgets/video_list_tile_small.dart';
-import '../widgets/video_list_tile_top_rank.dart';
-import '../widgets/video_overlay_card.dart';
+import '../widgets/popular_big_section.dart';
+import '../widgets/popular_middle_section.dart';
+import '../widgets/popular_small_section.dart';
+import '../widgets/top_bar_back.dart';
 
 class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
@@ -50,17 +48,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   late Future<List<Map<String, dynamic>>> _futureVideos;
   final ScrollController _scrollController = ScrollController();
 
-  bool _isRefreshing = false;
-  bool _isScrollingDown = false;
-  DateTime? _fetchedAt;
   int _lastLimit = 20;
-  static const _densityKey = 'popular_card_density';
-  CardDensity _density = CardDensity.big;
 
   bool _isSearching = false;
   Completer<List<Map<String, dynamic>>>? _activeRequest;
-  Map<String, dynamic>? _expandedVideo;
-  int? _expandedRank;
   bool _showTopBar = true;
 
   @override
@@ -68,7 +59,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     super.initState();
     _futureVideos = _loadVideos();
     _scrollController.addListener(_onScroll);
-    _initDensity();
   }
 
   @override
@@ -93,18 +83,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _initDensity() async {
-    final d = await CardDensityPrefs.load(key: _densityKey);
-    if (!mounted) return;
-    setState(() => _density = d);
-  }
-
-  void _toggleDensity() {
-    final next = CardDensityPrefs.next(_density);
-    setState(() => _density = next);
-    CardDensityPrefs.save(next, key: _densityKey);
   }
 
   // ---------------------------------------------------------
@@ -181,7 +159,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           }
 
           if (search.isEmpty) {
-            _fetchedAt = DateTime.now();
             _activeRequest?.complete([]);
             return;
           }
@@ -239,7 +216,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
         videos = videos.take(limit).toList();
 
-        _fetchedAt = DateTime.now();
         _activeRequest?.complete(videos);
 
       } catch (e, st) {
@@ -262,108 +238,32 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   Future<void> _refreshVideos() async {
     if (_isSearching) return; // ✅ 追加
 
-    setState(() => _isRefreshing = true);
-
     try {
       final data = await _loadVideos(forceRefresh: true); // ✅ refreshは強制fresh推奨
       if (!mounted) return;
 
       setState(() {
         _futureVideos = Future.value(data);
-        _isRefreshing = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isRefreshing = false);
       rethrow;
     }
   }
 
-  Widget _buildBigSliver(List<Map<String, dynamic>> videos) {
-    if (videos.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
+  Widget _densityControl(List<Map<String, dynamic>> videos) {
+    final density = context.watch<DensityProvider>().density;
+
+    switch (density) {
+      case CardDensity.big:
+        return PopularBigSection(videos: videos);
+
+      case CardDensity.middle:
+        return PopularMiddleSection(videos: videos);
+
+      case CardDensity.small:
+        return PopularSmallSection(videos: videos);
     }
-
-    final topVideo = videos.first;
-    final restVideos = videos.length > 1 ? videos.sublist(1) : [];
-
-    return SliverList(
-      delegate: SliverChildListDelegate(
-        [
-          VideoListTileTopRank(
-            video: topVideo,
-            rank: 1,
-          ),
-          if (restVideos.isNotEmpty)
-            Transform.translate(
-              // NOTE:
-              // 視覚的なカード連続感を出すために
-              // Grid を BigCard に少し重ねている(-20)。
-              // レイアウト上の余白ではなく視覚補正。
-              offset: const Offset(0, -20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: restVideos.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 16 / 9,
-                  ),
-                  itemBuilder: (context, index) {
-                    final video = restVideos[index];
-                    final rank = index + 2;
-
-                    return VideoGridTile(
-                      video: video,
-                      rank: rank,
-                      onTap: () {
-                        setState(() {
-                          _expandedVideo = video;
-                          _expandedRank = rank;
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNormalSliver(List<Map<String, dynamic>> videos) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-            (context, index) {
-          final video = videos[index];
-          final rank = index + 1;
-
-          switch (_density) {
-            case CardDensity.middle:
-              return VideoOverlayCard(
-                video: video,
-                rank: rank,
-              );
-
-            case CardDensity.small:
-              return VideoListTileSmall(
-                video: video,
-                rank: rank,
-              );
-
-            case CardDensity.big:
-            // BIG はここに来ない設計
-              return const SizedBox.shrink();
-          }
-        },
-        childCount: videos.length,
-      ),
-    );
   }
 
   // ---------------------------------------------------------
@@ -378,9 +278,13 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     (widget.keyword != null && widget.keyword!.isNotEmpty)
         ? widget.keyword!
         : widget.categoryTitle;
+    final expanded = context.watch<ExpandedVideoController>();
 
     // ★ Favorite 状態変化を購読して同期
     context.watch<FavoritesService>();
+
+    final density = context.watch<DensityProvider>().density;
+
     final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
     context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
@@ -392,8 +296,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 45), // ← AdMob分持ち上げ
         child: DensityFab(
-          density: _density,
-          onToggle: _toggleDensity,
+          density: density,
+          onToggle: () => context.read<DensityProvider>().toggle(),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -434,10 +338,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             height: 55 + MediaQuery.of(context).padding.top,
                           ),
                         ),
-                        if (_density == CardDensity.big)
-                          _buildBigSliver(videos)
-                        else
-                          _buildNormalSliver(videos),
+
+                        _densityControl(videos),
                         const SliverToBoxAdapter(
                           child: SizedBox(height: 70),
                         ),
@@ -446,21 +348,16 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                   ),
 
                   // Expanded Overlay
-                  if (_expandedVideo != null)
+                  if (expanded.video != null)
                     Positioned.fill(
                       child: ExpandedVideoOverlay(
-                        video: _expandedVideo!,
-                        rank: _expandedRank!,
+                        video: expanded.video!,
+                        rank: expanded.rank!,
                         onClose: () {
-                          setState(() {
-                            _expandedVideo = null;
-                            _expandedRank = null;
-                          });
+                          context.read<ExpandedVideoController>().close();
                         },
                       ),
                     ),
-
-
                 ],
               );
             },
@@ -495,12 +392,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
               offset: _showTopBar ? Offset.zero : const Offset(0, -1.1),
-              child: TopBar(
-                mode: TopBarMode.back,
+              child: TopBarBack(
                 title: topTitle,
-                onBack: () {
-                  Navigator.of(context).pop();
-                },
+                onBack: Navigator.of(context).pop,
               ),
             ),
           ),

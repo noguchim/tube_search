@@ -85,11 +85,11 @@ class _AdBannerState extends State<AdBanner> {
     return SizedBox(
       height: 50,
       // For capture
-      child: _buildDummyBannerGlass(context),
+      // child: _buildDummyBannerGlass(context),
 
-      // child: (_isLoaded && banner != null) && !debugMode
-      //     ? AdWidget(ad: banner)
-      //     : _buildDummyBannerGlass(context), // ← バナーなし時はこれ
+      child: (_isLoaded && banner != null) && !debugMode
+          ? AdWidget(ad: banner)
+          : _buildDummyBannerGlass(context), // ← バナーなし時はこれ
     );
   }
 

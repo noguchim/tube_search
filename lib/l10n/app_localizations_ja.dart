@@ -265,4 +265,31 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get repeatDialogMessage => '連続再生の動作を選択してください。';
+
+  @override
+  String get favoriteLockedTitle => 'ロック中の動画です';
+
+  @override
+  String get favoriteLockedMessage => 'この動画はロックされています。\n削除するにはロックを解除してください。';
+
+  @override
+  String get favoriteUnlockTitle => 'ロックを解除しますか？';
+
+  @override
+  String get favoriteUnlockMessage => 'この動画のロックを解除すると、\nお気に入りから削除できるようになります。';
+
+  @override
+  String get favoriteUnlockConfirm => '解除する';
+
+  @override
+  String get favoriteUnlockCancel => 'キャンセル';
+
+  @override
+  String get favoriteLock => 'ロック';
+
+  @override
+  String get favoriteDelete => '削除';
+
+  @override
+  String get buttonOk => 'OK';
 }
