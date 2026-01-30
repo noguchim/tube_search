@@ -35,10 +35,12 @@ class PopularSmallSection extends StatelessWidget {
     // 高さ（Smallは密度優先）
     // =========================
     final double tileHeight = isTablet
-        ? 112
+        ? 128
         : isLandscape
-            ? 104
+            ? 115
             : 128;
+
+    // const double tileHeight = 128;
 
     // =========================
     // 縦 or Grid 切替
