@@ -29,13 +29,13 @@ class ExpandedVideoOverlay extends StatelessWidget {
     final bool isLargeTablet = shortest >= 900;
 
     final double maxWidth = isLargeTablet
-        ? 520
+        ? 700
         : isTablet
             ? 440
             : 360;
 
     final double maxHeight = isLargeTablet
-        ? 460
+        ? 530
         : isTablet
             ? 400
             : 330;

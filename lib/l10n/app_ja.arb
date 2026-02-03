@@ -120,5 +120,10 @@
     "favoriteLock": "ロック",
     "favoriteDelete": "削除",
 
+    "updateAvailableTitle": "新しいバージョンがあります",
+    "updateAvailableMessage": "最新版が公開されています。",
+    "updateLater": "あとで",
+    "updateNow": "更新",
+
     "buttonOk": "OK"
 }

@@ -117,5 +117,10 @@
     "favoriteLock": "lock",
     "favoriteDelete": "delete",
 
+    "updateAvailableTitle": "A new version is available",
+    "updateAvailableMessage": "The latest version is now available.",
+    "updateLater": "Later",
+    "updateNow": "Update",
+
     "buttonOk": "OK"
 }

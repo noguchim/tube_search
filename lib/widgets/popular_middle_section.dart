@@ -13,42 +13,27 @@ class PopularMiddleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final isLandscape = media.orientation == Orientation.landscape;
+    final bool isLandscape = media.orientation == Orientation.landscape;
+    final bool isTablet = media.size.shortestSide >= 600;
+    final bool isPhoneLandscape = media.size.shortestSide < 600 &&
+        media.orientation == Orientation.landscape;
 
-    final double shortest = media.size.shortestSide;
-    final bool isPhone = shortest < 600;
-
-    const double mainSpacing = 0;
-    const double crossSpacing = 0;
-
-    final double maxTileWidth = shortest >= 900 ? 360 : 320;
-
-    SliverGridDelegate gridDelegate;
-
-    if (isPhone && !isLandscape) {
-      // 📱 Phone 縦：1列
-      gridDelegate = const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 1,
-        mainAxisSpacing: mainSpacing,
-        crossAxisSpacing: crossSpacing,
-        childAspectRatio: 16 / 9,
-      );
-    } else if (isPhone && isLandscape) {
-      // 📱 Phone 横：2列
-      gridDelegate = const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: mainSpacing,
-        crossAxisSpacing: crossSpacing,
-        childAspectRatio: 16 / 9,
-      );
+    // =========================
+    // 列数ルール（完全決め打ち）
+    // =========================
+    final int crossAxisCount;
+    if (!isTablet && !isLandscape) {
+      // 📱 スマホ縦
+      crossAxisCount = 1;
+    } else if (!isTablet && isLandscape) {
+      // 📱 スマホ横
+      crossAxisCount = 2;
+    } else if (isTablet && !isLandscape) {
+      // 📲 iPad縦
+      crossAxisCount = 2;
     } else {
-      // 📲 Tablet / 大画面
-      gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: maxTileWidth,
-        mainAxisSpacing: mainSpacing,
-        crossAxisSpacing: crossSpacing,
-        childAspectRatio: 16 / 9,
-      );
+      // 📲 iPad横
+      crossAxisCount = 3;
     }
 
     return SliverPadding(
@@ -66,7 +51,12 @@ class PopularMiddleSection extends StatelessWidget {
           },
           childCount: videos.length,
         ),
-        gridDelegate: gridDelegate,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: 0,
+          crossAxisSpacing: 0,
+          childAspectRatio: 16 / 9,
+        ),
       ),
     );
   }

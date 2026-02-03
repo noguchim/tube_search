@@ -9,6 +9,10 @@ enum TopBarMode {
   back, // パターンB：戻る＋タイトル
 }
 
+class TopBarSpec {
+  static const double barContentHeight = 50.0;
+}
+
 class TopBar extends StatelessWidget {
   final TopBarMode mode;
 
@@ -43,20 +47,26 @@ class TopBar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
     final borderColor = Colors.white.withValues(alpha: 0.10);
+    final double safeTop = MediaQuery.of(context).padding.top;
 
     return Container(
-      height: 88,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      // 👇 StatusBar を含めた高さ
+      height: safeTop + 50,
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
           top: BorderSide(color: borderColor, width: 1),
         ),
       ),
-      child: switch (mode) {
-        TopBarMode.tabs => _buildTabs(context),
-        TopBarMode.back => _buildBack(context),
-      },
+
+      // 👇 中身だけを SafeArea 的に下げる
+      child: Padding(
+        padding: EdgeInsets.only(top: safeTop),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: _buildTabs(context),
+        ),
+      ),
     );
   }
 
@@ -95,70 +105,6 @@ class TopBar extends StatelessWidget {
     );
   }
 
-  Widget _buildBack(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final double safeTop = media.padding.top;
-
-    return SizedBox(
-      height: 88,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          8,
-          safeTop + 8, // ← ★ここが肝
-          8,
-          0,
-        ),
-        child: Center(
-          child: SizedBox(
-            height: 48,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 戻る
-                InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onBack,
-                  child: const SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: Center(
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 22,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // タイトル
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      title ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 40),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ---------------------------------------------------------
   // 🔥 タブ描画
   // ---------------------------------------------------------
@@ -175,17 +121,17 @@ class TopBar extends StatelessWidget {
         ? (isSelected ? 1.0 : 0.0)
         : (1.0 - (pageProgress - index).abs()).clamp(0.0, 1.0);
 
-    // ★ 縦位置
-    final double topPadding = isSelected ? 45 : lerpDouble(40, 45, t)!;
+    // 🔥 縦位置はここで完全に統一
+    const double tabTextCenterY = 6.0;
+
+    final double topPadding =
+        tabTextCenterY + (isSelected ? 0.0 : lerpDouble(0, 0, t)!);
 
     // ★ 次にアクティブになり得るか？
     final bool isCandidate = !isSelected && t > 0.0 && t < 1.0;
 
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    // final Color textColor =
-    //     isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87;
     const Color textColor = Color(0xFFB3B3B3);
+    const double kTabHeight = 45;
 
     return Expanded(
       child: Semantics(
@@ -195,42 +141,43 @@ class TopBar extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => onTabSelected?.call(index),
-          child: Center(
+          child: Align(
+            alignment: Alignment.topCenter,
             child: Padding(
               padding: EdgeInsets.only(top: topPadding),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // -------------------------
-                  // 非アクティブ文字
-                  // -------------------------
-                  if (!isSelected)
-                    Opacity(
-                      opacity: isCandidate ? (1.0 - t) : 1.0,
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
+              child: SizedBox(
+                height: kTabHeight, // ← ★同じ箱
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 非アクティブ
+                    if (!isSelected)
+                      Opacity(
+                        opacity: isCandidate ? (1.0 - t) : 1.0,
+                        child: Center(
+                          // ← ★同一基準
+                          child: Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
 
-                  // -------------------------
-                  // ActiveTab
-                  // -------------------------
-                  if (isSelected || isCandidate)
-                    Opacity(
-                      opacity: isSelected ? 1.0 : t,
-                      child: IgnorePointer(
-                        ignoring: !isSelected,
+                    // アクティブ
+                    if (isSelected || isCandidate)
+                      Opacity(
+                        opacity: isSelected ? 1.0 : t,
                         child: ChromeActiveTab(
                           title: label,
+                          height: kTabHeight, // ← 同じ
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -242,10 +189,12 @@ class TopBar extends StatelessWidget {
 
 class ChromeActiveTab extends StatelessWidget {
   final String title;
+  final double height;
 
   const ChromeActiveTab({
     super.key,
     required this.title,
+    required this.height,
   });
 
   @override
@@ -253,48 +202,26 @@ class ChromeActiveTab extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // final Color bodyBg =
-    // isDark ? const Color(0xFF121212) : const Color(0xFFF5F6F7);
-    final Color bodyBg = theme.scaffoldBackgroundColor;
-
-    final Color textColor =
-        isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87;
-
-    final double elevation = isDark ? 0.0 : 0.6;
-
-    return Material(
-      color: Colors.transparent,
-      elevation: elevation,
-      shadowColor: Colors.black.withValues(alpha: 0.25),
-      child: SizedBox(
-        height: 42,
-        child: CustomPaint(
-          painter: _ChromeActiveTabPainter(
-            bgColor: bodyBg,
-            isDark: isDark,
-          ),
-          child: Padding(
-            // ★ 縦を締める
-            padding: const EdgeInsets.fromLTRB(10, 7, 10, 10),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 72,
-                maxWidth: 132,
-              ),
-              child: Center(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-              ),
+    return SizedBox(
+      height: height, // ← ★完全一致
+      child: CustomPaint(
+        painter: _ChromeActiveTabPainter(
+          bgColor: theme.scaffoldBackgroundColor,
+          isDark: isDark,
+        ),
+        child: Center(
+          // ← ★ここだけで良い
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.92)
+                  : Colors.black87,
             ),
           ),
         ),

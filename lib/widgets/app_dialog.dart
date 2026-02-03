@@ -134,16 +134,21 @@ class AppDialog extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start, // ← 追加
                   children: [
                     if (message.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          message,
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                            fontSize: 14,
-                            height: 1.4,
+                        child: SizedBox(
+                          width: double.infinity, // ← これが決定打
+                          child: Text(
+                            message,
+                            textAlign: TextAlign.start,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
                           ),
                         ),
                       ),

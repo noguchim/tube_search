@@ -18,11 +18,15 @@ import '../widgets/network_error_view.dart';
 import '../widgets/popular_big_section.dart';
 import '../widgets/popular_middle_section.dart';
 import '../widgets/popular_small_section.dart';
+import '../widgets/top_bar.dart';
 
 class PopularVideosScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
 
-  const PopularVideosScreen({super.key, this.onScrollChanged});
+  const PopularVideosScreen({
+    super.key,
+    this.onScrollChanged,
+  });
 
   @override
   State<PopularVideosScreen> createState() => _PopularVideosScreenState();
@@ -229,13 +233,9 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     final isLandscape = media.orientation == Orientation.landscape;
     final shortestSide = media.size.shortestSide;
     final isTablet = shortestSide >= 600;
-
-    // TopBar 実高さ（あなたの実装ベース）
-    final double topBarHeight = isTablet
-        ? 80
-        : isLandscape
-            ? 96
-            : 75;
+    final extraTopGap = isTablet ? 12.0 : 8.0;
+    final double topBarOffset =
+        safeTop + TopBarSpec.barContentHeight + extraTopGap;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -292,10 +292,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                   controller: _scrollController,
                   slivers: [
                     SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: topBarHeight + safeTop,
-                        // height: 80 + MediaQuery.of(context).padding.top,
-                      ),
+                      child: SizedBox(height: topBarOffset),
                     ),
                     _densityControl(videos),
                     const SliverToBoxAdapter(

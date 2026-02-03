@@ -296,5 +296,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoriteDelete => 'delete';
 
   @override
+  String get updateAvailableTitle => 'A new version is available';
+
+  @override
+  String get updateAvailableMessage => 'The latest version is now available.';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String get updateNow => 'Update';
+
+  @override
   String get buttonOk => 'OK';
 }

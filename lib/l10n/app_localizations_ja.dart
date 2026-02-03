@@ -291,5 +291,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get favoriteDelete => '削除';
 
   @override
+  String get updateAvailableTitle => '新しいバージョンがあります';
+
+  @override
+  String get updateAvailableMessage => '最新版が公開されています。';
+
+  @override
+  String get updateLater => 'あとで';
+
+  @override
+  String get updateNow => '更新';
+
+  @override
   String get buttonOk => 'OK';
 }

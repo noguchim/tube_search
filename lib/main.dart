@@ -14,6 +14,7 @@ import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
+import 'package:tube_search/utils/app_version.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 import 'package:tube_search/widgets/top_bar.dart';
 
@@ -219,9 +220,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<FavoritesScreenState> _favKey =
       GlobalKey<FavoritesScreenState>();
 
-  late final List<Widget> _screens;
+  // late final List<Widget> _screens;
   double _pageProgress = 0.0;
   bool _isTapNavigating = false;
+  final GlobalKey _topBarKey = GlobalKey();
+
+  List<Widget> get _screens => [
+        PopularVideosScreen(
+          onScrollChanged: _onScrollChanged,
+        ),
+        GenreScreen(onScrollChanged: _onScrollChanged),
+        FavoritesScreen(key: _favKey),
+        const SettingsScreen(),
+      ];
 
   @override
   void initState() {
@@ -246,12 +257,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       });
     });
 
-    _screens = [
-      PopularVideosScreen(onScrollChanged: _onScrollChanged),
-      GenreScreen(onScrollChanged: _onScrollChanged),
-      FavoritesScreen(key: _favKey),
-      const SettingsScreen(),
-    ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkLatestVersion(context);
+    });
+  }
+
+  void showUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('アップデートのお知らせ'),
+        content: const Text('アプリが最新版に更新されました'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onScrollChanged(bool isScrollingDown) {
@@ -302,36 +326,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   duration: const Duration(milliseconds: 250),
                   child: IgnorePointer(
                     ignoring: _isScrollingDown,
-                    child: SizedBox(
-                      height: 88,
-                      child: TopBar(
-                        mode: TopBarMode.tabs,
-                        selectedIndex: _selectedIndex,
-                        pageProgress: _pageProgress,
-                        isTapNavigating: _isTapNavigating,
-                        onTabSelected: (index) {
-                          Feedback.forTap(context);
+                    child: TopBar(
+                      key: _topBarKey,
+                      mode: TopBarMode.tabs,
+                      selectedIndex: _selectedIndex,
+                      pageProgress: _pageProgress,
+                      isTapNavigating: _isTapNavigating,
+                      onTabSelected: (index) {
+                        Feedback.forTap(context);
 
+                        setState(() {
+                          _isTapNavigating = true;
+                          _selectedIndex = index;
+                          _pageProgress = index.toDouble();
+                        });
+
+                        if (index == 2) {
+                          _favKey.currentState?.reload();
+                        }
+
+                        _pageController.jumpToPage(index);
+
+                        if (mounted) {
                           setState(() {
-                            _isTapNavigating = true;
-                            _selectedIndex = index;
+                            _isTapNavigating = false;
                             _pageProgress = index.toDouble();
                           });
-
-                          if (index == 2) {
-                            _favKey.currentState?.reload();
-                          }
-
-                          _pageController.jumpToPage(index);
-
-                          if (mounted) {
-                            setState(() {
-                              _isTapNavigating = false;
-                              _pageProgress = index.toDouble();
-                            });
-                          }
-                        },
-                      ),
+                        }
+                      },
                     ),
                   ),
                 ),
