@@ -9,6 +9,7 @@ import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
+import '../utils/request_review.dart';
 import '../widgets/app_dialog.dart';
 
 enum _FavMenuAction {
@@ -23,7 +24,8 @@ class FavoritesScreen extends StatefulWidget {
   State<FavoritesScreen> createState() => FavoritesScreenState();
 }
 
-class FavoritesScreenState extends State<FavoritesScreen> {
+class FavoritesScreenState extends State<FavoritesScreen>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
   List<Map<String, dynamic>> _list = [];
   bool _isPushing = false;
@@ -31,7 +33,22 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initLoad();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed) {
+      // 🔑 Safari / CustomTabs から戻った後
+      await maybeAskForReview();
+    }
   }
 
   Future<void> _initLoad() async {
@@ -120,7 +137,11 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       final videoId = id.trim();
       if (videoId.isEmpty) return;
 
-      await openYouTubeInInAppBrowser(context, videoId: videoId);
+      // ▶ 再生（この await が「再生体験」）
+      await openYouTubeInInAppBrowser(
+        context,
+        videoId: videoId,
+      );
     } finally {
       _isPushing = false;
     }

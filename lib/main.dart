@@ -6,6 +6,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
@@ -15,6 +16,7 @@ import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/utils/app_version.dart';
+import 'package:tube_search/utils/request_review.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 import 'package:tube_search/widgets/top_bar.dart';
 
@@ -216,6 +218,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final PageController _pageController = PageController();
   int _selectedIndex = 0;
   bool _isScrollingDown = false;
+  bool debugMode = false;
 
   final GlobalKey<FavoritesScreenState> _favKey =
       GlobalKey<FavoritesScreenState>();
@@ -260,6 +263,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       checkLatestVersion(context);
     });
+
+    if (debugMode) {
+      resetReviewDebugState();
+    } else {
+      // 👇 アプリ起動1回としてカウント
+      incrementUsageCount();
+    }
+  }
+
+  Future<void> resetReviewDebugState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove('app_usage_count');
+    await prefs.remove('review_requested_month');
+
+    // もし他にもあれば追加
+    // await prefs.remove('review_requested_version');
+
+    debugPrint('🔧 Review debug state reset');
   }
 
   void showUpdateDialog() {

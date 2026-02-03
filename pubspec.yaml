@@ -28,7 +28,8 @@ dependencies:
   youtube_player_iframe: ^5.1.2
   flutter_custom_tabs: ^2.2.1
   package_info_plus: ^8.0.0
-
+  in_app_review: ^2.0.8
+  
 flutter_icons:
   android: true
   ios: true
