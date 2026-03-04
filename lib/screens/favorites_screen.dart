@@ -10,7 +10,10 @@ import '../services/limit_service.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/request_review.dart';
+import '../utils/ui_spacing.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/play_button_overlay.dart';
+import '../widgets/top_bar.dart';
 
 enum _FavMenuAction {
   lock,
@@ -156,12 +159,14 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     return SliverToBoxAdapter(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        height: 28, // ← ★ここを追加（重要）
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         color: theme.brightness == Brightness.dark
             ? Colors.white.withValues(alpha: 0.04)
             : const Color(0xFFE4E8EC),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end, // ← ★下寄せ
+          crossAxisAlignment: CrossAxisAlignment.end, // 右寄せ維持
           children: [
             Text(
               AppLocalizations.of(context)!
@@ -212,7 +217,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
         child: Row(
           children: [
             // =========================
-            // 🎬 サムネ（再生はここだけ）
+            // 🎬 サムネ（再生はここだけ）+ 再生ボタン
             // =========================
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
@@ -229,11 +234,22 @@ class FavoritesScreenState extends State<FavoritesScreen>
                   },
                   splashColor: Colors.white.withValues(alpha: 0.22),
                   highlightColor: Colors.white.withValues(alpha: 0.10),
-                  child: Ink.image(
-                    image: NetworkImage(video["thumbnailUrl"] ?? ""),
-                    width: 88,
-                    height: 56,
-                    fit: BoxFit.cover,
+                  child: Stack(
+                    alignment: Alignment.center, // ← ★中央を強制固定（超重要）
+                    children: [
+                      Ink.image(
+                        image: NetworkImage(video["thumbnailUrl"] ?? ""),
+                        width: 88,
+                        height: 56,
+                        fit: BoxFit.cover,
+                      ),
+
+                      // 🎬 Small最適サイズ（TubeSearch推奨）
+                      const PlayButtonOverlay(
+                        sizeOverride: 28,
+                        subtle: true,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -463,12 +479,15 @@ class FavoritesScreenState extends State<FavoritesScreen>
     final iap = context.watch<IapProvider>();
     final favoritesLimit = LimitService.favoritesLimit(iap);
     final currentCount = _list.length;
+    final media = MediaQuery.of(context);
+    final safeTop = media.padding.top;
+    final double topBarOffset = safeTop + TopBarSpec.barContentHeight;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 88)),
+          SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
           if (!_isLoading && currentCount > 0)
             _buildCountHeader(context, currentCount, favoritesLimit),
           SliverToBoxAdapter(
@@ -484,7 +503,15 @@ class FavoritesScreenState extends State<FavoritesScreen>
                       )
                     : _buildFavoritesContent(),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 70)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: UISpacing.bottomSpacer(
+                context,
+                hasFab: true,
+                hasAd: true,
+              ),
+            ),
+          ),
         ],
       ),
     );

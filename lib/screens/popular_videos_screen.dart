@@ -12,6 +12,7 @@ import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/card_density_prefs.dart';
+import '../utils/ui_spacing.dart';
 import '../widgets/density_fab.dart';
 import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
@@ -37,7 +38,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   @override
   bool get wantKeepAlive => true;
   String _currentRegion = "JP";
-  final YouTubeApiService _apiService = YouTubeApiService();
   late Future<List<Map<String, dynamic>>> _futureVideos;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
@@ -100,7 +100,8 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     final iap = context.read<IapProvider>();
     final limit = LimitService.videoListLimit(iap);
     final region = context.read<RegionProvider>().regionCode;
-    final videos = await _apiService.fetchPopularVideos(
+    final api = context.read<YouTubeApiService>();
+    final videos = await api.fetchPopularVideos(
       maxResults: LimitService.videoListLimit(iap),
       regionCode: region,
       forceRefresh: forceRefresh, // ← 重要
@@ -134,7 +135,8 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
       // 例外が出れば catch に飛ぶ
       final region = context.read<RegionProvider>().regionCode;
-      final videos = await _apiService.fetchPopularVideos(
+      final api = context.read<YouTubeApiService>();
+      final videos = await api.fetchPopularVideos(
         maxResults: limit,
         regionCode: region,
         // 🟣 ネットが不安定なら必ず通信しに行く（→失敗したらエラー画面）
@@ -295,8 +297,14 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                       child: SizedBox(height: topBarOffset),
                     ),
                     _densityControl(videos),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 70),
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: UISpacing.bottomSpacer(
+                          context,
+                          hasFab: true,
+                          hasAd: true,
+                        ),
+                      ),
                     ),
                   ],
                 ),

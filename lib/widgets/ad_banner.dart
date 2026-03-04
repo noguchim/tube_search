@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
 
 class AdBanner extends StatefulWidget {
@@ -16,56 +17,81 @@ class AdBanner extends StatefulWidget {
 
 class _AdBannerState extends State<AdBanner> {
   BannerAd? _banner;
+  AdSize? _adSize; // ★ AdSize? にする（Adaptiveもbannerも入る）
   bool _isLoaded = false;
   late StreamSubscription<List<ConnectivityResult>> _connSub;
 
   @override
   void initState() {
     super.initState();
-    _loadBanner();
 
-    // ★ ネットワーク変化を購読
-    _connSub = Connectivity().onConnectivityChanged.listen((result) {
+    // ★ レイアウト確定後に広告ロード（Tabletクラッシュ対策）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _reloadBanner();
+        _loadBanner();
       }
+    });
+
+    _connSub = Connectivity().onConnectivityChanged.listen((_) {
+      if (mounted) _reloadBanner();
     });
   }
 
-  // バナー初回ロード
-  void _loadBanner() {
-    _banner = BannerAd(
-      size: AdSize.banner,
-      adUnitId: "ca-app-pub-1955852466270592/7938489673",
-      // AdMob 公式テスト ID
-      // adUnitId: "ca-app-pub-3940256099942544/6300978111",
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          logger.i('🎯 Banner loaded OK');
-          setState(() => _isLoaded = true);
-        },
-        onAdFailedToLoad: (ad, err) {
-          logger.i('❌ Banner failed: ${err.code} / ${err.message}');
+  Future<void> _loadBanner() async {
+    try {
+      final width = MediaQuery.of(context).size.width.toInt();
 
-          ad.dispose();
-          setState(() {
-            _isLoaded = false;
-            _banner = null;
-          });
-        },
-      ),
-      request: const AdRequest(),
-    )..load();
+      // ★ Adaptiveを取得（取得できなければ通常bannerにフォールバック）
+      final adaptive =
+          await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
+      _adSize = adaptive ?? AdSize.banner;
+
+      // 既存バナーがあれば破棄
+      _banner?.dispose();
+      _banner = null;
+
+      _banner = BannerAd(
+        size: _adSize!,
+        adUnitId: AdMobConfig.bannerId,
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (_) {
+            logger.i('🎯 Banner loaded: ${_adSize?.width}x${_adSize?.height}');
+            if (!mounted) return;
+            setState(() => _isLoaded = true);
+          },
+          onAdFailedToLoad: (ad, err) {
+            logger.i('❌ Banner failed: ${err.code} / ${err.message}');
+            ad.dispose();
+            if (!mounted) return;
+            setState(() {
+              _banner = null;
+              _isLoaded = false;
+            });
+          },
+        ),
+      );
+
+      await _banner!.load();
+    } catch (e, st) {
+      logger.e('💥 Banner load error: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _banner?.dispose();
+        _banner = null;
+        _isLoaded = false;
+        _adSize = null;
+      });
+    }
   }
 
-  // ネット変化で強制 reload
   void _reloadBanner() {
     setState(() {
       _isLoaded = false;
       _banner?.dispose();
       _banner = null;
+      _adSize = null;
     });
-
     _loadBanner();
   }
 
@@ -81,21 +107,15 @@ class _AdBannerState extends State<AdBanner> {
     final banner = _banner;
     const bool debugMode = false;
 
-    // ★ どちらにせよ高さは 50px で統一
     return SizedBox(
-      height: 50,
-      // For capture
-      child: _buildDummyBannerGlass(context),
-
-      // child: (_isLoaded && banner != null) && !debugMode
-      //     ? AdWidget(ad: banner)
-      //     : _buildDummyBannerGlass(context), // ← バナーなし時はこれ
+      width: double.infinity,
+      height: _isLoaded && _adSize != null ? _adSize!.height.toDouble() : 50,
+      child: (_isLoaded && banner != null) && !debugMode
+          ? AdWidget(ad: banner)
+          : _buildDummyBannerGlass(context),
     );
   }
 
-  // ------------------------------
-  // ⭐ ダミーバナー（背景 + アプリ名）
-  // ------------------------------
   Widget _buildDummyBannerGlass(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;

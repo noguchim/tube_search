@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../services/favorites_service.dart';
 import '../utils/handle_favorite_tap.dart';
@@ -210,6 +211,18 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                                     ),
                                   ),
                           ),
+
+                          // 🎬 中央再生ボタン（Overlay最適サイズ）
+                          const Positioned.fill(
+                            child: IgnorePointer(
+                              child: Center(
+                                child: PlayButtonOverlay(
+                                  sizeOverride: 42, // ← Overlayは大きめがUX最強
+                                ),
+                              ),
+                            ),
+                          ),
+
                           Positioned(
                             top: 8,
                             right: 8,

@@ -8,6 +8,8 @@ import '../data/region_option.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../providers/theme_provider.dart';
+import '../utils/ui_spacing.dart';
+import '../widgets/top_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -428,11 +430,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final themeProvider = context.watch<ThemeProvider>();
 
+    final media = MediaQuery.of(context);
+    final safeTop = media.padding.top;
+    final shortestSide = media.size.shortestSide;
+    final isTablet = shortestSide >= 600;
+    final extraTopGap = isTablet ? 12.0 : 8.0;
+    final double topBarOffset =
+        safeTop + TopBarSpec.barContentHeight + extraTopGap;
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 95)),
+          SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
           SliverToBoxAdapter(
             child: _loading
                 ? const Padding(
@@ -510,7 +520,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             .settingsPoliciesSubtitle,
                       ),
 
-                      const SizedBox(height: 80),
+                      SizedBox(
+                        height: UISpacing.bottomSpacer(
+                          context,
+                          hasFab: false,
+                          hasAd: true,
+                        ),
+                      ),
                     ],
                   ),
           )

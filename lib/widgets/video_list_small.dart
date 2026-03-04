@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
@@ -166,7 +167,19 @@ class VideoListTileSmall extends StatelessWidget {
                                       ),
                               ),
 
-                              // ✅ Rank badge overlay（波紋を邪魔しないようにする）
+                              // 🎯 Small専用：中央再生ボタン（安全配置）
+                              const Positioned.fill(
+                                child: IgnorePointer(
+                                  child: Center(
+                                    child: PlayButtonOverlay(
+                                      subtle: true,
+                                      sizeOverride: 30, // ← Small最適サイズ（重要）
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Rank badge
                               Positioned(
                                 top: 6,
                                 left: 6,

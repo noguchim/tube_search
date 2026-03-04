@@ -8,9 +8,12 @@ import 'package:provider/provider.dart';
 import '../data/base_genre_models.dart';
 import '../data/genre_groups_ja.dart';
 import '../data/genre_provider.dart';
+import '../data/trending_keyword.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../services/youtube_api_service.dart';
+import '../utils/app_logger.dart';
+import '../utils/ui_spacing.dart';
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -25,9 +28,6 @@ class GenreScreen extends StatefulWidget {
 class _GenreScreenState extends State<GenreScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   String _lastRegion = "JP";
-
-  final YouTubeApiService _apiService = YouTubeApiService();
-
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -46,6 +46,10 @@ class _GenreScreenState extends State<GenreScreen>
   // Brightness? _lastBrightness;
   // late final RegionProvider _regionProvider;
   bool _didInitialJump = false;
+
+  List<TrendingKeyword> _trending = [];
+  bool _trendingLoaded = false;
+  bool _showAllTrending = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -82,6 +86,23 @@ class _GenreScreenState extends State<GenreScreen>
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(0);
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final region = context.read<RegionProvider>().regionCode;
+      final api = context.read<YouTubeApiService>();
+
+      final cached = api.getCachedTrending(
+        regionCode: region,
+        max: 10, // ← Prefetchと必ず一致
+      );
+
+      setState(() {
+        _trending = cached;
+        _trendingLoaded = true;
+      });
     });
   }
 
@@ -168,7 +189,8 @@ class _GenreScreenState extends State<GenreScreen>
 
       try {
         final region = context.read<RegionProvider>().regionCode;
-        final list = await _apiService.fetchSuggestions(
+        final api = context.read<YouTubeApiService>();
+        final list = await api.fetchSuggestions(
           text,
           regionCode: region,
         );
@@ -259,7 +281,7 @@ class _GenreScreenState extends State<GenreScreen>
 
                               // ✅ hint中央寄せチューニング
                               contentPadding:
-                                  const EdgeInsets.fromLTRB(0, -1, 36, 0),
+                                  const EdgeInsets.fromLTRB(0, -5, 36, 0),
                             ),
                           ),
                           if (_searchCtrl.text.isNotEmpty)
@@ -343,6 +365,197 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  String _buildTrendingNow() {
+    final now = DateTime.now();
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    final date = "${now.month}/${now.day}";
+    final time = "${two(now.hour)}:${two(now.minute)}";
+
+    return "$date $time updated";
+  }
+
+  Widget _buildTrendingChips(ThemeData theme) {
+    logger.i(
+        "TrendTips start _trendingLoaded=$_trendingLoaded _trending=${_trending.map((e) => e.keyword).toList()}");
+
+    if (!_trendingLoaded || _trending.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final Color toggleColor = theme.colorScheme.onSurface.withOpacity(0.6);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double maxWidth = constraints.maxWidth;
+
+          double usedWidth = 0;
+          final List<TrendingKeyword> oneLine = [];
+
+          for (final t in _trending) {
+            final keyword = t.keyword.trim();
+            if (keyword.isEmpty) continue;
+
+            final textPainter = TextPainter(
+              text: TextSpan(
+                text: keyword,
+                style: const TextStyle(fontSize: 14),
+              ),
+              maxLines: 1,
+              textDirection: TextDirection.ltr,
+            )..layout();
+
+            final chipWidth = textPainter.width + 48;
+
+            if (usedWidth + chipWidth > maxWidth) break;
+
+            usedWidth += chipWidth + 8;
+            oneLine.add(t);
+          }
+
+          final List<TrendingKeyword> displayList =
+              _showAllTrending ? _trending : oneLine;
+
+          final bool hasMore = _trending.length > oneLine.length;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // タイトル
+              Row(
+                children: [
+                  Text(
+                    "トレンドワード",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _buildTrendingNow(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // チップ
+              Wrap(
+                spacing: 8,
+                runSpacing: 1,
+                children: displayList.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final t = entry.value;
+
+                  final keyword = t.keyword.trim();
+                  if (keyword.isEmpty) return const SizedBox.shrink();
+
+                  final bool isTop3 = index < 3;
+
+                  return ActionChip(
+                    pressElevation: 0,
+                    label: Text(
+                      "#$keyword",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isTop3 ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    backgroundColor:
+                        isTop3 ? const Color(0xFF2196F3) : Colors.white,
+                    side: isTop3
+                        ? BorderSide.none
+                        : const BorderSide(
+                            color: Color(0xFFCFD5D5),
+                            width: 1,
+                          ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    onPressed: () {
+                      logger.i("🔥 Trending chip tapped: $keyword");
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GenreVideosScreen(
+                            categoryId: "",
+                            categoryTitle: keyword,
+                            keyword: keyword,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+
+              // トグル
+              if (hasMore) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _showAllTrending = !_showAllTrending;
+                        });
+
+                        logger.i(
+                            "🔁 Trending toggle: showAll=$_showAllTrending total=${_trending.length}");
+                      },
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _showAllTrending
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                size: 26,
+                                color: toggleColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _showAllTrending ? "一部表示" : "全て表示",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: toggleColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   // ----------------------------------------------------
   // 🔥 グループセクション
   // ----------------------------------------------------
@@ -354,79 +567,53 @@ class _GenreScreenState extends State<GenreScreen>
     final bool isLandscape = media.orientation == Orientation.landscape;
     final bool isTablet = media.size.shortestSide >= 600;
 
-    // =========================
-    // Grid 設定（横向き時）
-    // =========================
-    final int crossAxisCount = isTablet ? 3 : 2;
+    final int crossAxisCount = isTablet
+        ? (isLandscape ? 3 : 2) // iPad：縦2 / 横3
+        : (isLandscape ? 2 : 1); // スマホ：縦1 / 横2
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // =========================
-          // 見出し（共通）
-          // =========================
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              children: [
-                Icon(group.icon, color: group.color, size: 22),
-                const SizedBox(width: 8),
-                Text(
-                  group.name,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(
+            children: [
+              Icon(group.icon, color: group.color, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                group.name,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // =========================
-          // 縦 / 横 切り替え
-          // =========================
-          if (!isLandscape) ...[
-            // ---------- 縦向き：従来 ----------
-            ...group.items.map((cat) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2), // ← ここ
-                  child: _buildCategoryTile(
-                    context,
-                    group,
-                    cat,
-                    isDark,
-                  ),
-                )),
-          ] else ...[
-            // ---------- 横向き：Grid ----------
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              itemCount: group.items.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                mainAxisExtent: 56,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 3.4, // ← 横長で読みやすく
               ),
-              itemBuilder: (context, index) {
-                final cat = group.items[index];
-                return _buildCategoryTile(
-                  context,
-                  group,
-                  cat,
-                  isDark,
-                );
-              },
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+          itemCount: group.items.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisExtent: 55,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 12,
+          ),
+          itemBuilder: (context, index) {
+            final cat = group.items[index];
+            return _buildCategoryTile(
+              context,
+              group,
+              cat,
+              isDark,
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -670,6 +857,27 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  Widget _buildSearchFieldWrapper() {
+    final media = MediaQuery.of(context);
+    final shortest = media.size.shortestSide;
+    final isTablet = shortest >= 600;
+
+    // iPad向け：検索フォームの最大幅
+    final double maxWidth = isTablet ? 720 : double.infinity;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildSearchField(),
+        ),
+      ),
+    );
+  }
+
   // ----------------------------------------------------
   // 🧩 本体
   // ----------------------------------------------------
@@ -704,7 +912,7 @@ class _GenreScreenState extends State<GenreScreen>
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          const SliverToBoxAdapter(child: SizedBox(height: 60)),
 
           SliverPersistentHeader(
             pinned: true,
@@ -714,10 +922,7 @@ class _GenreScreenState extends State<GenreScreen>
               suggestionsCount: _suggestions.length,
               isLoading: _isLoadingSuggest,
               isError: _networkError,
-              searchField: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildSearchField(),
-              ),
+              searchField: _buildSearchFieldWrapper(),
               suggestions: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildSuggestionsPinned(),
@@ -726,14 +931,47 @@ class _GenreScreenState extends State<GenreScreen>
           ),
 
           // ✅ pinnedフォーム直後に少し余白
-          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          SliverToBoxAdapter(
+            child: Builder(
+              builder: (context) {
+                final media = MediaQuery.of(context);
+                final height = media.size.height;
+                final shortest = media.size.shortestSide;
+                final isTablet = shortest >= 600;
+                final isLandscape = media.orientation == Orientation.landscape;
 
-          // ✅ 検索ブロックと次見出しの間の余白
-          // const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                double gap;
+
+                if (isTablet) {
+                  // 🏆 iPad系（高級余白）
+                  if (isLandscape) {
+                    // 横向きは縦圧縮されるので少し詰める
+                    gap = (height * 0.02).clamp(18.0, 28.0);
+                  } else {
+                    // 縦向き：ゆったり余白（理想）
+                    gap = (height * 0.028).clamp(22.0, 36.0);
+                  }
+                } else {
+                  // 📱 スマホ（情報密度優先）
+                  if (isLandscape) {
+                    gap = 12;
+                  } else {
+                    gap = (height * 0.018).clamp(12.0, 18.0);
+                  }
+                }
+
+                return SizedBox(height: gap);
+              },
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: _buildTrendingChips(theme),
+          ),
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Text(
                 AppLocalizations.of(context)!.genreBrowseHeader,
                 style: TextStyle(
@@ -752,8 +990,14 @@ class _GenreScreenState extends State<GenreScreen>
             ),
           ),
 
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 120),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: UISpacing.bottomSpacer(
+                context,
+                hasFab: false,
+                hasAd: true,
+              ),
+            ),
           ),
         ],
       ),
@@ -825,6 +1069,9 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 
     final safeTopAdjusted = (safeTop * 0.7).clamp(14.0, 28.0);
 
+    final shortest = media.size.shortestSide;
+    final isTablet = shortest >= 600;
+
     return Material(
       color: bg,
       child: Stack(
@@ -844,7 +1091,7 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           // =========================
           // 📜 サジェスト（重ね表示）
           // =========================
-          if (!isLandscape && showSuggestions)
+          if (showSuggestions && (isTablet || !isLandscape))
             Positioned(
               left: 0,
               right: 0,

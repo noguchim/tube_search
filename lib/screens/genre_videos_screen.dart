@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
-import '../providers/banner_ad_provider.dart';
 import '../providers/density_provider.dart';
 import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
@@ -15,6 +14,7 @@ import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
+import '../utils/ui_spacing.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/density_fab.dart';
 import '../widgets/expanded_video_overlay.dart';
@@ -44,7 +44,6 @@ class GenreVideosScreen extends StatefulWidget {
 }
 
 class _GenreVideosScreenState extends State<GenreVideosScreen> {
-  final YouTubeApiService _apiService = YouTubeApiService();
   late Future<List<Map<String, dynamic>>> _futureVideos;
   final ScrollController _scrollController = ScrollController();
 
@@ -124,9 +123,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
       logger.w("🧮 limit=$limit (IAP purchased=${iap.isPurchased})");
 
-
-
-
       try {
         logger.i("🎯 loadVideos: kw=${kw ?? '(null)'} / cat=$cat");
 
@@ -136,8 +132,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           logger.i("🔎 mode=keywordSearch");
 
           final region = context.read<RegionProvider>().regionCode;
-
-          var search = await _apiService.searchWithStats(
+          final api = context.read<YouTubeApiService>();
+          var search = await api.searchWithStats(
             categoryId: cat,
             keyword: kw,
             maxResults: limit,
@@ -149,7 +145,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           // 0件ならカテゴリ無しでフォールバック
           if (search.isEmpty && cat.isNotEmpty) {
-            search = await _apiService.searchWithStats(
+            search = await api.searchWithStats(
               categoryId: "",
               keyword: kw,
               maxResults: limit,
@@ -165,7 +161,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           final ids = search.map((v) => v.id).join(',');
           logger.w("📌 [kw]idsCount=${ids.split(',').length}");
-          final detail = await _apiService.fetchVideosByIds(ids);
+          final detail = await api.fetchVideosByIds(ids);
 
           videos = detail
               .map((v) => {
@@ -186,8 +182,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           logger.i("🔥 mode=popularGenreList");
 
           final region = context.read<RegionProvider>().regionCode;
-
-          final list = await _apiService.fetchPopularVideos(
+          final api = context.read<YouTubeApiService>();
+          final list = await api.fetchPopularVideos(
             videoCategoryId: cat,
             maxResults: limit,
             regionCode: region,
@@ -272,8 +268,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final onSurface = theme.colorScheme.onSurface;
     final String topTitle =
     (widget.keyword != null && widget.keyword!.isNotEmpty)
         ? widget.keyword!
@@ -285,11 +279,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     final density = context.watch<DensityProvider>().density;
 
-    final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
     context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
-    final bool shouldShowBanner =
-        (!adsRemoved) && bannerLoaded;
+    final bool shouldShowBanner = !adsRemoved;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -340,8 +332,15 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                         ),
 
                         _densityControl(videos),
-                        const SliverToBoxAdapter(
-                          child: SizedBox(height: 70),
+
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: UISpacing.bottomSpacer(
+                              context,
+                              hasFab: true,
+                              hasAd: true,
+                            ),
+                          ),
                         ),
                       ],
                     ),

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
@@ -57,97 +58,114 @@ class VideoOverlayCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Material(
           color: Colors.transparent,
-          child: InkWell(
-            onTap: pushPlayer,
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
-                children: [
-                  // =====================================================
-                  // ① サムネイル
-                  // =====================================================
-                  Positioned.fill(
-                    child: thumbOk
-                        ? Ink.image(
-                            image: CachedNetworkImageProvider(thumbnail),
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: isDark ? Colors.grey[850] : Colors.grey[300],
-                            child: const Center(
-                              child: Icon(
-                                Icons.wifi_off_rounded,
-                                size: 36,
-                                color: Colors.grey,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              bool isPressed = false;
+
+              return InkWell(
+                onTap: pushPlayer,
+                onTapDown: (_) => setState(() => isPressed = true),
+                onTapUp: (_) => setState(() => isPressed = false),
+                onTapCancel: () => setState(() => isPressed = false),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
+                    children: [
+                      // =====================================================
+                      // ① サムネイル（既存そのまま）
+                      // =====================================================
+                      Positioned.fill(
+                        child: thumbOk
+                            ? Ink.image(
+                                image: CachedNetworkImageProvider(thumbnail),
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                color: isDark
+                                    ? Colors.grey[850]
+                                    : Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.wifi_off_rounded,
+                                    size: 36,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ),
+                      ),
+
+                      // 🆕 ② 中央再生ボタン（Overlay密度：標準強調）
+                      PlayButtonOverlay(
+                        pressed: isPressed,
+                        sizeOverride: 42,
+                        // Overlayは主役なので subtle: false（デフォルト）
+                      ),
+
+                      // =====================================================
+                      // ③ 下部グラデ（既存）
+                      // =====================================================
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height:
+                            MediaQuery.of(context).size.width * 9 / 16 * 0.35,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Color(0x40000000),
+                                Color(0x99000000),
+                              ],
                             ),
                           ),
-                  ),
-
-                  // =====================================================
-                  // ② 下部だけに限定（全体の約35%）グラデ（Amazon Prime方式）
-                  // =====================================================
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: MediaQuery.of(context).size.width * 9 / 16 * 0.35,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Color(0x40000000),
-                            Color(0x99000000),
-                          ],
                         ),
                       ),
-                    ),
-                  ),
 
-                  // =====================================================
-                  // ③ 情報オーバーレイ
-                  // =====================================================
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 12,
-                    child: _InfoOverlay(
-                      title: title,
-                      channel: channel,
-                      viewText: viewText,
-                    ),
-                  ),
-
-                  // =====================================================
-                  // ④ Rankバッジ（既存維持）
-                  // =====================================================
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: IgnorePointer(
-                      child: rankBadge(context, rank),
-                    ),
-                  ),
-
-                  // ❤️ お気に入り（右上）
-                  Positioned(
-                    top: 0,
-                    right: 4,
-                    child: FavoriteButtonOverlay(
-                      isFavorite: isFav,
-                      scale: 1.1,
-                      onTap: () => handleFavoriteTap(
-                        context,
-                        video: video,
+                      // =====================================================
+                      // ④ 情報オーバーレイ（既存）
+                      // =====================================================
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: _InfoOverlay(
+                          title: title,
+                          channel: channel,
+                          viewText: viewText,
+                        ),
                       ),
-                    ),
+
+                      // Rank
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: IgnorePointer(
+                          child: rankBadge(context, rank),
+                        ),
+                      ),
+
+                      // ❤️ お気に入り（既存）
+                      Positioned(
+                        top: 0,
+                        right: 4,
+                        child: FavoriteButtonOverlay(
+                          isFavorite: isFav,
+                          scale: 1.1,
+                          onTap: () => handleFavoriteTap(
+                            context,
+                            video: video,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

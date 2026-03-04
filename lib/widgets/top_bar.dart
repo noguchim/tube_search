@@ -131,7 +131,7 @@ class TopBar extends StatelessWidget {
     final bool isCandidate = !isSelected && t > 0.0 && t < 1.0;
 
     const Color textColor = Color(0xFFB3B3B3);
-    const double kTabHeight = 45;
+    const double kTabHeight = 43;
 
     return Expanded(
       child: Semantics(

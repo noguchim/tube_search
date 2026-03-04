@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
@@ -71,6 +72,7 @@ class VideoListTile extends StatelessWidget {
     }
 
     final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
+    bool isPressed = false;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -102,52 +104,54 @@ class VideoListTile extends StatelessWidget {
               // ---------------- サムネイル（タップ領域：ここだけpush） ----------------
               Material(
                 color: Colors.transparent,
-                child: InkWell(
-                  onTap: pushPlayer,
-                  borderRadius: borderRadius,
-                  child: Ink(
-                    child: ClipRRect(
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return InkWell(
+                      onTap: pushPlayer,
+                      onTapDown: (_) => setState(() => isPressed = true),
+                      onTapUp: (_) => setState(() => isPressed = false),
+                      onTapCancel: () => setState(() => isPressed = false),
                       borderRadius: borderRadius,
-                      child: Stack(
-                        children: [
-                          AspectRatio(
+                      child: Ink(
+                        child: ClipRRect(
+                          borderRadius: borderRadius,
+                          child: AspectRatio(
                             aspectRatio: 16 / 9,
-                            child: thumbOk
-                                ? Ink.image(
-                                    image:
-                                        CachedNetworkImageProvider(thumbnail),
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    child: const SizedBox.expand(), // Ink描画のため
-                                  )
-                                : Container(
-                                    width: double.infinity,
-                                    color: isDark
-                                        ? Colors.grey[850]
-                                        : Colors.grey[300],
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.wifi_off_rounded,
-                                        size: 36,
-                                        color: Colors.grey,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // サムネ
+                                thumbOk
+                                    ? Ink.image(
+                                        image: CachedNetworkImageProvider(
+                                            thumbnail),
+                                        fit: BoxFit.cover,
+                                        child: const SizedBox.expand(),
+                                      )
+                                    : Container(
+                                        color: isDark
+                                            ? Colors.grey[850]
+                                            : Colors.grey[300],
                                       ),
-                                    ),
-                                  ),
-                          ),
 
-                          // ✅ Rankバッジ
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: IgnorePointer(
-                              ignoring: true, // バッジが波紋を邪魔しない
-                              child: rankBadge(context, rank),
+                                // ▶ アニメ付き再生ボタン
+                                PlayButtonOverlay(pressed: isPressed),
+
+                                // Rank
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  child: IgnorePointer(
+                                    child: rankBadge(context, rank),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
 

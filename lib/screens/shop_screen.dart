@@ -344,113 +344,20 @@ class _ShopScreenState extends State<ShopScreen> {
                           const SizedBox(height: 16),
 
                           // ===== 連続再生（将来用）=====
-                          ShopListCard(
-                            icon: Icons.play_circle_outline,
-                            title:
-                                AppLocalizations.of(context)!.shopTitleAutoplay,
-                            description:
-                                AppLocalizations.of(context)!.shopDescAutoplay,
-                            enabled: false,
-                            purchased: false,
-                            iconColor: const Color(0xFFE67E22),
-                            priceLabel: "0",
-                            minHeight: 90,
-                          ),
+                          // ShopListCard(
+                          //   icon: Icons.play_circle_outline,
+                          //   title:
+                          //       AppLocalizations.of(context)!.shopTitleAutoplay,
+                          //   description:
+                          //       AppLocalizations.of(context)!.shopDescAutoplay,
+                          //   enabled: false,
+                          //   purchased: false,
+                          //   iconColor: const Color(0xFFE67E22),
+                          //   priceLabel: "0",
+                          //   minHeight: 90,
+                          // ),
 
                           const SizedBox(height: 50),
-
-                          // ===== Restore =====
-                          // Center(
-                          //   child: OutlinedButton.icon(
-                          //     onPressed: () async {
-                          //       final messenger = ScaffoldMessenger.of(context);
-                          //       setState(() => isProcessing = true);
-                          //       try {
-                          //         final iap = context.read<IapProvider>();
-                          //
-                          //         final beforeRemove =
-                          //             iap.isPurchased(IapProducts.removeAds.id);
-                          //         final beforeLimit = iap
-                          //             .isPurchased(IapProducts.limitUpgrade.id);
-                          //
-                          //         await iap.service.restore();
-                          //
-                          //         final afterRemove =
-                          //             iap.isPurchased(IapProducts.removeAds.id);
-                          //         final afterLimit = iap
-                          //             .isPurchased(IapProducts.limitUpgrade.id);
-                          //
-                          //         final restoredNow =
-                          //             (!beforeRemove && afterRemove) ||
-                          //                 (!beforeLimit && afterLimit);
-                          //
-                          //         final alreadyOwned =
-                          //             afterRemove || afterLimit;
-                          //
-                          //         if (restoredNow) {
-                          //           messenger.showSnackBar(
-                          //             SnackBar(
-                          //               content: Text(
-                          //                 AppLocalizations.of(context)!
-                          //                     .shopRestoreDone,
-                          //               ),
-                          //             ),
-                          //           );
-                          //         } else if (alreadyOwned) {
-                          //           messenger.showSnackBar(
-                          //             SnackBar(
-                          //               content: Text(
-                          //                 AppLocalizations.of(context)!
-                          //                     .shopRestoreAlready,
-                          //               ),
-                          //             ),
-                          //           );
-                          //         } else {
-                          //           messenger.showSnackBar(
-                          //             SnackBar(
-                          //               content: Text(
-                          //                 AppLocalizations.of(context)!
-                          //                     .shopRestoreNothing,
-                          //               ),
-                          //             ),
-                          //           );
-                          //         }
-                          //       } finally {
-                          //         if (mounted) {
-                          //           setState(() => isProcessing = false);
-                          //         }
-                          //       }
-                          //     },
-                          //     icon: const Icon(
-                          //       Icons.restore,
-                          //       size: 18,
-                          //       color: Colors.white70,
-                          //     ),
-                          //     label: Text(
-                          //       AppLocalizations.of(context)!.shopRestore,
-                          //       style: const TextStyle(
-                          //         color: Colors.white70,
-                          //         fontSize: 14,
-                          //         fontWeight: FontWeight.w500,
-                          //       ),
-                          //     ),
-                          //     style: OutlinedButton.styleFrom(
-                          //       padding: const EdgeInsets.symmetric(
-                          //         horizontal: 24,
-                          //         vertical: 14,
-                          //       ),
-                          //       side: BorderSide(
-                          //         color: Colors.white.withValues(alpha: 0.35),
-                          //         width: 1,
-                          //       ),
-                          //       shape: RoundedRectangleBorder(
-                          //         borderRadius: BorderRadius.circular(24),
-                          //       ),
-                          //       backgroundColor:
-                          //           Colors.white.withValues(alpha: 0.05),
-                          //     ),
-                          //   ),
-                          // ),
 
                           Center(
                             child: OutlinedButton.icon(

@@ -7,13 +7,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tube_search/providers/banner_ad_provider.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
+import 'package:tube_search/services/youtube_api_service.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/utils/app_version.dart';
 import 'package:tube_search/utils/request_review.dart';
@@ -90,19 +90,6 @@ Future<void> _requestConsent() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // // ★ ステータスバーを「表示モード」に戻す
-  // SystemChrome.setEnabledSystemUIMode(
-  //   SystemUiMode.edgeToEdge,
-  // );
-  //
-  // // ★ 白アイコン指定（Android）
-  // SystemChrome.setSystemUIOverlayStyle(
-  //   const SystemUiOverlayStyle(
-  //     statusBarColor: Colors.transparent,
-  //     statusBarIconBrightness: Brightness.light,
-  //   ),
-  // );
-
   // 👇 ここ（テスト端末登録）
   await MobileAds.instance.updateRequestConfiguration(
     RequestConfiguration(testDeviceIds: ['9ece5c366fa9bdadad267b8e1043760c']),
@@ -128,7 +115,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RegionProvider()),
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
-        ChangeNotifierProvider(create: (_) => BannerAdProvider()),
+
+        Provider<YouTubeApiService>(
+          create: (_) => YouTubeApiService(),
+        ),
 
         ChangeNotifierProvider(
           create: (_) => ExpandedVideoController(),
@@ -272,6 +262,42 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
+  bool _trendingPrefetched = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final region = context.read<RegionProvider>().regionCode;
+
+    logger.w("🚀 Prefetch trigger AFTER Region init: $region");
+
+    _prefetchTrending(region);
+  }
+
+  Future<void> _prefetchTrending(String region) async {
+    if (_trendingPrefetched) return;
+    _trendingPrefetched = true;
+
+    try {
+      logger.i("🔥 Trending Prefetch START (region=$region)");
+      final api = context.read<YouTubeApiService>();
+      final result = await api.fetchTrendingKeywords(
+        regionCode: region,
+        max: 10,
+      );
+
+      if (result.isEmpty) {
+        logger.w("⚠️ Trending result is EMPTY");
+      }
+
+      logger.i("🔥 Trending Prefetch DONE");
+    } catch (e, st) {
+      logger.e("💥 Trending Prefetch ERROR: $e");
+      logger.e(st.toString());
+    }
+  }
+
   Future<void> resetReviewDebugState() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -308,14 +334,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bannerLoaded = context.watch<BannerAdProvider>().isLoaded;
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
-        final bool shouldShowBanner =
-            (!adsRemoved) && (!isKeyboardVisible) && bannerLoaded;
+        final bool shouldShowBanner = (!adsRemoved) && (!isKeyboardVisible);
 
         return Scaffold(
           extendBody: true,
@@ -381,16 +405,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
 
-              // ★ Divider（広告の直上）
-              if (shouldShowBanner)
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 50,
-                  child: _BottomAdDivider(),
-                ),
-
-              // ★ バナー広告
+              // ★ バナー広告（先に描画）
               if (shouldShowBanner)
                 const Positioned(
                   left: 0,
@@ -402,34 +417,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _BottomAdDivider extends StatelessWidget {
-  const _BottomAdDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: 2, // ← ここがポイント（極薄の帯）
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  Colors.white.withValues(alpha: 0.22),
-                  Colors.white.withValues(alpha: 0.05),
-                ]
-              : [
-                  Colors.black.withValues(alpha: 0.10),
-                  Colors.black.withValues(alpha: 0.02),
-                ],
-        ),
-      ),
     );
   }
 }

@@ -1,4 +1,4 @@
-// lib/models/youtube_video.dart
+// lib/data/youtube_video.dart
 class YouTubeVideo {
   final String id;
   final String title;

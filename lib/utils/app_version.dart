@@ -1,6 +1,5 @@
 // app_version.dart
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -145,9 +144,11 @@ void showUpdateAvailable(
 /// store redirect
 /// ===============================
 void _openStore() {
-  final url = Platform.isIOS
-      ? 'https://apps.apple.com/jp/app/tube/id6756842201'
-      : 'https://play.google.com/store/apps/details?id=your.application.id';
+  // final url = Platform.isIOS
+  //     ? 'https://apps.apple.com/jp/app/tube/id6756842201'
+  //     : 'https://play.google.com/store/apps/details?id=your.application.id';
+
+  const url = 'https://apps.apple.com/app/tube/id6756842201';
 
   launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 }
