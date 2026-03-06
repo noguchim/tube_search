@@ -186,7 +186,8 @@ class YouTubeApiService {
     final now = DateTime.now();
 
     // 👇 キャッシュキー（kw を小文字に正規化）
-    final key = "search_${categoryId}_${kw.toLowerCase()}_$maxResults";
+    final key =
+        "search_${regionCode}_${categoryId}_${kw.toLowerCase()}_$maxResults";
 
     // ------------------------
     // 💾 キャッシュヒット

@@ -1,13 +1,17 @@
 // lib/screens/genre_screen.dart
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/base_genre_models.dart';
 import '../data/genre_groups_ja.dart';
 import '../data/genre_provider.dart';
+import '../data/search_history_item.dart';
 import '../data/trending_keyword.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
@@ -43,13 +47,20 @@ class _GenreScreenState extends State<GenreScreen>
   late AnimationController _tapAnim;
   late Animation<double> _scaleAnim;
 
-  // Brightness? _lastBrightness;
-  // late final RegionProvider _regionProvider;
   bool _didInitialJump = false;
 
   List<TrendingKeyword> _trending = [];
   bool _trendingLoaded = false;
   bool _showAllTrending = false;
+  String _trendingTimestamp = "";
+
+  // ============================================================
+  // 🔎 Search History
+  // ============================================================
+  static const String _historyKey = "search_history_v1";
+  static const int _historyMax = 12;
+  List<SearchHistoryItem> _searchHistory = [];
+  bool _isLoadingHistory = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -69,10 +80,15 @@ class _GenreScreenState extends State<GenreScreen>
     );
 
     _focusNode.addListener(() {
+      // ✅ フォーカス変化でサジェスト/履歴の表示が切り替わるので再描画
+      if (mounted) setState(() {});
       if (_focusNode.hasFocus) {
         Feedback.forTap(context);
       }
     });
+
+    // ✅ 起動時に履歴ロード
+    _loadSearchHistory();
   }
 
   @override
@@ -102,6 +118,7 @@ class _GenreScreenState extends State<GenreScreen>
       setState(() {
         _trending = cached;
         _trendingLoaded = true;
+        _trendingTimestamp = _buildTrendingNow();
       });
     });
   }
@@ -133,7 +150,83 @@ class _GenreScreenState extends State<GenreScreen>
     }
   }
 
-  Future<void> _executeSearch(String keyword) async {
+  // ============================================================
+  // 🔎 Search History helpers
+  // ============================================================
+  Future<void> _loadSearchHistory() async {
+    setState(() => _isLoadingHistory = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_historyKey) ?? [];
+
+      final history =
+          list.map((e) => SearchHistoryItem.fromJson(jsonDecode(e))).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _searchHistory = history;
+        _isLoadingHistory = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _saveHistory(SearchHistoryItem item) async {
+    final next = [
+      item,
+      ..._searchHistory.where((e) => !(e.type == item.type &&
+          e.keyword == item.keyword &&
+          e.categoryId == item.categoryId)),
+    ];
+
+    if (next.length > _historyMax) {
+      next.removeRange(_historyMax, next.length);
+    }
+
+    setState(() => _searchHistory = next);
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList(
+      _historyKey,
+      next.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<void> _removeHistoryItem(String title) async {
+    final next =
+        _searchHistory.where((e) => e.title != title).toList(growable: false);
+
+    setState(() => _searchHistory = next);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setStringList(
+        _historyKey,
+        next.map((e) => jsonEncode(e.toJson())).toList(),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _clearHistory() async {
+    setState(() => _searchHistory = []);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_historyKey);
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  // ----------------------------------------------------
+  // 🔍 検索実行
+  // ----------------------------------------------------
+  Future<void> _executeSearch(String keyword, {bool saveHistory = true}) async {
     final kw = keyword.trim();
     if (kw.isEmpty) return;
 
@@ -145,8 +238,23 @@ class _GenreScreenState extends State<GenreScreen>
       _isSearchingFromSuggest = true;
     });
 
+    // ✅ 履歴保存（検索確定時）
+    // await _saveSearchHistory(kw);
+
+    if (saveHistory) {
+      await _saveHistory(
+        SearchHistoryItem(
+          type: "search",
+          title: kw,
+          keyword: kw,
+        ),
+      );
+    }
+
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
+
+    _searchCtrl.clear();
 
     await Navigator.push(
       context,
@@ -215,7 +323,7 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
-  // 🔍 検索フォーム（hint位置調整済み）
+  // 🔍 検索フォーム
   // ----------------------------------------------------
   Widget _buildSearchField() {
     final theme = Theme.of(context);
@@ -244,9 +352,12 @@ class _GenreScreenState extends State<GenreScreen>
                 color: searchBg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : Colors.black.withValues(alpha: 0.08),
+                  color: _focusNode.hasFocus
+                      ? const Color(0xFF4F6BFF)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : Colors.black.withValues(alpha: 0.08)),
+                  width: _focusNode.hasFocus ? 1.6 : 1,
                 ),
               ),
               child: Row(
@@ -254,7 +365,7 @@ class _GenreScreenState extends State<GenreScreen>
                   // 🔍 入力欄
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 1),
                       child: Stack(
                         children: [
                           TextField(
@@ -271,24 +382,43 @@ class _GenreScreenState extends State<GenreScreen>
                             ),
                             decoration: InputDecoration(
                               border: InputBorder.none,
-                              hintText:
-                                  // AppLocalizations.of(context)!.genreSearchHint,
-                                  AppLocalizations.of(context)!
-                                      .genreSearchHeader,
+
+                              hintText: AppLocalizations.of(context)!
+                                  .genreSearchHeader,
+
                               hintStyle: TextStyle(
-                                color: isDark ? Colors.white60 : Colors.black54,
+                                fontSize: 17,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.75),
                               ),
 
-                              // ✅ hint中央寄せチューニング
-                              contentPadding:
-                                  const EdgeInsets.fromLTRB(0, -5, 36, 0),
+                              prefixIcon: _focusNode.hasFocus
+                                  ? Icon(
+                                      Icons.search,
+                                      size: 25,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
+                                    )
+                                  : null,
+
+                              // ★アイコン領域の幅を調整
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+
+                              // ★テキスト位置調整
+                              contentPadding: const EdgeInsets.only(
+                                top: 10,
+                                bottom: 10,
+                              ),
                             ),
                           ),
                           if (_searchCtrl.text.isNotEmpty)
                             Positioned(
                               right: 0,
                               top: 0,
-                              bottom: 0,
+                              bottom: 4,
                               child: GestureDetector(
                                 behavior: HitTestBehavior.translucent,
                                 onTap: () {
@@ -376,6 +506,9 @@ class _GenreScreenState extends State<GenreScreen>
     return "$date $time updated";
   }
 
+  // ----------------------------------------------------
+  // 🔥 Trending chips
+  // ----------------------------------------------------
   Widget _buildTrendingChips(ThemeData theme) {
     logger.i(
         "TrendTips start _trendingLoaded=$_trendingLoaded _trending=${_trending.map((e) => e.keyword).toList()}");
@@ -384,7 +517,8 @@ class _GenreScreenState extends State<GenreScreen>
       return const SizedBox.shrink();
     }
 
-    final Color toggleColor = theme.colorScheme.onSurface.withOpacity(0.6);
+    final Color toggleColor =
+        theme.colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -425,27 +559,45 @@ class _GenreScreenState extends State<GenreScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // タイトル
-              Row(
-                children: [
-                  Text(
-                    "トレンドワード",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
+              IntrinsicWidth(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "トレンドワード",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          height: 22,
+                          alignment: Alignment.bottomRight,
+                          child: Text(
+                            _trendingTimestamp,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _buildTrendingNow(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    const SizedBox(height: 4),
+                    Container(
+                      height: 1.2,
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6), // 下線色
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-
               const SizedBox(height: 10),
 
               // チップ
@@ -461,45 +613,60 @@ class _GenreScreenState extends State<GenreScreen>
 
                   final bool isTop3 = index < 3;
 
-                  return ActionChip(
-                    pressElevation: 0,
-                    label: Text(
-                      "#$keyword",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: isTop3 ? Colors.white : Colors.black87,
+                  return Material(
+                    elevation: isTop3 ? 3 : 1.5,
+                    shadowColor: Colors.black.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(22),
+                    color: Colors.transparent,
+                    child: ActionChip(
+                      pressElevation: 0,
+                      label: Text(
+                        "#$keyword",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight:
+                              isTop3 ? FontWeight.w700 : FontWeight.w600,
+                          color: isTop3 ? Colors.white : Colors.black87,
+                        ),
                       ),
-                    ),
-                    backgroundColor:
-                        isTop3 ? const Color(0xFF2196F3) : Colors.white,
-                    side: isTop3
-                        ? BorderSide.none
-                        : const BorderSide(
-                            color: Color(0xFFCFD5D5),
-                            width: 1,
-                          ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    onPressed: () {
-                      logger.i("🔥 Trending chip tapped: $keyword");
+                      backgroundColor:
+                          isTop3 ? const Color(0xFF7C3AED) : Colors.white,
+                      side: isTop3
+                          ? BorderSide.none
+                          : const BorderSide(
+                              color: Color(0xFFCFD5D5),
+                              width: 1,
+                            ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      onPressed: () {
+                        logger.i("🔥 Trending chip tapped: $keyword");
 
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => GenreVideosScreen(
-                            categoryId: "",
-                            categoryTitle: keyword,
+                        _saveHistory(
+                          SearchHistoryItem(
+                            type: "trending",
+                            title: keyword,
                             keyword: keyword,
                           ),
-                        ),
-                      );
-                    },
+                        );
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GenreVideosScreen(
+                              categoryId: "",
+                              categoryTitle: keyword,
+                              keyword: keyword,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 }).toList(),
               ),
@@ -567,9 +734,8 @@ class _GenreScreenState extends State<GenreScreen>
     final bool isLandscape = media.orientation == Orientation.landscape;
     final bool isTablet = media.size.shortestSide >= 600;
 
-    final int crossAxisCount = isTablet
-        ? (isLandscape ? 3 : 2) // iPad：縦2 / 横3
-        : (isLandscape ? 2 : 1); // スマホ：縦1 / 横2
+    final int crossAxisCount =
+        isTablet ? (isLandscape ? 3 : 2) : (isLandscape ? 2 : 1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -625,7 +791,6 @@ class _GenreScreenState extends State<GenreScreen>
   ) {
     final theme = Theme.of(context);
 
-    // 🎨 カテゴリ色（未設定ならグループ色にフォールバック）
     final Color accentColor = cat.color ?? group.color;
 
     return Container(
@@ -658,6 +823,15 @@ class _GenreScreenState extends State<GenreScreen>
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
+            _saveHistory(
+              SearchHistoryItem(
+                type: "category",
+                title: cat.name,
+                categoryId: cat.id.toString(),
+                keyword: cat.query,
+              ),
+            );
+
             final groupId = group.groupId;
             final baseCatId = baseCategoryIdsJa[groupId]!.toString();
 
@@ -686,9 +860,6 @@ class _GenreScreenState extends State<GenreScreen>
           },
           child: Stack(
             children: [
-              // ===================================
-              // 🎨 左端フルハイト・カテゴリ色バー
-              // ===================================
               Positioned(
                 left: 0,
                 top: 0,
@@ -704,12 +875,7 @@ class _GenreScreenState extends State<GenreScreen>
                   ),
                 ),
               ),
-
-              // ===================================
-              // 🧱 コンテンツ本体
-              // ===================================
               Padding(
-                // 左はアクセント分だけ余白追加
                 padding: const EdgeInsets.fromLTRB(12 + 14, 14, 16, 16),
                 child: Row(
                   children: [
@@ -737,6 +903,9 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  // ============================================================
+  // 📜 Suggestions / History pinned box
+  // ============================================================
   Widget _buildSuggestionsPinned() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -779,7 +948,7 @@ class _GenreScreenState extends State<GenreScreen>
       );
     }
 
-    // ✅ ローディング
+    // ✅ ローディング（suggest）
     if (_isLoadingSuggest) {
       return Container(
         alignment: Alignment.center,
@@ -807,12 +976,114 @@ class _GenreScreenState extends State<GenreScreen>
       );
     }
 
+    // ✅ 入力なし → 履歴
+    final bool shouldShowHistory = _searchCtrl.text.isEmpty &&
+        _focusNode.hasFocus &&
+        _searchHistory.isNotEmpty;
+
+    if (shouldShowHistory) {
+      return Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        elevation: 0,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            itemCount: _searchHistory.length + 1, // + header
+            separatorBuilder: (_, __) => Divider(
+              height: 1,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+            itemBuilder: (_, idx) {
+              if (idx == 0) {
+                return ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -2),
+                  title: Text(
+                    "最近の検索",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                  trailing: TextButton(
+                    onPressed: _clearHistory,
+                    child: Text(
+                      "消去",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final item = _searchHistory[idx - 1];
+              return ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -2),
+                  leading: Icon(
+                    item.type == "category"
+                        ? Icons.category
+                        : item.type == "trending"
+                            ? Icons.local_fire_department
+                            : Icons.search,
+                    size: 18,
+                  ),
+                  title: Text(
+                    item.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                    onPressed: () => _removeHistoryItem(item.title),
+                  ),
+                  onTap: () {
+                    if (item.type == "category") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GenreVideosScreen(
+                            categoryId: item.categoryId ?? "",
+                            categoryTitle: item.title,
+                            keyword: item.keyword,
+                          ),
+                        ),
+                      );
+                    } else {
+                      _searchCtrl.text = item.keyword ?? "";
+                      _executeSearch(item.keyword ?? "", saveHistory: false);
+                    }
+                  });
+            },
+          ),
+        ),
+      );
+    }
+
     // ✅ サジェスト無し → 空
     if (_searchCtrl.text.isEmpty || _suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // ✅ ここが重要：必ずスクロールできるListViewにする（Column禁止）
+    // ✅ サジェスト一覧
     return Material(
       color: cardColor,
       borderRadius: BorderRadius.circular(12),
@@ -862,7 +1133,6 @@ class _GenreScreenState extends State<GenreScreen>
     final shortest = media.size.shortestSide;
     final isTablet = shortest >= 600;
 
-    // iPad向け：検索フォームの最大幅
     final double maxWidth = isTablet ? 720 : double.infinity;
 
     return Center(
@@ -903,103 +1173,135 @@ class _GenreScreenState extends State<GenreScreen>
 
     final groups = getGenreGroupsForRegion(region);
 
-    final bool showSuggest = _networkError ||
-        _isLoadingSuggest ||
-        (_searchCtrl.text.isNotEmpty && _suggestions.isNotEmpty);
+    final bool showHistory = _focusNode.hasFocus &&
+        _searchCtrl.text.isEmpty &&
+        _searchHistory.isNotEmpty;
+
+    final bool showSuggest = _focusNode.hasFocus &&
+        (_networkError ||
+            _isLoadingSuggest ||
+            showHistory ||
+            (_searchCtrl.text.isNotEmpty && _suggestions.isNotEmpty));
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 60)),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+        child: CustomScrollView(
+          key: const PageStorageKey("genre_scroll"),
+          controller: _scrollController,
+          slivers: [
+            const SliverToBoxAdapter(child: SizedBox(height: 60)),
 
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: PinnedSearchHeaderDelegate(
-              safeTop: MediaQuery.of(context).padding.top,
-              showSuggestions: showSuggest,
-              suggestionsCount: _suggestions.length,
-              isLoading: _isLoadingSuggest,
-              isError: _networkError,
-              searchField: _buildSearchFieldWrapper(),
-              suggestions: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildSuggestionsPinned(),
-              ),
-            ),
-          ),
-
-          // ✅ pinnedフォーム直後に少し余白
-          SliverToBoxAdapter(
-            child: Builder(
-              builder: (context) {
-                final media = MediaQuery.of(context);
-                final height = media.size.height;
-                final shortest = media.size.shortestSide;
-                final isTablet = shortest >= 600;
-                final isLandscape = media.orientation == Orientation.landscape;
-
-                double gap;
-
-                if (isTablet) {
-                  // 🏆 iPad系（高級余白）
-                  if (isLandscape) {
-                    // 横向きは縦圧縮されるので少し詰める
-                    gap = (height * 0.02).clamp(18.0, 28.0);
-                  } else {
-                    // 縦向き：ゆったり余白（理想）
-                    gap = (height * 0.028).clamp(22.0, 36.0);
-                  }
-                } else {
-                  // 📱 スマホ（情報密度優先）
-                  if (isLandscape) {
-                    gap = 12;
-                  } else {
-                    gap = (height * 0.018).clamp(12.0, 18.0);
-                  }
-                }
-
-                return SizedBox(height: gap);
-              },
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: _buildTrendingChips(theme),
-          ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text(
-                AppLocalizations.of(context)!.genreBrowseHeader,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: PinnedSearchHeaderDelegate(
+                safeTop: MediaQuery.of(context).padding.top,
+                showSuggestions: showSuggest,
+                suggestionsCount: showHistory
+                    ? (_searchHistory.length + 1)
+                    : _suggestions.length,
+                isLoading: _isLoadingSuggest || _isLoadingHistory,
+                isError: _networkError,
+                searchField: _buildSearchFieldWrapper(),
+                suggestions: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildSuggestionsPinned(),
                 ),
               ),
             ),
-          ),
 
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, idx) => _buildGroupSection(groups[idx]),
-              childCount: groups.length,
-            ),
-          ),
+            // ✅ pinnedフォーム直後に少し余白
+            SliverToBoxAdapter(
+              child: Builder(
+                builder: (context) {
+                  final media = MediaQuery.of(context);
+                  final height = media.size.height;
+                  final shortest = media.size.shortestSide;
+                  final isTablet = shortest >= 600;
+                  final isLandscape =
+                      media.orientation == Orientation.landscape;
 
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: UISpacing.bottomSpacer(
-                context,
-                hasFab: false,
-                hasAd: true,
+                  double gap;
+
+                  if (isTablet) {
+                    if (isLandscape) {
+                      gap = (height * 0.02).clamp(18.0, 28.0);
+                    } else {
+                      gap = (height * 0.028).clamp(22.0, 36.0);
+                    }
+                  } else {
+                    if (isLandscape) {
+                      gap = 12;
+                    } else {
+                      gap = (height * 0.018).clamp(12.0, 18.0);
+                    }
+                  }
+
+                  return SizedBox(height: gap);
+                },
               ),
             ),
-          ),
-        ],
+
+            if (!_focusNode.hasFocus)
+              SliverToBoxAdapter(
+                child: _buildTrendingChips(theme),
+              ),
+
+            if (!_focusNode.hasFocus)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(
+                    children: [
+                      IntrinsicWidth(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!.genreBrowseHeader,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 1.2,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+
+            if (!_focusNode.hasFocus)
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, idx) => _buildGroupSection(groups[idx]),
+                  childCount: groups.length,
+                ),
+              ),
+
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: UISpacing.bottomSpacer(
+                  context,
+                  hasFab: false,
+                  hasAd: true,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1030,23 +1332,17 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   static const double _fieldHeight = 46;
   static const double _gap = 6;
 
-  static const double _suggestMaxHeight = 220;
+  static const double _suggestMaxHeight = 420;
 
-  // ✅ ListTile(dense)想定。visualDensity調整してるなら 40〜48で微調整
   static const double _suggestRowHeight = 44;
-
-  // Container padding: vertical 6 + 6、divider等を加味
   static const double _suggestOuterPadding = 16;
 
   double get _suggestHeight {
     if (!showSuggestions) return 0;
 
-    // ✅ ローディング/エラーは高さ固定でOK
     if (isLoading || isError) return 72;
 
-    // ✅ 候補が少ないときは「内容分だけ」
     final raw = suggestionsCount * _suggestRowHeight + _suggestOuterPadding;
-
     return raw.clamp(0, _suggestMaxHeight);
   }
 
@@ -1064,6 +1360,7 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final media = MediaQuery.of(context);
+    final keyboardHeight = media.viewInsets.bottom;
     final isLandscape = media.orientation == Orientation.landscape;
     final bg = Theme.of(context).scaffoldBackgroundColor;
 
@@ -1075,11 +1372,8 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Material(
       color: bg,
       child: Stack(
-        clipBehavior: Clip.none, // ← 重要
+        clipBehavior: Clip.none,
         children: [
-          // =========================
-          // 🔍 検索バー本体（固定）
-          // =========================
           Positioned(
             left: 0,
             right: 0,
@@ -1087,18 +1381,14 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
             height: _fieldHeight,
             child: searchField,
           ),
-
-          // =========================
-          // 📜 サジェスト（重ね表示）
-          // =========================
           if (showSuggestions && (isTablet || !isLandscape))
             Positioned(
               left: 0,
               right: 0,
               top: safeTopAdjusted + _topPadding + _fieldHeight + _gap,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxHeight: _suggestMaxHeight,
+                constraints: BoxConstraints(
+                  maxHeight: media.size.height - keyboardHeight - 120,
                 ),
                 child: suggestions,
               ),
@@ -1117,5 +1407,84 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
         isError != old.isError ||
         searchField != old.searchField ||
         suggestions != old.suggestions;
+  }
+}
+
+class GlassChip extends StatelessWidget {
+  const GlassChip({
+    super.key,
+    required this.text,
+    required this.onTap,
+    required this.isTop3,
+  });
+
+  final String text;
+  final VoidCallback onTap;
+  final bool isTop3;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 22.0;
+
+    // Top3は紫の“ガラス”、それ以外は白ガラス
+    final base = isTop3 ? const Color(0xFF7C3AED) : Colors.white;
+
+    // ガラスの“面”は透明度が肝
+    final surfaceOpacity = isTop3 ? 0.30 : 0.55;
+    final borderOpacity = isTop3 ? 0.28 : 0.45;
+
+    // ぼかし強度（強すぎると“曇りガラス”になる）
+    final blurSigma = isTop3 ? 10.0 : 12.0;
+
+    // 影（いまのスクショだと影が強く見えやすいので控えめ寄り）
+    final shadow = BoxShadow(
+      color: Colors.black.withValues(alpha: isTop3 ? 0.18 : 0.12),
+      blurRadius: isTop3 ? 10 : 8,
+      offset: const Offset(0, 3),
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: Colors.white.withValues(alpha: 0.10),
+            highlightColor: Colors.white.withValues(alpha: 0.06),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: [shadow],
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: borderOpacity),
+                  width: 1,
+                ),
+                // “ガラス面”の作り方：半透明 + うっすらグラデ
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    base.withValues(alpha: surfaceOpacity),
+                    base.withValues(alpha: surfaceOpacity * 0.65),
+                  ],
+                ),
+              ),
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: isTop3 ? FontWeight.w700 : FontWeight.w600,
+                  color: isTop3 ? Colors.white : Colors.black87,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
