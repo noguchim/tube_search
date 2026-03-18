@@ -1,16 +1,18 @@
 import 'package:flutter/foundation.dart';
 
+import '../data/youtube_video.dart';
+
 class ExpandedVideoController extends ChangeNotifier {
-  Map<String, dynamic>? _video;
+  YouTubeVideo? _video;
   int? _rank;
 
-  Map<String, dynamic>? get video => _video;
+  YouTubeVideo? get video => _video;
 
   int? get rank => _rank;
 
   bool get isOpen => _video != null;
 
-  void open(Map<String, dynamic> video, int rank) {
+  void open(YouTubeVideo video, int rank) {
     _video = video;
     _rank = rank;
     notifyListeners();

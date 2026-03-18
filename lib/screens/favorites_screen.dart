@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../data/youtube_video.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
@@ -29,15 +30,17 @@ class FavoritesScreen extends StatefulWidget {
 
 class FavoritesScreenState extends State<FavoritesScreen>
     with WidgetsBindingObserver {
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _list = [];
   bool _isPushing = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initLoad();
+
+    // 初回ロード
+    Future.microtask(() {
+      context.read<FavoritesService>().loadFavorites();
+    });
   }
 
   @override
@@ -49,39 +52,12 @@ class FavoritesScreenState extends State<FavoritesScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
-      // 🔑 Safari / CustomTabs から戻った後
       await maybeAskForReview();
     }
   }
 
-  Future<void> _initLoad() async {
-    final fav = context.read<FavoritesService>();
-    await fav.loadFavorites();
-    final data = await fav.getFavorites();
-
-    if (mounted) {
-      setState(() {
-        _list = data;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> reload() async {
-    final fav = context.read<FavoritesService>();
-    await fav.loadFavorites();
-    final data = await fav.getFavorites();
-
-    if (mounted) {
-      setState(() {
-        _list = data;
-        _isLoading = false;
-      });
-    }
-  }
-
   // -------------------------------------------------------------
-  // 空UI（Light / Dark 対応版に全面改修）
+  // 空UI
   // -------------------------------------------------------------
   Widget _buildEmptyFavoritesUI() {
     final theme = Theme.of(context);
@@ -92,16 +68,12 @@ class FavoritesScreenState extends State<FavoritesScreen>
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: ConstrainedBox(
-            // ✅ ここが重要：最低でも画面の高さを確保 → 縦では中央寄せが維持できる
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: IntrinsicHeight(
               child: Column(
                 children: [
                   const SizedBox(height: 24),
-
-                  // ✅ ここは Expanded じゃなく Spacer で柔軟にする
                   const Spacer(),
-
                   Text(
                     AppLocalizations.of(context)!.favoritesTitle,
                     style: TextStyle(
@@ -121,7 +93,6 @@ class FavoritesScreenState extends State<FavoritesScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   const Spacer(),
                   const SizedBox(height: 90),
                 ],
@@ -133,23 +104,28 @@ class FavoritesScreenState extends State<FavoritesScreen>
     );
   }
 
+  // -------------------------------------------------------------
+  // YouTube再生
+  // -------------------------------------------------------------
   Future<void> _pushPlayerById(BuildContext context, String id) async {
     if (_isPushing) return;
     _isPushing = true;
-    try {
-      final videoId = id.trim();
-      if (videoId.isEmpty) return;
 
-      // ▶ 再生（この await が「再生体験」）
+    try {
+      if (id.isEmpty) return;
+
       await openYouTubeInInAppBrowser(
         context,
-        videoId: videoId,
+        videoId: id,
       );
     } finally {
       _isPushing = false;
     }
   }
 
+  // -------------------------------------------------------------
+  // 件数ヘッダー
+  // -------------------------------------------------------------
   SliverToBoxAdapter _buildCountHeader(
     BuildContext context,
     int current,
@@ -159,14 +135,14 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     return SliverToBoxAdapter(
       child: Container(
-        height: 28, // ← ★ここを追加（重要）
+        height: 28,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         color: theme.brightness == Brightness.dark
             ? Colors.white.withValues(alpha: 0.04)
             : const Color(0xFFE4E8EC),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.end, // ← ★下寄せ
-          crossAxisAlignment: CrossAxisAlignment.end, // 右寄せ維持
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
               AppLocalizations.of(context)!
@@ -183,23 +159,25 @@ class FavoritesScreenState extends State<FavoritesScreen>
     );
   }
 
+  // -------------------------------------------------------------
+  // タイル
+  // -------------------------------------------------------------
   Widget _buildFavoriteTile(
     BuildContext context,
-    Map<String, dynamic> video,
+    YouTubeVideo video,
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onSurface = theme.colorScheme.onSurface;
 
     final favService = context.read<FavoritesService>();
+    final isLocked = video.locked == true;
 
-    final bool isLocked = video["locked"] == true;
-
-    final savedAtRaw = video["savedAt"] ?? "";
-    final savedAt = savedAtRaw.isNotEmpty
+    final savedAt = video.savedAt != null
         ? DateFormat.yMMMd(Localizations.localeOf(context).toString())
-            .format(DateTime.parse(savedAtRaw))
+            .format(video.savedAt!)
         : "";
+
     final t = AppLocalizations.of(context)!;
 
     return Material(
@@ -216,112 +194,78 @@ class FavoritesScreenState extends State<FavoritesScreen>
         padding: const EdgeInsets.all(10),
         child: Row(
           children: [
-            // =========================
-            // 🎬 サムネ（再生はここだけ）+ 再生ボタン
-            // =========================
+            // サムネ
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    final id = (video["videoId"] ??
-                            video["id"] ??
-                            video["youtubeId"] ??
-                            "")
-                        .toString();
-                    _pushPlayerById(context, id);
-                  },
-                  splashColor: Colors.white.withValues(alpha: 0.22),
-                  highlightColor: Colors.white.withValues(alpha: 0.10),
-                  child: Stack(
-                    alignment: Alignment.center, // ← ★中央を強制固定（超重要）
-                    children: [
-                      Ink.image(
-                        image: NetworkImage(video["thumbnailUrl"] ?? ""),
-                        width: 88,
-                        height: 56,
-                        fit: BoxFit.cover,
-                      ),
-
-                      // 🎬 Small最適サイズ（TubeSearch推奨）
-                      const PlayButtonOverlay(
-                        sizeOverride: 28,
-                        subtle: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // =========================
-            // 📝 テキスト（操作不可）
-            // =========================
-            Expanded(
-              child: IgnorePointer(
-                ignoring: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, // ← 全体は左基準
+              child: InkWell(
+                onTap: () => _pushPlayerById(context, video.id),
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    // =========================
-                    // 📝 タイトル（左寄せ）
-                    // =========================
-                    Text(
-                      video["title"] ?? "",
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: onSurface,
-                      ),
+                    Ink.image(
+                      image: NetworkImage(video.thumbnailUrl),
+                      width: 88,
+                      height: 56,
+                      fit: BoxFit.cover,
                     ),
-
-                    // const SizedBox(height: 4),
-
-                    // =========================
-                    // 📄 サブ情報（右寄せブロック）
-                    // =========================
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            video["channelTitle"] ?? "",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: onSurface.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          Text(
-                            savedAt,
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
+                    const PlayButtonOverlay(
+                      sizeOverride: 28,
+                      subtle: true,
                     ),
                   ],
                 ),
               ),
             ),
 
+            const SizedBox(width: 10),
+
+            // テキスト
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: onSurface,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          video.channelTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        Text(
+                          savedAt,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(width: 4),
 
-            // =========================
-            // 🔒 / ⋮ 操作エリア
-            // =========================
+            // 操作
             isLocked
                 ? InkWell(
                     borderRadius: BorderRadius.circular(99),
@@ -331,8 +275,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
                       await showUnlockDialog(
                         context,
                         onConfirm: () async {
-                          await favService.toggleLock(video["id"]);
-                          await reload();
+                          await favService.toggleLock(video.id);
                         },
                       );
                     },
@@ -342,28 +285,17 @@ class FavoritesScreenState extends State<FavoritesScreen>
                         Icons.lock_rounded,
                         size: 30,
                         color: Colors.amber.shade700,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
                       ),
                     ),
                   )
                 : PopupMenuButton<_FavMenuAction>(
-                    icon: const Icon(
-                      Icons.more_vert,
-                      size: 26,
-                    ),
+                    icon: const Icon(Icons.more_vert),
                     onSelected: (action) async {
                       HapticFeedback.lightImpact();
 
                       switch (action) {
                         case _FavMenuAction.lock:
-                          await favService.toggleLock(video["id"]);
-                          await reload();
+                          await favService.toggleLock(video.id);
                           break;
 
                         case _FavMenuAction.delete:
@@ -371,7 +303,6 @@ class FavoritesScreenState extends State<FavoritesScreen>
                             context,
                             video,
                           );
-                          await reload();
                           break;
                       }
                     },
@@ -398,74 +329,37 @@ class FavoritesScreenState extends State<FavoritesScreen>
     );
   }
 
-  Widget _buildFavoritesContent() {
+  // -------------------------------------------------------------
+  // リスト表示
+  // -------------------------------------------------------------
+  Widget _buildFavoritesContent(List<YouTubeVideo> list) {
     final media = MediaQuery.of(context);
     final isLandscape = media.orientation == Orientation.landscape;
     final isTablet = media.size.shortestSide >= 600;
 
     if (!isLandscape) {
-      // 縦：今まで通り List
       return ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: _list.length,
+        itemCount: list.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, i) => _buildFavoriteTile(context, _list[i]),
+        itemBuilder: (context, i) => _buildFavoriteTile(context, list[i]),
       );
     }
 
-    // 横：Smallデザインのまま Grid
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _list.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isTablet ? 3 : 2,
+      itemCount: list.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        mainAxisExtent: 105, // ← Small感を固定
+        mainAxisExtent: 105,
       ),
-      itemBuilder: (context, i) => _buildFavoriteTile(context, _list[i]),
-    );
-  }
-
-  Future<void> showUnlockDialog(
-    BuildContext context, {
-    required VoidCallback onConfirm,
-  }) async {
-    final t = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) {
-        return AppDialog(
-          title: t.favoriteUnlockTitle,
-          message: t.favoriteUnlockMessage,
-          style: AppDialogStyle.info,
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                t.favoriteUnlockCancel,
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                onConfirm();
-              },
-              child: Text(t.favoriteUnlockConfirm),
-            ),
-          ],
-        );
-      },
+      itemBuilder: (context, i) => _buildFavoriteTile(context, list[i]),
     );
   }
 
@@ -476,9 +370,14 @@ class FavoritesScreenState extends State<FavoritesScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final fav = context.watch<FavoritesService>();
+    final list = fav.items;
+
     final iap = context.watch<IapProvider>();
     final favoritesLimit = LimitService.favoritesLimit(iap);
-    final currentCount = _list.length;
+
+    final currentCount = list.length;
+
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final double topBarOffset = safeTop + TopBarSpec.barContentHeight;
@@ -488,20 +387,15 @@ class FavoritesScreenState extends State<FavoritesScreen>
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
-          if (!_isLoading && currentCount > 0)
+          if (currentCount > 0)
             _buildCountHeader(context, currentCount, favoritesLimit),
           SliverToBoxAdapter(
-            child: _isLoading
-                ? const Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Center(child: CircularProgressIndicator()),
+            child: list.isEmpty
+                ? SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.75,
+                    child: _buildEmptyFavoritesUI(),
                   )
-                : _list.isEmpty
-                    ? SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.75,
-                        child: _buildEmptyFavoritesUI(),
-                      )
-                    : _buildFavoritesContent(),
+                : _buildFavoritesContent(list),
           ),
           SliverToBoxAdapter(
             child: SizedBox(
@@ -514,6 +408,40 @@ class FavoritesScreenState extends State<FavoritesScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // -------------------------------------------------------------
+  // Unlock dialog
+  // -------------------------------------------------------------
+  Future<void> showUnlockDialog(
+    BuildContext context, {
+    required VoidCallback onConfirm,
+  }) async {
+    final t = AppLocalizations.of(context)!;
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AppDialog(
+          title: t.favoriteUnlockTitle,
+          message: t.favoriteUnlockMessage,
+          style: AppDialogStyle.info,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(t.favoriteUnlockCancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onConfirm();
+              },
+              child: Text(t.favoriteUnlockConfirm),
+            ),
+          ],
+        );
+      },
     );
   }
 }

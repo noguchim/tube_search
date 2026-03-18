@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 
+import '../data/youtube_video.dart';
 import '../providers/density_provider.dart';
 import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
@@ -12,13 +13,12 @@ import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
-import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/density_fab.dart';
+import '../widgets/empty_result_view.dart';
 import '../widgets/expanded_video_overlay.dart';
-
 import '../widgets/network_error_view.dart';
 import '../widgets/popular_big_section.dart';
 import '../widgets/popular_middle_section.dart';
@@ -29,6 +29,7 @@ class GenreVideosScreen extends StatefulWidget {
   final String categoryId;
   final String categoryTitle;
   final String? keyword;
+  final String searchMode;
   final ValueChanged<bool>? onScrollChanged;
 
   const GenreVideosScreen({
@@ -36,6 +37,7 @@ class GenreVideosScreen extends StatefulWidget {
     required this.categoryId,
     required this.categoryTitle,
     this.keyword,
+    required this.searchMode,
     this.onScrollChanged,
   });
 
@@ -44,7 +46,7 @@ class GenreVideosScreen extends StatefulWidget {
 }
 
 class _GenreVideosScreenState extends State<GenreVideosScreen> {
-  late Future<List<Map<String, dynamic>>> _futureVideos;
+  late Future<List<YouTubeVideo>> _futureVideos;
   final ScrollController _scrollController = ScrollController();
 
   int _lastLimit = 20;
@@ -103,129 +105,46 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   // ---------------------------------------------------------
   // 🔥 API 統合フェッチ（キーワード or 人気ジャンル）
   // ---------------------------------------------------------
-  Future<List<Map<String, dynamic>>> _loadVideos({bool forceRefresh = false}) {
-    // ✅ すでに検索中 → 同じFutureを返して二重実行を防ぐ
-    if (_isSearching && _activeRequest != null) {
-      return _activeRequest!.future;
+  Future<List<YouTubeVideo>> _loadVideos({bool forceRefresh = false}) async {
+    final kw = widget.keyword?.trim();
+    final cat = widget.categoryId == "0" ? "" : widget.categoryId;
+
+    final region = context.read<RegionProvider>().regionCode;
+    final api = context.read<YouTubeApiService>();
+    final iap = context.read<IapProvider>();
+
+    final limit = LimitService.videoListLimit(iap);
+
+    if (kw != null && kw.isNotEmpty) {
+      var search = await api.searchWithStats(
+        categoryId: cat,
+        keyword: kw,
+        searchMode: widget.searchMode,
+        maxResults: limit,
+        regionCode: region,
+        forceRefresh: forceRefresh,
+      );
+
+      if (search.isEmpty && cat.isNotEmpty) {
+        search = await api.searchWithStats(
+          categoryId: "",
+          keyword: kw,
+          searchMode: widget.searchMode,
+          maxResults: limit,
+          regionCode: region,
+          forceRefresh: forceRefresh,
+        );
+      }
+
+      return search.take(limit).toList();
     }
 
-    _isSearching = true;
-    _activeRequest = Completer<List<Map<String, dynamic>>>();
-
-    () async {
-      final kw = widget.keyword?.trim();
-      final cat = widget.categoryId == "0" ? "" : widget.categoryId;
-
-      final iap = context.read<IapProvider>();
-      final limit = LimitService.videoListLimit(iap);
-
-      List<Map<String, dynamic>> videos = [];
-
-      logger.w("🧮 limit=$limit (IAP purchased=${iap.isPurchased})");
-
-      try {
-        logger.i("🎯 loadVideos: kw=${kw ?? '(null)'} / cat=$cat");
-
-        if (kw != null && kw.isNotEmpty) {
-          // キーワード検索
-
-          logger.i("🔎 mode=keywordSearch");
-
-          final region = context.read<RegionProvider>().regionCode;
-          final api = context.read<YouTubeApiService>();
-          var search = await api.searchWithStats(
-            categoryId: cat,
-            keyword: kw,
-            maxResults: limit,
-            regionCode: region,
-            forceRefresh: forceRefresh,
-          );
-
-          logger.w("📌 [kw]searchCount=${search.length}");
-
-          // 0件ならカテゴリ無しでフォールバック
-          if (search.isEmpty && cat.isNotEmpty) {
-            search = await api.searchWithStats(
-              categoryId: "",
-              keyword: kw,
-              maxResults: limit,
-              regionCode: region,
-              forceRefresh: forceRefresh,
-            );
-          }
-
-          if (search.isEmpty) {
-            _activeRequest?.complete([]);
-            return;
-          }
-
-          final ids = search.map((v) => v.id).join(',');
-          logger.w("📌 [kw]idsCount=${ids.split(',').length}");
-          final detail = await api.fetchVideosByIds(ids);
-
-          videos = detail
-              .map((v) => {
-            'id': v.id,
-            'title': v.title,
-            'thumbnailUrl': v.thumbnailUrl,
-            'channelTitle': v.channelTitle,
-            'publishedAt': v.publishedAt?.toIso8601String(),
-            'viewCount': v.viewCount ?? 0,
-            'durationSeconds': v.durationSeconds ?? 0,
-          })
-              .toList();
-
-          logger.w("📌 [kw]detailCount=${detail.length}");
-        } else {
-          // 人気ジャンル一覧
-
-          logger.i("🔥 mode=popularGenreList");
-
-          final region = context.read<RegionProvider>().regionCode;
-          final api = context.read<YouTubeApiService>();
-          final list = await api.fetchPopularVideos(
-            videoCategoryId: cat,
-            maxResults: limit,
-            regionCode: region,
-            forceRefresh: forceRefresh,
-          );
-
-          videos = list
-              .map((v) => {
-            'id': v.id,
-            'title': v.title,
-            'thumbnailUrl': v.thumbnailUrl,
-            'channelTitle': v.channelTitle,
-            'publishedAt': v.publishedAt?.toIso8601String(),
-            'viewCount': v.viewCount ?? 0,
-            'durationSeconds': v.durationSeconds ?? 0,
-          })
-              .toList();
-
-          logger.w("📌 [gr]listCount=${list.length}");
-        }
-
-        // ソート & 更新時間
-        videos.sort(
-              (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int),
-        );
-
-        videos = videos.take(limit).toList();
-
-        _activeRequest?.complete(videos);
-
-      } catch (e, st) {
-        // ✅ FutureBuilderに伝播できるようエラーもcompleteError
-        if (!(_activeRequest?.isCompleted ?? true)) {
-          _activeRequest?.completeError(e, st);
-        }
-      } finally {
-        _isSearching = false;
-        _activeRequest = null;
-      }
-    }();
-
-    return _activeRequest!.future;
+    return api.fetchPopularVideos(
+      videoCategoryId: cat,
+      maxResults: limit,
+      regionCode: region,
+      forceRefresh: forceRefresh,
+    );
   }
 
   // ---------------------------------------------------------
@@ -247,7 +166,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     }
   }
 
-  Widget _densityControl(List<Map<String, dynamic>> videos) {
+  Widget _densityControl(List<YouTubeVideo> videos) {
     final density = context.watch<DensityProvider>().density;
 
     switch (density) {
@@ -268,10 +187,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final String topTitle =
-    (widget.keyword != null && widget.keyword!.isNotEmpty)
-        ? widget.keyword!
-        : widget.categoryTitle;
+    final String topTitle = (widget.categoryTitle.isNotEmpty)
+        ? widget.categoryTitle
+        : (widget.keyword ?? "");
     final expanded = context.watch<ExpandedVideoController>();
 
     // ★ Favorite 状態変化を購読して同期
@@ -280,7 +198,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final density = context.watch<DensityProvider>().density;
 
     final adsRemoved =
-    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final bool shouldShowBanner = !adsRemoved;
 
     return Scaffold(
@@ -293,13 +211,12 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
       body: Stack(
         children: [
           // =============================
           // 背面：FutureBuilder + Scroll
           // =============================
-          FutureBuilder<List<Map<String, dynamic>>>(
+          FutureBuilder<List<YouTubeVideo>>(
             future: _futureVideos,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
@@ -318,6 +235,17 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
               final videos = snap.data ?? [];
 
+              // ★ 0件表示
+              if (videos.isEmpty) {
+                return EmptyResultView(
+                  onRetry: () {
+                    setState(() {
+                      _futureVideos = _loadVideos(forceRefresh: true);
+                    });
+                  },
+                );
+              }
+
               return Stack(
                 children: [
                   RefreshIndicator(
@@ -330,9 +258,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             height: 55 + MediaQuery.of(context).padding.top,
                           ),
                         ),
-
                         _densityControl(videos),
-
                         SliverToBoxAdapter(
                           child: SizedBox(
                             height: UISpacing.bottomSpacer(
@@ -401,7 +327,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
       ),
     );
   }
-
 }
 
 class _BottomAdDivider extends StatelessWidget {
@@ -419,13 +344,13 @@ class _BottomAdDivider extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: isDark
               ? [
-            Colors.white.withValues(alpha: 0.22),
-            Colors.white.withValues(alpha: 0.05),
-          ]
+                  Colors.white.withValues(alpha: 0.22),
+                  Colors.white.withValues(alpha: 0.05),
+                ]
               : [
-            Colors.black.withValues(alpha: 0.10),
-            Colors.black.withValues(alpha: 0.02),
-          ],
+                  Colors.black.withValues(alpha: 0.10),
+                  Colors.black.withValues(alpha: 0.02),
+                ],
         ),
       ),
     );

@@ -105,7 +105,7 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final banner = _banner;
-    const bool debugMode = false;
+    const bool debugMode = true;
 
     return SizedBox(
       width: double.infinity,

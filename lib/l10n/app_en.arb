@@ -61,6 +61,7 @@
     "settingsPolicies": "Policies",
     "settingsPoliciesSubtitle": "Privacy policy & Terms",
     "settingsPrivacyPolicy": "Privacy policy",
+    "aboutRankingCalculation": "How Rankings Are Calculated",
     "settingsTerms": "Terms of service",
     "networkErrorTitle": "Cannot connect to the network",
     "networkErrorDescription": "Please check your connection and try again.",
@@ -122,5 +123,16 @@
     "updateLater": "Later",
     "updateNow": "Update",
 
-    "buttonOk": "OK"
+    "buttonOk": "OK",
+    "settingsAbout": "About this App",
+    "settingsAboutSubtitle": "App information and version",
+    "browserOpenFailed": "Failed to open the browser",
+    "showPartial": "Show Less",
+    "showAll": "Show All",
+    "updateNoticeTitle": "Update Notice",
+    "appUpdatedMessage": "The app has been updated to the latest version",
+    "noVideosFound": "No videos were found",
+    "recentSearches": "Recent Searches",
+    "clear": "Clear",
+    "trendWords": "Trending Words"
 }

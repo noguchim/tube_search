@@ -100,10 +100,12 @@ class YouTubeApiService {
 
     final now = DateTime.now();
 
-    // 👇 maxResults & category をキャッシュキーに含める
     final key = "${regionCode}_${videoCategoryId ?? 'all'}_$maxResults";
 
-    // キャッシュヒット
+    // ------------------------------
+    // cache
+    // ------------------------------
+
     if (!forceRefresh &&
         _popularCache.containsKey(key) &&
         _popularFetchedAt.containsKey(key) &&
@@ -112,8 +114,11 @@ class YouTubeApiService {
       return _popularCache[key]!;
     }
 
-    // --- API 呼び出し ---
-    final uri = Uri.https(baseApi, "/api/youtube_popular.php", {
+    // ------------------------------
+    // API
+    // ------------------------------
+
+    final uri = Uri.https(baseApi, "/api/youtube_popular_v2.php", {
       "region": regionCode,
       "max": "$maxResults",
       if (videoCategoryId != null && videoCategoryId.isNotEmpty)
@@ -127,6 +132,10 @@ class YouTubeApiService {
       throw Exception("Invalid API data");
     }
 
+    // ------------------------------
+    // build model
+    // ------------------------------
+
     final list = data.map<YouTubeVideo>((v) {
       return YouTubeVideo(
         id: v["id"] ?? "",
@@ -136,10 +145,16 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        score: (v["score"] as num?)?.toDouble(),
       );
     }).toList();
 
-    // 👇 キーごとに保存
+    list.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+
+    // ------------------------------
+    // cache save
+    // ------------------------------
+
     _popularCache[key] = list;
     _popularFetchedAt[key] = now;
 
@@ -176,22 +191,28 @@ class YouTubeApiService {
   Future<List<YouTubeVideo>> searchWithStats({
     required String categoryId,
     required String keyword,
+    required String searchMode,
     int maxResults = 50,
     String regionCode = "JP",
-    bool forceRefresh = false, // ← ★ 追加
+    bool forceRefresh = false,
   }) async {
     final kw = keyword.trim();
     if (kw.isEmpty) return [];
 
     final now = DateTime.now();
 
-    // 👇 キャッシュキー（kw を小文字に正規化）
-    final key =
-        "search_${regionCode}_${categoryId}_${kw.toLowerCase()}_$maxResults";
+    // --------------------------------
+    // 🌎 region override
+    // --------------------------------
+    final String effectiveRegion =
+        categoryId.toString() == "11" ? "US" : regionCode;
 
-    // ------------------------
-    // 💾 キャッシュヒット
-    // ------------------------
+    final key =
+        "search_${effectiveRegion}_${categoryId}_${kw.toLowerCase()}_${searchMode}_$maxResults";
+
+    // --------------------------------
+    // 💾 キャッシュ
+    // --------------------------------
     if (!forceRefresh &&
         _searchCache.containsKey(key) &&
         _searchFetchedAt.containsKey(key) &&
@@ -200,20 +221,29 @@ class YouTubeApiService {
       return _searchCache[key]!;
     }
 
-    // ------------------------
+    // --------------------------------
     // 🌐 API 呼び出し
-    // ------------------------
-    final uri = Uri.https(baseApi, "/api/youtube_search_with_stats.php", {
+    // --------------------------------
+    logger.i(
+        "🌐 SearchWithStats API q=$kw mode=$searchMode region=$effectiveRegion max=$maxResults");
+
+    final params = {
       "q": kw,
-      "region": regionCode,
+      "mode": searchMode,
       "max": "$maxResults",
-      if (categoryId.isNotEmpty) "category": categoryId,
-    });
+      "region": effectiveRegion,
+    };
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/youtube_keyword_videos.php",
+      params,
+    );
 
     final data = await _getJson(uri);
 
     if (data is! List) {
-      logger.e("❌ Unexpected Search API structure");
+      logger.e("❌ Unexpected Keyword API structure");
       throw Exception("Invalid API data");
     }
 
@@ -226,12 +256,13 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        score: (v["score"] as num?)?.toDouble(), // ⭐追加
       );
     }).toList();
 
-    // ------------------------
+    // --------------------------------
     // 💾 キャッシュ保存
-    // ------------------------
+    // --------------------------------
     _searchCache[key] = list;
     _searchFetchedAt[key] = now;
 
@@ -368,6 +399,56 @@ class YouTubeApiService {
   }) {
     final key = "${regionCode.toUpperCase()}_$max";
     return _trendingCache[key] ?? [];
+  }
+
+  Future<List<YouTubeVideo>> fetchVideosByKeyword({
+    required String keyword,
+    int maxResults = 20,
+    bool forceRefresh = false,
+  }) async {
+    final kw = keyword.trim();
+    if (kw.isEmpty) return [];
+
+    final now = DateTime.now();
+
+    final key = "keyword_${kw.toLowerCase()}_$maxResults";
+
+    if (!forceRefresh &&
+        _searchCache.containsKey(key) &&
+        _searchFetchedAt.containsKey(key) &&
+        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+      logger.i("💾 KeywordVideos: Using cache ($key)");
+      return _searchCache[key]!;
+    }
+
+    final uri = Uri.https(baseApi, "/api/youtube_keyword_videos.php", {
+      "q": kw,
+      "max": "$maxResults",
+    });
+
+    final data = await _getJson(uri);
+
+    if (data is! List) {
+      logger.e("❌ Unexpected Keyword API structure");
+      throw Exception("Invalid API data");
+    }
+
+    final list = data.map<YouTubeVideo>((v) {
+      return YouTubeVideo(
+        id: v["id"] ?? "",
+        title: v["title"] ?? "",
+        thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelTitle: v["channelTitle"] ?? "",
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+        viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
+      );
+    }).toList();
+
+    _searchCache[key] = list;
+    _searchFetchedAt[key] = now;
+
+    return list;
   }
 
 // ------------------------------------------------------------

@@ -63,6 +63,7 @@
     "settingsPoliciesSubtitle": "プライバシー・利用規約",
     "settingsPrivacyPolicy": "プライバシーポリシー",
     "settingsTerms": "利用規約",
+    "aboutRankingCalculation": "ランキング集計について",
     "networkErrorTitle": "ネットワークに接続できません",
     "networkErrorDescription": "接続状態を確認してから再度お試しください。",
     "networkErrorRetry": "再読み込み",
@@ -125,5 +126,16 @@
     "updateLater": "あとで",
     "updateNow": "更新",
 
-    "buttonOk": "OK"
+    "buttonOk": "OK",
+    "settingsAbout": "このアプリについて",
+    "settingsAboutSubtitle": "アプリ情報・バージョン",
+    "browserOpenFailed": "ブラウザを開けませんでした",
+    "showPartial": "一部表示",
+    "showAll": "全て表示",
+    "updateNoticeTitle": "アップデートのお知らせ",
+    "appUpdatedMessage": "アプリが最新版に更新されました",
+    "noVideosFound": "該当する動画が見つかりませんでした",
+    "recentSearches": "最近の検索",
+    "clear": "消去",
+    "trendWords": "トレンドワード"
 }

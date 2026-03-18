@@ -137,7 +137,7 @@ abstract class AppLocalizations {
   /// No description provided for @noVideosFound.
   ///
   /// In en, this message translates to:
-  /// **'No videos found'**
+  /// **'No videos were found'**
   String get noVideosFound;
 
   /// No description provided for @genreScreenTitle.
@@ -355,6 +355,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Privacy policy'**
   String get settingsPrivacyPolicy;
+
+  /// No description provided for @aboutRankingCalculation.
+  ///
+  /// In en, this message translates to:
+  /// **'How Rankings Are Calculated'**
+  String get aboutRankingCalculation;
 
   /// No description provided for @settingsTerms.
   ///
@@ -673,6 +679,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get buttonOk;
+
+  /// No description provided for @settingsAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About this App'**
+  String get settingsAbout;
+
+  /// No description provided for @settingsAboutSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App information and version'**
+  String get settingsAboutSubtitle;
+
+  /// No description provided for @browserOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open the browser'**
+  String get browserOpenFailed;
+
+  /// No description provided for @showPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Less'**
+  String get showPartial;
+
+  /// No description provided for @showAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show All'**
+  String get showAll;
+
+  /// No description provided for @updateNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Notice'**
+  String get updateNoticeTitle;
+
+  /// No description provided for @appUpdatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The app has been updated to the latest version'**
+  String get appUpdatedMessage;
+
+  /// No description provided for @recentSearches.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Searches'**
+  String get recentSearches;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @trendWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending Words'**
+  String get trendWords;
 }
 
 class _AppLocalizationsDelegate

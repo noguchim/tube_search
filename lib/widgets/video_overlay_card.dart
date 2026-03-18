@@ -2,17 +2,20 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
+import 'package:tube_search/widgets/popularity_chip.dart';
 
+import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
+import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 
 class VideoOverlayCard extends StatelessWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final int rank;
 
   const VideoOverlayCard({
@@ -27,12 +30,12 @@ class VideoOverlayCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final id = video['id'] ?? '';
-    final title = video['title'] ?? '';
-    final thumbnail = video['thumbnailUrl'] ?? '';
-    final channel = video['channelTitle'] ?? '';
+    final id = video.id;
+    final title = video.title;
+    final thumbnail = video.thumbnailUrl;
+    final channel = video.channelTitle;
     final viewText =
-        formatViewCount(context, (video['viewCount'] ?? '0').toString());
+        formatViewCount(context, (video.viewCount ?? '0').toString());
 
     final isFav = fav.isFavoriteSync(id);
 
@@ -132,7 +135,7 @@ class VideoOverlayCard extends StatelessWidget {
                         left: 12,
                         right: 12,
                         bottom: 12,
-                        child: _InfoOverlay(
+                        child: infoOverlay(
                           title: title,
                           channel: channel,
                           viewText: viewText,
@@ -144,7 +147,18 @@ class VideoOverlayCard extends StatelessWidget {
                         top: 8,
                         left: 8,
                         child: IgnorePointer(
-                          child: rankBadge(context, rank),
+                          child: Row(
+                            children: [
+                              rankBadge(context, rank),
+                              const SizedBox(width: 6),
+                              PopularityChip(
+                                popularity: video.popularity,
+                                fontSize: UIScale.font(context, 17),
+                                iconSize: UIScale.icon(context, 17),
+                                height: UIScale.height(context, 23),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 
@@ -175,7 +189,7 @@ class VideoOverlayCard extends StatelessWidget {
   // =============================================================
   // 情報オーバーレイ部
   // =============================================================
-  Widget _InfoOverlay({
+  Widget infoOverlay({
     required String title,
     required String channel,
     required String viewText,

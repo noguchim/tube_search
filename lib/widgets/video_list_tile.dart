@@ -2,17 +2,20 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
+import 'package:tube_search/widgets/popularity_chip.dart';
 
+import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
+import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 
 class VideoListTile extends StatelessWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final int rank;
 
   const VideoListTile({
@@ -48,12 +51,13 @@ class VideoListTile extends StatelessWidget {
       ),
     ];
 
-    final id = video['id'] ?? "";
-    final title = video['title'] ?? '';
-    final thumbnail = video['thumbnailUrl'] ?? '';
-    final channel = video['channelTitle'] ?? '';
+    final id = video.id;
+    final title = video.title;
+    final thumbnail = video.thumbnailUrl;
+    final channel = video.channelTitle;
+
     final viewText =
-        formatViewCount(context, (video['viewCount'] ?? '0').toString());
+        formatViewCount(context, (video.viewCount ?? 0).toString());
 
     final isFav = fav.isFavoriteSync(id);
 
@@ -217,13 +221,24 @@ class VideoListTile extends StatelessWidget {
                           Positioned(
                             right: 0,
                             bottom: 0,
-                            child: Text(
-                              viewText,
-                              style: TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.bold,
-                                color: onSurface,
-                              ),
+                            child: Row(
+                              children: [
+                                PopularityChip(
+                                  popularity: video.popularity,
+                                  fontSize: UIScale.font(context, 18),
+                                  iconSize: UIScale.icon(context, 18),
+                                  height: UIScale.height(context, 24),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  viewText,
+                                  style: TextStyle(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

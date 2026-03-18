@@ -112,11 +112,12 @@ class IapService {
               break;
 
             case PurchaseStatus.canceled:
-              onError('購入がキャンセルされました');
+              onError('Purchase was cancelled');
               break;
 
             case PurchaseStatus.error:
-              onError(p.error?.message ?? '購入中にエラーが発生しました');
+              onError(
+                  p.error?.message ?? 'An error occurred during the purchase');
               break;
           }
         }

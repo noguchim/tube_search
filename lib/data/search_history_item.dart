@@ -3,12 +3,14 @@ class SearchHistoryItem {
   final String title;
   final String? keyword;
   final String? categoryId;
+  final String searchMode;
 
   SearchHistoryItem({
     required this.type,
     required this.title,
     this.keyword,
     this.categoryId,
+    required this.searchMode,
   });
 
   Map<String, dynamic> toJson() {
@@ -17,6 +19,7 @@ class SearchHistoryItem {
       "title": title,
       "keyword": keyword,
       "categoryId": categoryId,
+      "searchMode": searchMode,
     };
   }
 
@@ -26,6 +29,7 @@ class SearchHistoryItem {
       title: json["title"],
       keyword: json["keyword"],
       categoryId: json["categoryId"],
+      searchMode: json["searchMode"],
     );
   }
 }

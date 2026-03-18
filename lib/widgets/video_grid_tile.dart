@@ -2,8 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tube_search/utils/rank_badge.dart';
 
+import '../data/youtube_video.dart';
+
 class VideoGridTile extends StatelessWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final int rank;
   final VoidCallback onTap;
 
@@ -19,7 +21,7 @@ class VideoGridTile extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final thumbnail = video['thumbnailUrl'] ?? '';
+    final thumbnail = video.thumbnailUrl;
     final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
 
     return GestureDetector(

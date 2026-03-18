@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_custom_tabs/flutter_custom_tabs.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/screens/policy_webview_screen.dart';
@@ -264,8 +268,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const PolicyWebViewScreen(
-                      url: "https://nb-factory.jp/privacy.html",
+                    builder: (_) => PolicyWebViewScreen(
+                      url: localizedPage(context, "privacy"),
                     ),
                   ),
                 );
@@ -288,8 +292,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const PolicyWebViewScreen(
-                      url: "https://nb-factory.jp/terms.html",
+                    builder: (_) => PolicyWebViewScreen(
+                      url: localizedPage(context, "terms"),
                     ),
                   ),
                 );
@@ -300,6 +304,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  String localizedPage(BuildContext context, String page) {
+    final locale = Localizations.localeOf(context).languageCode;
+
+    if (locale == 'ja') {
+      return "https://nb-factory.jp/$page.html?t=${DateTime.now().millisecondsSinceEpoch}";
+    }
+
+    return "https://nb-factory.jp/${page}_en.html?t=${DateTime.now().millisecondsSinceEpoch}";
   }
 
   // Phase2対応
@@ -421,6 +435,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showAboutDialog(BuildContext context) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+
+            // 上部バー（Policyと同じ）
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            ListTile(
+              title: const Text(
+                "TUBE+",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: FutureBuilder(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Text("");
+                  final info = snapshot.data as PackageInfo;
+                  return Text("Version ${info.version}");
+                },
+              ),
+            ),
+
+            ListTile(
+              tileColor: theme.cardColor,
+              selectedTileColor: theme.cardColor,
+              leading: const Icon(Icons.trending_up),
+              title: Text(
+                AppLocalizations.of(context)!.aboutRankingCalculation,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PolicyWebViewScreen(
+                      url: localizedPage(context, "popularity"),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text("NB FACTORY"),
+              subtitle: const Text("Developer website"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PolicyWebViewScreen(
+                      url:
+                          "https://nb-factory.jp/?t=${DateTime.now().millisecondsSinceEpoch}",
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            if (Platform.isIOS)
+              ListTile(
+                leading: const Icon(Icons.apple),
+                title: const Text("App Store"),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final uri = Uri.parse(
+                    "https://apps.apple.com/app/tube/id6756842201",
+                  );
+                  await launchUrl(uri);
+                },
+              ),
+
+            // ListTile(
+            //   leading: Icon(
+            //     Platform.isIOS ? Icons.apple : Icons.android,
+            //   ),
+            //   title: Text(
+            //     Platform.isIOS ? "App Store" : "Google Play",
+            //   ),
+            //   trailing: const Icon(Icons.chevron_right),
+            //   onTap: () async {
+            //     final uri = Platform.isIOS
+            //         ? Uri.parse("https://apps.apple.com/app/tube/id6756842201")
+            //         : Uri.parse(
+            //             "https://play.google.com/store/apps/details?id=YOUR_PACKAGE");
+            //
+            //     await launchUrl(uri);
+            //   },
+            // ),
+
+            const SizedBox(height: 10),
+          ],
+        );
+      },
+    );
+  }
+
   // -------------------------------------------------------------------
 
   @override
@@ -518,6 +660,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: AppLocalizations.of(context)!.settingsPolicies,
                         subtitle: AppLocalizations.of(context)!
                             .settingsPoliciesSubtitle,
+                      ),
+
+                      // 6️⃣ このアプリについて
+                      _settingsCard(
+                        context: context,
+                        onTap: () => _showAboutDialog(context),
+                        leading: Icon(Icons.info_outline, color: onSurface),
+                        title: AppLocalizations.of(context)!.settingsAbout,
+                        subtitle:
+                            AppLocalizations.of(context)!.settingsAboutSubtitle,
                       ),
 
                       SizedBox(

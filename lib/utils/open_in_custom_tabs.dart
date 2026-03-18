@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as ct;
 import 'package:url_launcher/url_launcher.dart' as ul;
 
+import '../l10n/app_localizations.dart';
+
 /// YouTubeを「アプリでは開かず」
 /// 常に内製ブラウザ（Android: Custom Tabs / iOS: SafariViewController）で開く。
 ///
@@ -38,6 +40,8 @@ Future<void> openYouTubeInInAppBrowser(
   }
 
   // ② フォールバック：外部ブラウザ（端末既定ブラウザ）
+  final t = AppLocalizations.of(context)!;
+
   try {
     final ok = await ul.launchUrl(
       webUrl,
@@ -47,14 +51,14 @@ Future<void> openYouTubeInInAppBrowser(
 
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ブラウザを開けませんでした')),
+        SnackBar(content: Text(t.browserOpenFailed)),
       );
     }
   } catch (e) {
     debugPrint('[openYouTubeInInAppBrowser] external browser failed: $e');
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ブラウザを開けませんでした')),
+        SnackBar(content: Text(t.browserOpenFailed)),
       );
     }
   }

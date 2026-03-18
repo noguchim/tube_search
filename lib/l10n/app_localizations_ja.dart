@@ -29,7 +29,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get noVideosFound => '動画が見つかりません';
+  String get noVideosFound => '該当する動画が見つかりませんでした';
 
   @override
   String get genreScreenTitle => 'ジャンル別人気';
@@ -143,6 +143,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicy => 'プライバシーポリシー';
+
+  @override
+  String get aboutRankingCalculation => 'ランキング集計について';
 
   @override
   String get settingsTerms => '利用規約';
@@ -304,4 +307,34 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get buttonOk => 'OK';
+
+  @override
+  String get settingsAbout => 'このアプリについて';
+
+  @override
+  String get settingsAboutSubtitle => 'アプリ情報・バージョン';
+
+  @override
+  String get browserOpenFailed => 'ブラウザを開けませんでした';
+
+  @override
+  String get showPartial => '一部表示';
+
+  @override
+  String get showAll => '全て表示';
+
+  @override
+  String get updateNoticeTitle => 'アップデートのお知らせ';
+
+  @override
+  String get appUpdatedMessage => 'アプリが最新版に更新されました';
+
+  @override
+  String get recentSearches => '最近の検索';
+
+  @override
+  String get clear => '消去';
+
+  @override
+  String get trendWords => 'トレンドワード';
 }

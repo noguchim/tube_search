@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/youtube_video.dart';
 import '../widgets/video_overlay_card.dart';
 
 class PopularMiddleSection extends StatelessWidget {
-  final List<Map<String, dynamic>> videos;
+  final List<YouTubeVideo> videos;
 
   const PopularMiddleSection({
     super.key,
@@ -15,8 +16,6 @@ class PopularMiddleSection extends StatelessWidget {
     final media = MediaQuery.of(context);
     final bool isLandscape = media.orientation == Orientation.landscape;
     final bool isTablet = media.size.shortestSide >= 600;
-    final bool isPhoneLandscape = media.size.shortestSide < 600 &&
-        media.orientation == Orientation.landscape;
 
     // =========================
     // 列数ルール（完全決め打ち）

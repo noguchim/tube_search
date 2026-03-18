@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/youtube_video.dart';
 import '../l10n/app_localizations.dart';
 import '../services/favorites_service.dart';
 import '../widgets/app_dialog.dart';
@@ -11,7 +12,7 @@ class FavoriteDeleteHelper {
 
   static Future<void> confirmOrDelete(
     BuildContext context,
-    Map<String, dynamic> video,
+    YouTubeVideo video,
   ) async {
     // ❶ context を使う処理は先に取得
     final fav = context.read<FavoritesService>();
@@ -22,7 +23,7 @@ class FavoriteDeleteHelper {
 
     // ❸ スキップ → 即削除
     if (skip) {
-      await fav.toggle(video["id"], video);
+      await fav.toggle(video.id, video);
       return;
     }
 
@@ -39,7 +40,7 @@ class FavoriteDeleteHelper {
         return AppDialog(
           title: AppLocalizations.of(context)!.favoriteDeleteTitle,
           message: AppLocalizations.of(context)!.favoriteDeleteMessage(
-            video["title"] ?? "",
+            video.title ?? "",
           ),
           style: AppDialogStyle.danger, // ← 削除なので危険色
           actions: [
@@ -67,7 +68,7 @@ class FavoriteDeleteHelper {
                 ),
               ),
               onPressed: () async {
-                await fav.toggle(video["id"], video);
+                await fav.toggle(video.id, video);
                 navigator.pop();
               },
               child: Text(AppLocalizations.of(context)!.favoriteDeleteConfirm),

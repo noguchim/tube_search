@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/video_grid_tile.dart';
 import 'package:tube_search/widgets/video_list_tile.dart';
 
+import '../data/youtube_video.dart';
 import '../services/expanded_video_controller.dart';
 
 class PopularBigSection extends StatelessWidget {
-  final List<Map<String, dynamic>> videos;
+  final List<YouTubeVideo> videos;
 
   const PopularBigSection({
     super.key,
@@ -25,9 +26,12 @@ class PopularBigSection extends StatelessWidget {
 
     final bool useHorizontalLayout = isLandscape;
 
+    if (videos.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final topVideo = videos.first;
-    final restVideos =
-        videos.length > 1 ? videos.sublist(1) : <Map<String, dynamic>>[];
+    final restVideos = videos.skip(1).toList();
 
     final double horizontalPadding = isTablet ? 20 : 12;
     final bool useWidthConstraint =
@@ -115,7 +119,7 @@ class SliverWidthContainer extends StatelessWidget {
 }
 
 class _BigGrid extends StatelessWidget {
-  final List<Map<String, dynamic>> videos;
+  final List<YouTubeVideo> videos;
   final bool isTablet;
 
   const _BigGrid({

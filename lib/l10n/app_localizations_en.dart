@@ -29,7 +29,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noVideosFound => 'No videos found';
+  String get noVideosFound => 'No videos were found';
 
   @override
   String get genreScreenTitle => 'Popular by Genre';
@@ -144,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get aboutRankingCalculation => 'How Rankings Are Calculated';
 
   @override
   String get settingsTerms => 'Terms of service';
@@ -309,4 +312,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get buttonOk => 'OK';
+
+  @override
+  String get settingsAbout => 'About this App';
+
+  @override
+  String get settingsAboutSubtitle => 'App information and version';
+
+  @override
+  String get browserOpenFailed => 'Failed to open the browser';
+
+  @override
+  String get showPartial => 'Show Less';
+
+  @override
+  String get showAll => 'Show All';
+
+  @override
+  String get updateNoticeTitle => 'Update Notice';
+
+  @override
+  String get appUpdatedMessage =>
+      'The app has been updated to the latest version';
+
+  @override
+  String get recentSearches => 'Recent Searches';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get trendWords => 'Trending Words';
 }

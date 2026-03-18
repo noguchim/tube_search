@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/youtube_video.dart';
 import '../providers/iap_provider.dart';
 import 'limit_service.dart';
 
@@ -14,8 +15,22 @@ class FavoritesService extends ChangeNotifier {
 
   bool get loaded => _loaded;
 
+  List<YouTubeVideo> get items => _cache.map((v) {
+        return YouTubeVideo(
+          id: v["id"] ?? "",
+          title: v["title"] ?? "",
+          thumbnailUrl: v["thumbnailUrl"] ?? "",
+          channelTitle: v["channelTitle"] ?? "",
+          publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+          viewCount: v["viewCount"],
+          durationSeconds: v["durationSeconds"],
+          savedAt: DateTime.tryParse(v["savedAt"] ?? ""),
+          locked: v["locked"] == true,
+        );
+      }).toList();
+
   // ------------------------------------------------------------
-  // 🔥 内部ロード
+  // 内部ロード
   // ------------------------------------------------------------
   Future<void> _load() async {
     if (_loaded) return;
@@ -23,27 +38,31 @@ class FavoritesService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(key) ?? [];
 
-    _cache = list.map((e) {
-      try {
-        final map = Map<String, dynamic>.from(json.decode(e));
+    _cache = list
+        .map((e) {
+          try {
+            final map = Map<String, dynamic>.from(json.decode(e));
 
-        // ✅ 旧データ互換：locked が無ければ false
-        map["locked"] ??= false;
+            // 旧データ互換
+            map["locked"] ??= false;
 
-        return map;
-      } catch (_) {
-        return <String, dynamic>{};
-      }
-    }).toList();
+            return map;
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     _loaded = true;
   }
 
   // ------------------------------------------------------------
-  // 🔥 外部公開ロード
+  // 外部公開ロード
   // ------------------------------------------------------------
   Future<void> loadFavorites() async {
     await _load();
+    notifyListeners();
   }
 
   // ------------------------------------------------------------
@@ -65,26 +84,33 @@ class FavoritesService extends ChangeNotifier {
   bool isLockedSync(String id) {
     final v = _cache.firstWhere(
       (e) => e["id"] == id,
-      orElse: () => {},
+      orElse: () => <String, dynamic>{},
     );
     return v["locked"] == true;
   }
 
   // ------------------------------------------------------------
-  // ❤️ トグル（既存）
+  // トグル
   // ------------------------------------------------------------
-  Future<void> toggle(String id, Map<String, dynamic> video) async {
+  Future<void> toggle(String id, YouTubeVideo video) async {
     await _load();
 
     if (isFavoriteSync(id)) {
       _cache.removeWhere((v) => v["id"] == id);
     } else {
-      final withDate = {
-        ...video,
-        "savedAt": DateTime.now().toString(),
-        "locked": false, // ← 初期は未ロック
+      final map = {
+        "id": video.id,
+        "title": video.title,
+        "thumbnailUrl": video.thumbnailUrl,
+        "channelTitle": video.channelTitle,
+        "publishedAt": video.publishedAt?.toIso8601String(),
+        "viewCount": video.viewCount,
+        "durationSeconds": video.durationSeconds,
+        "savedAt": DateTime.now().toIso8601String(),
+        "locked": false,
       };
-      _cache.add(withDate);
+
+      _cache.add(map);
     }
 
     await _save();
@@ -92,14 +118,14 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // 🔒 ロック切り替え（NEW）
+  // ロック切り替え
   // ------------------------------------------------------------
   Future<void> toggleLock(String id) async {
     await _load();
 
     for (final v in _cache) {
       if (v["id"] == id) {
-        v["locked"] = !(v["locked"] ?? false);
+        v["locked"] = !(v["locked"] == true);
         break;
       }
     }
@@ -109,19 +135,18 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // 🗑 削除（ロック考慮）
+  // 削除（ロック考慮）
   // ------------------------------------------------------------
   Future<bool> tryDelete(String id) async {
     await _load();
 
     final target = _cache.firstWhere(
       (v) => v["id"] == id,
-      orElse: () => {},
+      orElse: () => <String, dynamic>{},
     );
 
     if (target.isEmpty) return false;
 
-    // 🔒 ロック中は削除不可
     if (target["locked"] == true) {
       return false;
     }
@@ -133,11 +158,11 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // ❤️ 上限チェック付き追加
+  // 上限チェック付き追加
   // ------------------------------------------------------------
   Future<bool> tryAddFavorite(
     String id,
-    Map<String, dynamic> video,
+    YouTubeVideo video,
     IapProvider iap,
   ) async {
     await _load();
@@ -150,13 +175,19 @@ class FavoritesService extends ChangeNotifier {
       return false;
     }
 
-    final withDate = {
-      ...video,
-      "savedAt": DateTime.now().toString(),
+    final map = {
+      "id": video.id,
+      "title": video.title,
+      "thumbnailUrl": video.thumbnailUrl,
+      "channelTitle": video.channelTitle,
+      "publishedAt": video.publishedAt?.toIso8601String(),
+      "viewCount": video.viewCount,
+      "durationSeconds": video.durationSeconds,
+      "savedAt": DateTime.now().toIso8601String(),
       "locked": false,
     };
 
-    _cache.add(withDate);
+    _cache.add(map);
     await _save();
     notifyListeners();
 
@@ -164,19 +195,10 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------
-  // 取得（※ 並び替え拡張しやすい）
+  // 取得
   // ------------------------------------------------------------
-  Future<List<Map<String, dynamic>>> getFavorites() async {
+  Future<List<YouTubeVideo>> getFavorites() async {
     await _load();
-
-    // 🔒 ロック優先表示したい場合はここ
-    // _cache.sort((a, b) {
-    //   final la = a["locked"] == true;
-    //   final lb = b["locked"] == true;
-    //   if (la != lb) return la ? -1 : 1;
-    //   return 0;
-    // });
-
-    return List.from(_cache);
+    return items;
   }
 }

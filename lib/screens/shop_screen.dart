@@ -20,25 +20,40 @@ class _ShopScreenState extends State<ShopScreen> {
   bool isProcessing = false;
   bool _lastRemoveAds = false;
   bool _lastLimit = false;
-  IapProvider? _provider;
+  late IapProvider _provider;
   String _priceRemove = "—";
   String _priceLimit = "—";
   bool _hasError = false;
   bool _isLoading = true;
   bool _suppressIapSnack = false;
+  bool _listenerAdded = false;
 
   @override
   void initState() {
     super.initState();
-
-    _provider = context.read<IapProvider>();
-
-    _lastRemoveAds = _provider!.isPurchased(IapProducts.removeAds.id);
-    _lastLimit = _provider!.isPurchased(IapProducts.limitUpgrade.id);
-
-    _provider!.addListener(_onIapChanged);
-
     _loadPrices();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_listenerAdded) {
+      _provider = context.read<IapProvider>();
+
+      _lastRemoveAds = _provider.isPurchased(IapProducts.removeAds.id);
+      _lastLimit = _provider.isPurchased(IapProducts.limitUpgrade.id);
+
+      _provider.addListener(_onIapChanged);
+
+      _listenerAdded = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _provider.removeListener(_onIapChanged);
+    super.dispose();
   }
 
   Future<bool> _checkNetwork() async {
@@ -53,6 +68,7 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   Future<void> _loadPrices() async {
+    logger.i("SHOP: loadPrices start");
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -73,8 +89,12 @@ class _ShopScreenState extends State<ShopScreen> {
     try {
       final iap = context.read<IapProvider>().service;
 
+      logger.i("SHOP: query removeAds");
       final pRemove = await iap.loadProduct(IapProducts.removeAds.id);
+      logger.i("SHOP: removeAds result = $pRemove");
+      logger.i("SHOP: query limitUpgrade");
       final pLimit = await iap.loadProduct(IapProducts.limitUpgrade.id);
+      logger.i("SHOP: limitUpgrade result = $pLimit");
 
       if (!mounted) return;
 
@@ -95,6 +115,8 @@ class _ShopScreenState extends State<ShopScreen> {
         _isLoading = false;
       });
     } catch (_) {
+      logger.e("SHOP: loadPrices error");
+
       if (!mounted) return;
       setState(() {
         _hasError = true;
@@ -149,12 +171,6 @@ class _ShopScreenState extends State<ShopScreen> {
       default:
         return '';
     }
-  }
-
-  @override
-  void dispose() {
-    _provider?.removeListener(_onIapChanged);
-    super.dispose();
   }
 
   void _showSnack(String msg) {

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/youtube_video.dart';
 import '../widgets/video_list_small.dart';
 
 class PopularSmallSection extends StatelessWidget {
-  final List<Map<String, dynamic>> videos;
+  final List<YouTubeVideo> videos;
 
   const PopularSmallSection({
     super.key,
@@ -26,7 +27,7 @@ class PopularSmallSection extends StatelessWidget {
     // 列数
     // =========================
     final int crossAxisCount = isTablet
-        ? 3
+        ? 2
         : isLandscape
             ? 2
             : 1;

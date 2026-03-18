@@ -210,9 +210,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   bool _isScrollingDown = false;
   bool debugMode = false;
 
-  final GlobalKey<FavoritesScreenState> _favKey =
-      GlobalKey<FavoritesScreenState>();
-
   // late final List<Widget> _screens;
   double _pageProgress = 0.0;
   bool _isTapNavigating = false;
@@ -223,7 +220,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           onScrollChanged: _onScrollChanged,
         ),
         GenreScreen(onScrollChanged: _onScrollChanged),
-        FavoritesScreen(key: _favKey),
+        const FavoritesScreen(),
         const SettingsScreen(),
       ];
 
@@ -268,11 +265,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final region = context.read<RegionProvider>().regionCode;
-
-    logger.w("🚀 Prefetch trigger AFTER Region init: $region");
-
-    _prefetchTrending(region);
+    // final region = context.read<RegionProvider>().regionCode;
+    //
+    // logger.w("🚀 Prefetch trigger AFTER Region init: $region");
+    //
+    // _prefetchTrending(region);
   }
 
   Future<void> _prefetchTrending(String region) async {
@@ -311,11 +308,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void showUpdateDialog() {
+    final t = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('アップデートのお知らせ'),
-        content: const Text('アプリが最新版に更新されました'),
+        title: Text(t.updateNoticeTitle),
+        content: Text(t.appUpdatedMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -353,10 +351,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     if (_selectedIndex == index) return;
 
                     setState(() => _selectedIndex = index);
-
-                    if (index == 2) {
-                      _favKey.currentState?.reload();
-                    }
                   },
                   children: _screens,
                 ),
@@ -386,10 +380,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           _selectedIndex = index;
                           _pageProgress = index.toDouble();
                         });
-
-                        if (index == 2) {
-                          _favKey.currentState?.reload();
-                        }
 
                         _pageController.jumpToPage(index);
 

@@ -224,11 +224,30 @@ class _GenreScreenState extends State<GenreScreen>
   }
 
   // ----------------------------------------------------
+// 🔍 searchMode判定
+// ----------------------------------------------------
+  String _detectSearchMode(String keyword) {
+    final words = keyword
+        .trim()
+        .split(RegExp(r'\s+')) // 半角スペース
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    if (words.length >= 2) {
+      return "and";
+    }
+
+    return "or";
+  }
+
+  // ----------------------------------------------------
   // 🔍 検索実行
   // ----------------------------------------------------
   Future<void> _executeSearch(String keyword, {bool saveHistory = true}) async {
     final kw = keyword.trim();
     if (kw.isEmpty) return;
+
+    final searchMode = _detectSearchMode(kw);
 
     _debounce?.cancel();
     _focusNode.unfocus();
@@ -238,15 +257,13 @@ class _GenreScreenState extends State<GenreScreen>
       _isSearchingFromSuggest = true;
     });
 
-    // ✅ 履歴保存（検索確定時）
-    // await _saveSearchHistory(kw);
-
     if (saveHistory) {
       await _saveHistory(
         SearchHistoryItem(
           type: "search",
           title: kw,
           keyword: kw,
+          searchMode: searchMode,
         ),
       );
     }
@@ -263,6 +280,7 @@ class _GenreScreenState extends State<GenreScreen>
           categoryId: '0',
           categoryTitle: kw,
           keyword: kw,
+          searchMode: searchMode,
         ),
       ),
     );
@@ -520,6 +538,8 @@ class _GenreScreenState extends State<GenreScreen>
     final Color toggleColor =
         theme.colorScheme.onSurface.withValues(alpha: 0.6);
 
+    final t = AppLocalizations.of(context)!;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: LayoutBuilder(
@@ -567,7 +587,7 @@ class _GenreScreenState extends State<GenreScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "トレンドワード",
+                          t.trendWords,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -649,10 +669,10 @@ class _GenreScreenState extends State<GenreScreen>
 
                         _saveHistory(
                           SearchHistoryItem(
-                            type: "trending",
-                            title: keyword,
-                            keyword: keyword,
-                          ),
+                              type: "trending",
+                              title: keyword,
+                              keyword: keyword,
+                              searchMode: "or"),
                         );
 
                         Navigator.push(
@@ -662,6 +682,7 @@ class _GenreScreenState extends State<GenreScreen>
                               categoryId: "",
                               categoryTitle: keyword,
                               keyword: keyword,
+                              searchMode: "or",
                             ),
                           ),
                         );
@@ -701,7 +722,7 @@ class _GenreScreenState extends State<GenreScreen>
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                _showAllTrending ? "一部表示" : "全て表示",
+                                _showAllTrending ? t.showPartial : t.showAll,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -825,23 +846,24 @@ class _GenreScreenState extends State<GenreScreen>
           onTap: () {
             _saveHistory(
               SearchHistoryItem(
-                type: "category",
-                title: cat.name,
-                categoryId: cat.id.toString(),
-                keyword: cat.query,
-              ),
+                  type: "category",
+                  title: cat.name,
+                  categoryId: cat.id.toString(),
+                  keyword: cat.query,
+                  searchMode: "or"),
             );
 
             final groupId = group.groupId;
             final baseCatId = baseCategoryIdsJa[groupId]!.toString();
 
-            if (cat.isOfficial) {
+            if (cat.isOfficial && cat.query == null) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => GenreVideosScreen(
                     categoryId: cat.id.toString(),
                     categoryTitle: cat.name,
+                    searchMode: "or",
                   ),
                 ),
               );
@@ -853,6 +875,7 @@ class _GenreScreenState extends State<GenreScreen>
                     categoryId: baseCatId,
                     categoryTitle: cat.name,
                     keyword: cat.query,
+                    searchMode: "or",
                   ),
                 ),
               );
@@ -910,6 +933,7 @@ class _GenreScreenState extends State<GenreScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final t = AppLocalizations.of(context)!;
 
     // ✅ ネットワークエラー
     if (_networkError) {
@@ -1003,7 +1027,7 @@ class _GenreScreenState extends State<GenreScreen>
                   dense: true,
                   visualDensity: const VisualDensity(vertical: -2),
                   title: Text(
-                    "最近の検索",
+                    t.recentSearches,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -1014,7 +1038,7 @@ class _GenreScreenState extends State<GenreScreen>
                   trailing: TextButton(
                     onPressed: _clearHistory,
                     child: Text(
-                      "消去",
+                      t.clear,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -1064,6 +1088,7 @@ class _GenreScreenState extends State<GenreScreen>
                             categoryId: item.categoryId ?? "",
                             categoryTitle: item.title,
                             keyword: item.keyword,
+                            searchMode: item.searchMode,
                           ),
                         ),
                       );
@@ -1246,10 +1271,10 @@ class _GenreScreenState extends State<GenreScreen>
               ),
             ),
 
-            if (!_focusNode.hasFocus)
-              SliverToBoxAdapter(
-                child: _buildTrendingChips(theme),
-              ),
+            // if (!_focusNode.hasFocus)
+            //   SliverToBoxAdapter(
+            //     child: _buildTrendingChips(theme),
+            //   ),
 
             if (!_focusNode.hasFocus)
               SliverToBoxAdapter(
@@ -1300,6 +1325,7 @@ class _GenreScreenState extends State<GenreScreen>
                 ),
               ),
             ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
         ),
       ),

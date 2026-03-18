@@ -25,10 +25,17 @@ const genreGroupsJa = <GenreGroup>[
       GenreCategory(
         id: 10,
         name: "音楽",
-        isOfficial: true,
-        query: "Music",
-        color: Color(0xFFD32F2F),
+        isOfficial: false,
+        query: "MV Official VEVO",
+        color: Color(0xFFE53935), // 音楽より少し明るい赤
       ),
+      // GenreCategory(
+      //   id: 11,
+      //   name: "洋楽",
+      //   isOfficial: false,
+      //   query: "VEVO Official MV",
+      //   color: Color(0xFF8E24AA), // 紫系で差別化
+      // ),
       GenreCategory(
           id: 1101,
           name: "ユーチューバー",
@@ -39,7 +46,7 @@ const genreGroupsJa = <GenreGroup>[
           id: 1102,
           name: "Vチューバー",
           isOfficial: false,
-          query: "Vチューバー",
+          query: "ブイチューバー",
           color: Color(0xFFF4511E)),
       GenreCategory(
         id: 1103,
@@ -52,31 +59,31 @@ const genreGroupsJa = <GenreGroup>[
           id: 20,
           name: "ゲーム",
           isOfficial: true,
-          query: "Game",
+          query: "ゲーム",
           color: Color(0xFF7E57C2)),
       GenreCategory(
           id: 1104,
           name: "パチンコ",
           isOfficial: false,
-          query: "パチンコ",
+          query: "パチンコ スマパチ",
           color: Color(0xFF455A64)),
       GenreCategory(
           id: 1105,
           name: "パチスロ",
           isOfficial: false,
-          query: "パチスロ",
+          query: "パチスロ スマスロ",
           color: Color(0xFF455A64)),
-      GenreCategory(
-          id: 24,
-          name: "エンターテイメント",
-          isOfficial: true,
-          query: "Entertainment",
-          color: Color(0xFFD32F2F)),
+      // GenreCategory(
+      //     id: 24,
+      //     name: "エンターテイメント",
+      //     isOfficial: true,
+      //     query: "エンターテイメント Entertainment",
+      //     color: Color(0xFFD32F2F)),
       GenreCategory(
           id: 23,
           name: "コメディ",
           isOfficial: true,
-          query: "Comedy",
+          query: "コメディ",
           color: Color(0xFFF4511E)),
     ],
   ),
@@ -101,29 +108,23 @@ const genreGroupsJa = <GenreGroup>[
           query: "料理 グルメ 食べ歩き",
           color: Color(0xFFFFB74D)),
       GenreCategory(
-          id: 1203,
-          name: "美容",
-          isOfficial: false,
-          query: "美容",
-          color: Color(0xFFEC407A)),
-      GenreCategory(
           id: 1204,
-          name: "ファッション",
+          name: "コスメ・ファッション",
           isOfficial: false,
-          query: "ファッション",
+          query: "コスメ ファッション おしゃれ",
           color: Color(0xFFEC407A)),
       GenreCategory(
           id: 15,
           name: "ペット & 動物",
           isOfficial: true,
-          query: "Pets Animals",
+          query: "ペット 動物",
           color: Color(0xFFAED581)),
-      GenreCategory(
-          id: 26,
-          name: "ハウツー & スタイル",
-          isOfficial: true,
-          query: "Howto Style",
-          color: Color(0xFF4DB6AC)),
+      // GenreCategory(
+      //     id: 26,
+      //     name: "ハウツー & スタイル",
+      //     isOfficial: true,
+      //     query: "ハウツー Howto Style",
+      //     color: Color(0xFF4DB6AC)),
     ],
   ),
 
@@ -138,7 +139,7 @@ const genreGroupsJa = <GenreGroup>[
           id: 25,
           name: "ニュース",
           isOfficial: true,
-          query: "News",
+          query: "ニュース",
           color: Color(0xFF546E7A)),
       GenreCategory(
           id: 28,
@@ -166,7 +167,7 @@ const genreGroupsJa = <GenreGroup>[
           id: 1402,
           name: "サッカー",
           isOfficial: false,
-          query: "サッカー",
+          query: "サッカー soccer",
           color: Color(0xFF2E7D32)),
       GenreCategory(
           id: 1403,

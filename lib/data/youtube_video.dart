@@ -1,4 +1,6 @@
 // lib/data/youtube_video.dart
+import 'dart:math';
+
 class YouTubeVideo {
   final String id;
   final String title;
@@ -7,7 +9,12 @@ class YouTubeVideo {
   final DateTime? publishedAt;
   final int? viewCount;
   final int? durationSeconds;
+
+  /// 検索ランキングスコア
+  final double? score;
+
   final bool locked;
+  final DateTime? savedAt;
 
   YouTubeVideo({
     required this.id,
@@ -17,6 +24,16 @@ class YouTubeVideo {
     this.publishedAt,
     this.viewCount,
     this.durationSeconds,
+    this.score,
     this.locked = false,
+    this.savedAt,
   });
+
+  int get popularity {
+    if (score == null) return 0;
+
+    final s = score!;
+
+    return (sqrt(s) * 100).round();
+  }
 }

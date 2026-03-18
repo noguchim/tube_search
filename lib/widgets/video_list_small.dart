@@ -2,17 +2,20 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
+import 'package:tube_search/widgets/popularity_chip.dart';
 
+import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
+import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 
 class VideoListTileSmall extends StatelessWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final int rank;
 
   const VideoListTileSmall({
@@ -59,12 +62,12 @@ class VideoListTileSmall extends StatelessWidget {
     final media = MediaQuery.of(context);
     final isLandscape = media.orientation == Orientation.landscape;
 
-    final id = video['id'] ?? "";
-    final title = video['title'] ?? '';
-    final thumbnail = video['thumbnailUrl'] ?? '';
-    final channel = video['channelTitle'] ?? '';
+    final id = video.id;
+    final title = video.title;
+    final thumbnail = video.thumbnailUrl;
+    final channel = video.channelTitle;
     final viewText =
-        formatViewCount(context, (video['viewCount'] ?? '0').toString());
+        formatViewCount(context, (video.viewCount ?? '0').toString());
     final isFav = fav.isFavoriteSync(id);
 
     const double thumbW = 136;
@@ -75,7 +78,7 @@ class VideoListTileSmall extends StatelessWidget {
       if (isPushing) return;
       isPushing = true;
       try {
-        final id = (video['id'] ?? '').toString();
+        final id = video.id;
         logger.w("🚨 OPEN CCT id=$id");
 
         if (id.isEmpty) return;
@@ -241,7 +244,7 @@ class VideoListTileSmall extends StatelessWidget {
                             clipBehavior: Clip.none,
                             children: [
                               Positioned(
-                                left: 0,
+                                left: -8,
                                 bottom: -10,
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
@@ -264,18 +267,33 @@ class VideoListTileSmall extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Text(
-                                  viewText,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: onSurface,
-                                  ),
+                              SizedBox(
+                                height: 20,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    PopularityChip(
+                                      popularity: video.popularity,
+                                      fontSize: UIScale.font(context, 14),
+                                      iconSize: UIScale.icon(context, 14),
+                                      height: UIScale.height(context, 22),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Align(
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        viewText,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
+                              )
                             ],
                           ),
                         ),
@@ -286,68 +304,6 @@ class VideoListTileSmall extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRankBadgeSmall(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-    final rank = this.rank;
-
-    Color baseColor;
-    Color textColor;
-    Border? border;
-
-    if (rank == 1) {
-      // 1位：ブランドカラー
-      baseColor = theme.colorScheme.primary;
-      textColor = Colors.white;
-      border = null;
-    } else if (rank == 2 || rank == 3) {
-      // 2〜3位：白＋primary枠
-      // baseColor = isDark ? const Color(0xFF333333) : Colors.white;
-      baseColor = Colors.white;
-      textColor = theme.colorScheme.primary;
-      border = Border.all(color: theme.colorScheme.primary, width: 1.2);
-    } else {
-      // 4位以降：落ち着いたトーン
-      // baseColor = isDark ? const Color(0xFF3A3A3A) : Colors.white;
-      baseColor = Colors.white;
-      // textColor = isDark ? Colors.white : Colors.black87;
-      textColor = Colors.black87;
-      border = Border.all(
-        color: isDark ? Colors.white24 : Colors.black26,
-        width: 1.2,
-      );
-    }
-
-    // ✅ Small用サイズ（サムネに合う）
-    return Container(
-      width: 24,
-      // 28 → 24 ✅小さく
-      height: 24,
-      // 28 → 24 ✅小さく
-      decoration: BoxDecoration(
-        color: baseColor,
-        borderRadius: BorderRadius.circular(5), // 7 → 5 ✅角丸小さく
-        border: border,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14), // 0.18 → 0.14 ✅控えめ
-            blurRadius: 5, // 6 → 5
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        "$rank",
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w900,
-          fontSize: 13, // 14 → 13 ✅少し小さく
-          height: 1.0,
         ),
       ),
     );

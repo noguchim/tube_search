@@ -1,16 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tube_search/data/youtube_video.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
+import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../services/favorites_service.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
+import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 
 class ExpandedVideoOverlay extends StatelessWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final int rank;
   final VoidCallback onClose;
 
@@ -79,7 +82,7 @@ class ExpandedVideoOverlay extends StatelessWidget {
 }
 
 class ExpandedVideoCard extends StatefulWidget {
-  final Map<String, dynamic> video;
+  final YouTubeVideo video;
   final VoidCallback onClose;
 
   const ExpandedVideoCard({
@@ -109,12 +112,12 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     final Color cardColor = theme.colorScheme.surface;
 
     final video = widget.video;
-    final id = video['id'] ?? '';
-    final title = video['title'] ?? '';
-    final thumbnail = video['thumbnailUrl'] ?? '';
-    final channel = video['channelTitle'] ?? '';
+    final id = video.id;
+    final title = video.title;
+    final thumbnail = video.thumbnailUrl;
+    final channel = video.channelTitle;
     final viewText =
-        formatViewCount(context, (video['viewCount'] ?? '0').toString());
+        formatViewCount(context, (video.viewCount ?? '0').toString());
 
     final isFav = fav.isFavoriteSync(id);
     final borderRadius = BorderRadius.circular(16);
@@ -140,7 +143,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
       if (isPushing) return;
       isPushing = true;
       try {
-        final id = (video['id'] ?? '').toString();
+        final id = video.id;
         if (id.isEmpty) return;
         await openYouTubeInInAppBrowser(context, videoId: id);
       } finally {
@@ -294,16 +297,26 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                       children: [
                         // 再生数（高さ基準）
                         Padding(
-                          // ❤️の下方向分だけ余白を確保
                           padding: const EdgeInsets.only(left: 44),
-                          child: Text(
-                            viewText,
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.bold,
-                              color: onSurface,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              PopularityChip(
+                                popularity: video.popularity,
+                                fontSize: UIScale.font(context, 18),
+                                iconSize: UIScale.icon(context, 18),
+                                height: UIScale.height(context, 24),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                viewText,
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.bold,
+                                  color: onSurface,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 

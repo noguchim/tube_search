@@ -14,12 +14,16 @@ class TopBarBack extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
 
     return Container(
       height: safeTop + 50, // ← ★ Tabs より低くてOK
       padding: EdgeInsets.fromLTRB(8, safeTop, 8, 0),
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
+        // color: const Color(0xFF111111),
+        color: bgColor,
         border: Border(
           bottom: BorderSide(
             color: Colors.white.withValues(alpha: 0.10),

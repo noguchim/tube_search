@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
+import 'package:tube_search/data/youtube_video.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/density_provider.dart';
@@ -38,7 +39,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   @override
   bool get wantKeepAlive => true;
   String _currentRegion = "JP";
-  late Future<List<Map<String, dynamic>>> _futureVideos;
+  late Future<List<YouTubeVideo>> _futureVideos;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
   int _lastLimit = 20;
@@ -95,86 +96,50 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchVideos(
-      {bool forceRefresh = false}) async {
+  Future<List<YouTubeVideo>> _fetchVideos({bool forceRefresh = false}) async {
     final iap = context.read<IapProvider>();
     final limit = LimitService.videoListLimit(iap);
     final region = context.read<RegionProvider>().regionCode;
     final api = context.read<YouTubeApiService>();
+
     final videos = await api.fetchPopularVideos(
-      maxResults: LimitService.videoListLimit(iap),
+      maxResults: limit,
       regionCode: region,
-      forceRefresh: forceRefresh, // ← 重要
+      forceRefresh: forceRefresh,
     );
 
-    final mapped = videos.map((v) {
-      return {
-        'id': v.id,
-        'title': v.title,
-        'thumbnailUrl': v.thumbnailUrl,
-        'channelTitle': v.channelTitle,
-        'publishedAt': v.publishedAt?.toIso8601String(),
-        'viewCount': v.viewCount ?? 0,
-        'durationSeconds': v.durationSeconds ?? 0,
-      };
-    }).toList();
-
-    mapped.sort(
-        (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
-
-    return mapped.take(limit).toList();
+    return videos.take(limit).toList();
   }
 
   Future<void> _refreshVideos() async {
     try {
-      // 🔥 IAP 上限適用
       final iap = context.read<IapProvider>();
       final limit = LimitService.videoListLimit(iap);
 
       final online = await _isOnline();
 
-      // 例外が出れば catch に飛ぶ
       final region = context.read<RegionProvider>().regionCode;
       final api = context.read<YouTubeApiService>();
+
       final videos = await api.fetchPopularVideos(
         maxResults: limit,
         regionCode: region,
-        // 🟣 ネットが不安定なら必ず通信しに行く（→失敗したらエラー画面）
         forceRefresh: !online,
       );
 
-      final mapped = videos.map((v) {
-        return {
-          'id': v.id,
-          'title': v.title,
-          'thumbnailUrl': v.thumbnailUrl,
-          'channelTitle': v.channelTitle,
-          'publishedAt': v.publishedAt?.toIso8601String(),
-          'viewCount': v.viewCount ?? 0,
-          'durationSeconds': v.durationSeconds ?? 0,
-        };
-      }).toList();
+      final trimmed = videos.take(limit).toList();
 
-      mapped.sort(
-          (a, b) => (b['viewCount'] as int).compareTo(a['viewCount'] as int));
-
-      final trimmed = mapped.take(limit).toList();
-
-      // 🔥 成功 → FutureBuilder にデータを渡す
       setState(() {
         _futureVideos = Future.value(trimmed);
       });
     } catch (e) {
-      // ❗ 例外時 → FutureBuilder にエラーを渡す
       setState(() {
         _futureVideos = Future.error(e);
       });
-    } finally {
-      // no action
     }
   }
 
-  void _setFutureVideos(Future<List<Map<String, dynamic>>> future) {
+  void _setFutureVideos(Future<List<YouTubeVideo>> future) {
     setState(() {
       _futureVideos = future;
     });
@@ -205,7 +170,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     _setFutureVideos(_fetchVideos(forceRefresh: true));
   }
 
-  Widget _densityControl(List<Map<String, dynamic>> videos) {
+  Widget _densityControl(List<YouTubeVideo> videos) {
     final density = context.watch<DensityProvider>().density;
 
     switch (density) {
@@ -232,7 +197,6 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     final expanded = context.watch<ExpandedVideoController>();
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
-    final isLandscape = media.orientation == Orientation.landscape;
     final shortestSide = media.size.shortestSide;
     final isTablet = shortestSide >= 600;
     final extraTopGap = isTablet ? 12.0 : 8.0;
@@ -249,7 +213,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<YouTubeVideo>>(
         future: _futureVideos,
         builder: (context, snapshot) {
           // 🔄 ローディング
