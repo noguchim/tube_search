@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_custom_tabs/flutter_custom_tabs.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/screens/policy_webview_screen.dart';
 import 'package:tube_search/screens/shop_screen.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import '../data/region_option.dart';
 import '../l10n/app_localizations.dart';
@@ -437,127 +437,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showAboutDialog(BuildContext context) {
     final theme = Theme.of(context);
+    final screenHeight = MediaQuery.of(context).size.height;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-
-            // 上部バー（Policyと同じ）
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(4),
-              ),
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: screenHeight * 0.6, // 🔥 高さ制限（ここ調整）
             ),
-
-            const SizedBox(height: 16),
-
-            ListTile(
-              title: const Text(
-                "TUBE+",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              subtitle: FutureBuilder(
-                future: PackageInfo.fromPlatform(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Text("");
-                  final info = snapshot.data as PackageInfo;
-                  return Text("Version ${info.version}");
-                },
-              ),
-            ),
-
-            ListTile(
-              tileColor: theme.cardColor,
-              selectedTileColor: theme.cardColor,
-              leading: const Icon(Icons.trending_up),
-              title: Text(
-                AppLocalizations.of(context)!.aboutRankingCalculation,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PolicyWebViewScreen(
-                      url: localizedPage(context, "popularity"),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                );
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text("NB FACTORY"),
-              subtitle: const Text("Developer website"),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.pop(context);
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PolicyWebViewScreen(
-                      url:
-                          "https://nb-factory.jp/?t=${DateTime.now().millisecondsSinceEpoch}",
+                  const SizedBox(height: 16),
+                  ListTile(
+                    title: const Text(
+                      "Tube Plus",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    subtitle: FutureBuilder(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const Text("");
+                        final info = snapshot.data as PackageInfo;
+                        return Text("Version ${info.version}");
+                      },
                     ),
                   ),
-                );
-              },
-            ),
+                  ListTile(
+                    leading: const Icon(Icons.trending_up),
+                    title: Text(
+                      AppLocalizations.of(context)!.aboutRankingCalculation,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PolicyWebViewScreen(
+                            url: localizedPage(context, "popularity"),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.language),
+                    title: const Text("NB FACTORY"),
+                    subtitle: const Text("Developer website"),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PolicyWebViewScreen(
+                            url:
+                                "https://nb-factory.jp/?t=${DateTime.now().millisecondsSinceEpoch}",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Platform.isIOS ? Icons.apple : Icons.android,
+                    ),
+                    title: Text(
+                      Platform.isIOS ? "App Store" : "Google Play",
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      final uri = Platform.isIOS
+                          ? Uri.parse(
+                              "https://apps.apple.com/app/tube/id6756842201")
+                          : Uri.parse(
+                              "https://play.google.com/store/apps/details?id=jp.nbfactory.tubesearch.app");
 
-            if (Platform.isIOS)
-              ListTile(
-                leading: const Icon(Icons.apple),
-                title: const Text("App Store"),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  final uri = Uri.parse(
-                    "https://apps.apple.com/app/tube/id6756842201",
-                  );
-                  await launchUrl(uri);
-                },
+                      await url_launcher.launchUrl(
+                        uri,
+                        mode: url_launcher.LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ),
-
-            // ListTile(
-            //   leading: Icon(
-            //     Platform.isIOS ? Icons.apple : Icons.android,
-            //   ),
-            //   title: Text(
-            //     Platform.isIOS ? "App Store" : "Google Play",
-            //   ),
-            //   trailing: const Icon(Icons.chevron_right),
-            //   onTap: () async {
-            //     final uri = Platform.isIOS
-            //         ? Uri.parse("https://apps.apple.com/app/tube/id6756842201")
-            //         : Uri.parse(
-            //             "https://play.google.com/store/apps/details?id=YOUR_PACKAGE");
-            //
-            //     await launchUrl(uri);
-            //   },
-            // ),
-
-            const SizedBox(height: 10),
-          ],
+            ),
+          ),
         );
       },
     );

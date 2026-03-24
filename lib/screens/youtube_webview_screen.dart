@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class PolicyWebViewScreen extends StatefulWidget {
-  final String url; // ← privacy / terms どちらでもOK
+class YouTubeWebViewScreen extends StatefulWidget {
+  final String url;
 
-  const PolicyWebViewScreen({
+  const YouTubeWebViewScreen({
     super.key,
     required this.url,
   });
 
   @override
-  State<PolicyWebViewScreen> createState() => _PolicyWebViewScreenState();
+  State<YouTubeWebViewScreen> createState() => _YouTubeWebViewScreenState();
 }
 
-class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
+class _YouTubeWebViewScreenState extends State<YouTubeWebViewScreen> {
   late final WebViewController _controller;
   bool _loading = true;
 
@@ -22,34 +21,13 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
   void initState() {
     super.initState();
 
-    // 🌍 端末の言語コード
-    final locale = WidgetsBinding.instance.platformDispatcher.locale;
-    final isJapanese = locale.languageCode.toLowerCase().startsWith("ja");
-
-    // 🌐 URL に lang パラメータ付与
-    final uri = Uri.parse(
-      "${widget.url}?lang=${isJapanese ? "ja" : "en"}",
-    );
+    final uri = Uri.parse(widget.url);
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) async {
-            final url = request.url;
-
-            // 🔥 GooglePlayは外部ブラウザで開く
-            if (url.contains('play.google.com')) {
-              final uri = Uri.parse(url);
-
-              await launchUrl(
-                uri,
-                mode: LaunchMode.externalApplication,
-              );
-
-              return NavigationDecision.prevent;
-            }
-
             return NavigationDecision.navigate;
           },
           onPageFinished: (_) => setState(() => _loading = false),
@@ -63,7 +41,7 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFF060606),
       body: Stack(
         children: [
           Padding(

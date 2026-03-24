@@ -236,7 +236,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos.php",
+      "/api/youtube_keyword_videos_v2.php",
       params,
     );
 
@@ -401,55 +401,55 @@ class YouTubeApiService {
     return _trendingCache[key] ?? [];
   }
 
-  Future<List<YouTubeVideo>> fetchVideosByKeyword({
-    required String keyword,
-    int maxResults = 20,
-    bool forceRefresh = false,
-  }) async {
-    final kw = keyword.trim();
-    if (kw.isEmpty) return [];
-
-    final now = DateTime.now();
-
-    final key = "keyword_${kw.toLowerCase()}_$maxResults";
-
-    if (!forceRefresh &&
-        _searchCache.containsKey(key) &&
-        _searchFetchedAt.containsKey(key) &&
-        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
-      logger.i("💾 KeywordVideos: Using cache ($key)");
-      return _searchCache[key]!;
-    }
-
-    final uri = Uri.https(baseApi, "/api/youtube_keyword_videos.php", {
-      "q": kw,
-      "max": "$maxResults",
-    });
-
-    final data = await _getJson(uri);
-
-    if (data is! List) {
-      logger.e("❌ Unexpected Keyword API structure");
-      throw Exception("Invalid API data");
-    }
-
-    final list = data.map<YouTubeVideo>((v) {
-      return YouTubeVideo(
-        id: v["id"] ?? "",
-        title: v["title"] ?? "",
-        thumbnailUrl: v["thumbnailUrl"] ?? "",
-        channelTitle: v["channelTitle"] ?? "",
-        publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
-        viewCount: v["viewCount"] as int?,
-        durationSeconds: v["durationSeconds"] as int?,
-      );
-    }).toList();
-
-    _searchCache[key] = list;
-    _searchFetchedAt[key] = now;
-
-    return list;
-  }
+// Future<List<YouTubeVideo>> fetchVideosByKeyword({
+//   required String keyword,
+//   int maxResults = 20,
+//   bool forceRefresh = false,
+// }) async {
+//   final kw = keyword.trim();
+//   if (kw.isEmpty) return [];
+//
+//   final now = DateTime.now();
+//
+//   final key = "keyword_${kw.toLowerCase()}_$maxResults";
+//
+//   if (!forceRefresh &&
+//       _searchCache.containsKey(key) &&
+//       _searchFetchedAt.containsKey(key) &&
+//       now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+//     logger.i("💾 KeywordVideos: Using cache ($key)");
+//     return _searchCache[key]!;
+//   }
+//
+//   final uri = Uri.https(baseApi, "/api/youtube_keyword_videos.php", {
+//     "q": kw,
+//     "max": "$maxResults",
+//   });
+//
+//   final data = await _getJson(uri);
+//
+//   if (data is! List) {
+//     logger.e("❌ Unexpected Keyword API structure");
+//     throw Exception("Invalid API data");
+//   }
+//
+//   final list = data.map<YouTubeVideo>((v) {
+//     return YouTubeVideo(
+//       id: v["id"] ?? "",
+//       title: v["title"] ?? "",
+//       thumbnailUrl: v["thumbnailUrl"] ?? "",
+//       channelTitle: v["channelTitle"] ?? "",
+//       publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+//       viewCount: v["viewCount"] as int?,
+//       durationSeconds: v["durationSeconds"] as int?,
+//     );
+//   }).toList();
+//
+//   _searchCache[key] = list;
+//   _searchFetchedAt[key] = now;
+//
+//   return list;
+// }
 
 // ------------------------------------------------------------
 // サムネ選択系は PHP 側に任せるため Flutter では不要

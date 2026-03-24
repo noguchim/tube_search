@@ -52,7 +52,7 @@ class _DensityFabState extends State<DensityFab> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(_pressed ? 0.18 : 0.35),
+                color: Colors.black.withValues(alpha: _pressed ? 0.18 : 0.35),
                 blurRadius: _pressed ? 8 : 18,
                 offset: Offset(0, _pressed ? 4 : 10),
               ),

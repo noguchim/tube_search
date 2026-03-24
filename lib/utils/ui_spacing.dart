@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class UISpacing {
-  /// 下部スペーサー（Tube+最適化版）
   static double bottomSpacer(
     BuildContext context, {
     bool hasFab = false,
@@ -19,10 +18,10 @@ class UISpacing {
     // =============================
     // 🚫 重要：広告はMainで固定表示しているため加算しない
     // =============================
-    double adHeight = 0;
+    double adHeight = 25;
     if (hasAd) {
       // 将来「画面内広告」にする場合のみ使用
-      adHeight = isTablet ? 90.0 : 60.0;
+      adHeight = isTablet ? 90.0 : 70.0;
     }
 
     // FABスペース（実測ベースに縮小）

@@ -204,7 +204,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 45), // ← AdMob分持ち上げ
+        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
         child: DensityFab(
           density: density,
           onToggle: () => context.read<DensityProvider>().toggle(),
@@ -264,7 +264,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             height: UISpacing.bottomSpacer(
                               context,
                               hasFab: true,
-                              hasAd: true,
+                              hasAd: !adsRemoved,
                             ),
                           ),
                         ),

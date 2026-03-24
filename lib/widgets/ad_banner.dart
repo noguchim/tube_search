@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
+import 'consent_manager.dart';
 
 class AdBanner extends StatefulWidget {
   const AdBanner({super.key});
@@ -32,12 +34,25 @@ class _AdBannerState extends State<AdBanner> {
       }
     });
 
-    _connSub = Connectivity().onConnectivityChanged.listen((_) {
+    _connSub = Connectivity().onConnectivityChanged.listen((results) {
+      if (results.contains(ConnectivityResult.none)) return;
+
       if (mounted) _reloadBanner();
     });
   }
 
+  Future<void> _waitForConsent() async {
+    int retry = 0;
+
+    while (ConsentManager.nonPersonalizedAds == null && retry < 10) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retry++;
+    }
+  }
+
   Future<void> _loadBanner() async {
+    await _waitForConsent();
+
     try {
       final width = MediaQuery.of(context).size.width.toInt();
 
@@ -53,7 +68,9 @@ class _AdBannerState extends State<AdBanner> {
       _banner = BannerAd(
         size: _adSize!,
         adUnitId: AdMobConfig.bannerId,
-        request: const AdRequest(),
+        request: AdRequest(
+          nonPersonalizedAds: ConsentManager.nonPersonalizedAds,
+        ),
         listener: BannerAdListener(
           onAdLoaded: (_) {
             logger.i('🎯 Banner loaded: ${_adSize?.width}x${_adSize?.height}');
@@ -105,12 +122,11 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final banner = _banner;
-    const bool debugMode = true;
 
     return SizedBox(
       width: double.infinity,
       height: _isLoaded && _adSize != null ? _adSize!.height.toDouble() : 50,
-      child: (_isLoaded && banner != null) && !debugMode
+      child: (_isLoaded && banner != null) && !kDebugMode
           ? AdWidget(ad: banner)
           : _buildDummyBannerGlass(context),
     );

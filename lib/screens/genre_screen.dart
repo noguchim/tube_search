@@ -1390,7 +1390,8 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     final isLandscape = media.orientation == Orientation.landscape;
     final bg = Theme.of(context).scaffoldBackgroundColor;
 
-    final safeTopAdjusted = (safeTop * 0.7).clamp(14.0, 28.0);
+    // final safeTopAdjusted = (safeTop * 0.7).clamp(14.0, 28.0);
+    final safeTopAdjusted = safeTop + 4;
 
     final shortest = media.size.shortestSide;
     final isTablet = shortest >= 600;

@@ -10,6 +10,7 @@ import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
+import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/card_density_prefs.dart';
@@ -202,11 +203,13 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     final extraTopGap = isTablet ? 12.0 : 8.0;
     final double topBarOffset =
         safeTop + TopBarSpec.barContentHeight + extraTopGap;
+    final adsRemoved =
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 45), // ← AdMob分持ち上げ
+        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
         child: DensityFab(
           density: density,
           onToggle: () => context.read<DensityProvider>().toggle(),
@@ -266,7 +269,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
                         height: UISpacing.bottomSpacer(
                           context,
                           hasFab: true,
-                          hasAd: true,
+                          hasAd: !adsRemoved,
                         ),
                       ),
                     ),

@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -14,10 +15,12 @@ import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/services/youtube_api_service.dart';
+import 'package:tube_search/theme/app_theme.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/utils/app_version.dart';
 import 'package:tube_search/utils/request_review.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
+import 'package:tube_search/widgets/consent_manager.dart';
 import 'package:tube_search/widgets/top_bar.dart';
 
 import 'l10n/app_localizations.dart';
@@ -27,78 +30,18 @@ import 'screens/genre_screen.dart';
 import 'screens/popular_videos_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/favorites_service.dart';
-import 'theme/app_theme.dart';
-
-/// ----------------------------------------------------------------
-/// 📝 UMP（同意管理）
-/// ----------------------------------------------------------------
-Future<void> _requestConsent() async {
-  final consentInfo = ConsentInformation.instance;
-
-  final params = ConsentRequestParameters(
-    tagForUnderAgeOfConsent: false,
-  );
-
-  // 1️⃣ 同意情報リクエスト
-  final completer1 = Completer<void>();
-
-  consentInfo.requestConsentInfoUpdate(
-    params,
-    () {
-      // 成功
-      completer1.complete();
-    },
-    (FormError error) {
-      logger.i('⚠️ UMP request error: ${error.message}');
-      completer1.complete();
-    },
-  );
-
-  await completer1.future;
-
-  // 👇 ここで状態を確認！
-  final status = await ConsentInformation.instance.getConsentStatus();
-  logger.i('🔎 consent status = $status');
-
-  // 2️⃣ フォームが必要ならロード
-  if (await consentInfo.isConsentFormAvailable()) {
-    final completer2 = Completer<ConsentForm>();
-
-    ConsentForm.loadConsentForm(
-      (ConsentForm form) {
-        completer2.complete(form);
-      },
-      (FormError error) {
-        logger.i('⚠️ UMP form load error: ${error.message}');
-        completer2.completeError(error);
-      },
-    );
-
-    final form = await completer2.future;
-
-    // 3️⃣ 表示
-    form.show(
-      (FormError? error) {
-        if (error != null) {
-          logger.i('⚠️ UMP show error: ${error.message}');
-        }
-      },
-    );
-  }
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 👇 ここ（テスト端末登録）
+  // AdMob初期化
   await MobileAds.instance.updateRequestConfiguration(
-    RequestConfiguration(testDeviceIds: ['9ece5c366fa9bdadad267b8e1043760c']),
+    RequestConfiguration(
+      testDeviceIds: kDebugMode ? ['TEST_DEVICE'] : [],
+    ),
   );
 
   await MobileAds.instance.initialize();
-
-  // ⭐ GDPR / UMP（EU圏のみ自動で表示）
-  await _requestConsent();
 
   final favorites = FavoritesService();
   await favorites.loadFavorites();
@@ -157,15 +100,33 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RegionProvider>().initFromLocale(context);
     });
 
+    // 🔥 初回フレーム後にGDPR実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initConsent();
+    });
+  }
+
+  Future<void> _initConsent() async {
+    await ConsentManager.requestConsent();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
@@ -181,7 +142,7 @@ class MyApp extends StatelessWidget {
       ],
 
       debugShowCheckedModeBanner: false,
-      title: 'TUBE+',
+      title: 'Tube Plus',
 
       // 🍀 Light / Dark テーマを適用
       theme: appLightTheme,
@@ -265,10 +226,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // final region = context.read<RegionProvider>().regionCode;
-    //
-    // logger.w("🚀 Prefetch trigger AFTER Region init: $region");
-    //
+    final region = context.read<RegionProvider>().regionCode;
+
+    logger.w("🚀 Prefetch trigger AFTER Region init: $region");
+
     // _prefetchTrending(region);
   }
 
@@ -332,12 +293,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final iap = context.watch<IapProvider>();
+    final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
-        final bool shouldShowBanner = (!adsRemoved) && (!isKeyboardVisible);
+        final bool shouldShowBanner =
+            iap.isReady && (!adsRemoved) && (!isKeyboardVisible);
 
         return Scaffold(
           extendBody: true,
