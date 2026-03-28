@@ -1,7 +1,6 @@
 // lib/main.dart
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -35,9 +34,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // AdMob初期化
-  await MobileAds.instance.updateRequestConfiguration(
+  // if (AdMobConfig.useTestAds) {
+  //   MobileAds.instance.updateRequestConfiguration(
+  //     RequestConfiguration(
+  //       testDeviceIds: ['D3402AA94C9B637E34B0D3E969158B2A'],
+  //     ),
+  //   );
+  // }
+  MobileAds.instance.updateRequestConfiguration(
     RequestConfiguration(
-      testDeviceIds: kDebugMode ? ['TEST_DEVICE'] : [],
+      testDeviceIds: [],
     ),
   );
 

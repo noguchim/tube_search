@@ -1220,7 +1220,6 @@ class _GenreScreenState extends State<GenreScreen>
           controller: _scrollController,
           slivers: [
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
-
             SliverPersistentHeader(
               pinned: true,
               delegate: PinnedSearchHeaderDelegate(
@@ -1238,48 +1237,18 @@ class _GenreScreenState extends State<GenreScreen>
                 ),
               ),
             ),
-
-            // ✅ pinnedフォーム直後に少し余白
-            SliverToBoxAdapter(
-              child: Builder(
-                builder: (context) {
-                  final media = MediaQuery.of(context);
-                  final height = media.size.height;
-                  final shortest = media.size.shortestSide;
-                  final isTablet = shortest >= 600;
-                  final isLandscape =
-                      media.orientation == Orientation.landscape;
-
-                  double gap;
-
-                  if (isTablet) {
-                    if (isLandscape) {
-                      gap = (height * 0.02).clamp(18.0, 28.0);
-                    } else {
-                      gap = (height * 0.028).clamp(22.0, 36.0);
-                    }
-                  } else {
-                    if (isLandscape) {
-                      gap = 12;
-                    } else {
-                      gap = (height * 0.018).clamp(12.0, 18.0);
-                    }
-                  }
-
-                  return SizedBox(height: gap);
-                },
-              ),
-            ),
-
             // if (!_focusNode.hasFocus)
             //   SliverToBoxAdapter(
-            //     child: _buildTrendingChips(theme),
+            //     child: Padding(
+            //       padding: const EdgeInsets.fromLTRB(0, 26, 16, 0),
+            //       child: _buildTrendingChips(theme),
+            //     ),
             //   ),
-
             if (!_focusNode.hasFocus)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  // padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
                   child: Row(
                     children: [
                       IntrinsicWidth(
@@ -1307,7 +1276,6 @@ class _GenreScreenState extends State<GenreScreen>
                   ),
                 ),
               ),
-
             if (!_focusNode.hasFocus)
               SliverList(
                 delegate: SliverChildBuilderDelegate(
@@ -1315,7 +1283,6 @@ class _GenreScreenState extends State<GenreScreen>
                   childCount: groups.length,
                 ),
               ),
-
             SliverToBoxAdapter(
               child: SizedBox(
                 height: UISpacing.bottomSpacer(

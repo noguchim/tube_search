@@ -1,13 +1,28 @@
-class AdMobConfig {
-  // クローズドテスト中は true（デフォルト推奨）
-  static const bool useTestAds =
-      bool.fromEnvironment('TEST_ADS', defaultValue: true);
+import 'dart:io';
 
-  // 公式テストID
+class AdMobConfig {
+  static const bool useTestAds =
+      bool.fromEnvironment('TEST_ADS', defaultValue: false);
+
   static const String testBannerId = "ca-app-pub-3940256099942544/6300978111";
 
-  // ★あなたの本番バナーID
-  static const String prodBannerId = "ca-app-pub-1955852466270592/7938489673";
+  // iOS
+  static const String prodBannerIdIOS =
+      "ca-app-pub-1955852466270592/7938489673";
 
-  static String get bannerId => useTestAds ? testBannerId : prodBannerId;
+  // Android
+  static const String prodBannerIdAndroid =
+      "ca-app-pub-1955852466270592/1862587758";
+
+  static String get bannerId {
+    if (useTestAds) return testBannerId;
+
+    if (Platform.isIOS) {
+      return prodBannerIdIOS;
+    } else if (Platform.isAndroid) {
+      return prodBannerIdAndroid;
+    } else {
+      throw UnsupportedError('Unsupported platform');
+    }
+  }
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -17,20 +16,25 @@ class AdBanner extends StatefulWidget {
   State<AdBanner> createState() => _AdBannerState();
 }
 
-class _AdBannerState extends State<AdBanner> {
+class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   BannerAd? _banner;
   AdSize? _adSize; // ★ AdSize? にする（Adaptiveもbannerも入る）
   bool _isLoaded = false;
   late StreamSubscription<List<ConnectivityResult>> _connSub;
+  Timer? _refreshTimer;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
 
+    WidgetsBinding.instance.addObserver(this);
+
     // ★ レイアウト確定後に広告ロード（Tabletクラッシュ対策）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadBanner();
+        _startAutoRefresh();
       }
     });
 
@@ -38,6 +42,24 @@ class _AdBannerState extends State<AdBanner> {
       if (results.contains(ConnectivityResult.none)) return;
 
       if (mounted) _reloadBanner();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      logger.i('🔄 App resumed → reload banner');
+      _reloadBanner();
+    }
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (!mounted) return;
+      logger.i('🔄 Auto refresh banner');
+      _reloadBanner();
     });
   }
 
@@ -51,54 +73,58 @@ class _AdBannerState extends State<AdBanner> {
   }
 
   Future<void> _loadBanner() async {
-    await _waitForConsent();
+    if (_isLoading) return;
+    _isLoading = true;
 
     try {
-      final width = MediaQuery.of(context).size.width.toInt();
+      await _waitForConsent();
 
-      // ★ Adaptiveを取得（取得できなければ通常bannerにフォールバック）
+      final width = MediaQuery.of(context).size.width.toInt();
       final adaptive =
           await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
-      _adSize = adaptive ?? AdSize.banner;
 
-      // 既存バナーがあれば破棄
+      final adSize = adaptive ?? AdSize.banner;
+
+      final adUnitId = AdMobConfig.bannerId;
+
+      logger.i('🧪 AdUnitId: $adUnitId');
+
       _banner?.dispose();
-      _banner = null;
 
-      _banner = BannerAd(
-        size: _adSize!,
-        adUnitId: AdMobConfig.bannerId,
+      late BannerAd banner;
+
+      banner = BannerAd(
+        size: adSize,
+        adUnitId: adUnitId,
         request: AdRequest(
           nonPersonalizedAds: ConsentManager.nonPersonalizedAds,
         ),
         listener: BannerAdListener(
           onAdLoaded: (_) {
-            logger.i('🎯 Banner loaded: ${_adSize?.width}x${_adSize?.height}');
+            logger.i('🎯 Banner loaded');
+            _isLoading = false;
+
             if (!mounted) return;
-            setState(() => _isLoaded = true);
+
+            setState(() {
+              _banner = banner;
+              _adSize = adSize;
+              _isLoaded = true;
+            });
           },
           onAdFailedToLoad: (ad, err) {
-            logger.i('❌ Banner failed: ${err.code} / ${err.message}');
+            logger.i('❌ Banner failed: ${err.code}');
+            _isLoading = false;
             ad.dispose();
-            if (!mounted) return;
-            setState(() {
-              _banner = null;
-              _isLoaded = false;
-            });
           },
         ),
       );
 
-      await _banner!.load();
-    } catch (e, st) {
-      logger.e('💥 Banner load error: $e\n$st');
-      if (!mounted) return;
-      setState(() {
-        _banner?.dispose();
-        _banner = null;
-        _isLoaded = false;
-        _adSize = null;
-      });
+      banner.load();
+
+      banner.load(); // ← awaitしない
+    } catch (e) {
+      _isLoading = false;
     }
   }
 
@@ -114,6 +140,8 @@ class _AdBannerState extends State<AdBanner> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     _connSub.cancel();
     _banner?.dispose();
     super.dispose();
@@ -126,7 +154,7 @@ class _AdBannerState extends State<AdBanner> {
     return SizedBox(
       width: double.infinity,
       height: _isLoaded && _adSize != null ? _adSize!.height.toDouble() : 50,
-      child: (_isLoaded && banner != null) && !kDebugMode
+      child: (_isLoaded && banner != null) && !AdMobConfig.useTestAds
           ? AdWidget(ad: banner)
           : _buildDummyBannerGlass(context),
     );

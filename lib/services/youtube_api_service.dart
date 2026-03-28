@@ -188,6 +188,87 @@ class YouTubeApiService {
   // ============================================================
   // 3️⃣ キーワード検索 + 統計（PHP モジュール）
   // ============================================================
+  // Future<List<YouTubeVideo>> searchWithStats({
+  //   required String categoryId,
+  //   required String keyword,
+  //   required String searchMode,
+  //   int maxResults = 50,
+  //   String regionCode = "JP",
+  //   bool forceRefresh = false,
+  // }) async {
+  //   final kw = keyword.trim();
+  //   if (kw.isEmpty) return [];
+  //
+  //   final now = DateTime.now();
+  //
+  //   // --------------------------------
+  //   // 🌎 region override
+  //   // --------------------------------
+  //   final String effectiveRegion =
+  //       categoryId.toString() == "11" ? "US" : regionCode;
+  //
+  //   final key =
+  //       "search_${effectiveRegion}_${categoryId}_${kw.toLowerCase()}_${searchMode}_$maxResults";
+  //
+  //   // --------------------------------
+  //   // 💾 キャッシュ
+  //   // --------------------------------
+  //   if (!forceRefresh &&
+  //       _searchCache.containsKey(key) &&
+  //       _searchFetchedAt.containsKey(key) &&
+  //       now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+  //     logger.i("💾 SearchWithStats: Using cache ($key)");
+  //     return _searchCache[key]!;
+  //   }
+  //
+  //   // --------------------------------
+  //   // 🌐 API 呼び出し
+  //   // --------------------------------
+  //   logger.i(
+  //       "🌐 SearchWithStats API q=$kw mode=$searchMode region=$effectiveRegion max=$maxResults");
+  //
+  //   final params = {
+  //     "q": kw,
+  //     "mode": searchMode,
+  //     "max": "$maxResults",
+  //     "region": effectiveRegion,
+  //   };
+  //
+  //   final uri = Uri.https(
+  //     baseApi,
+  //     "/api/youtube_keyword_videos_v4.php",
+  //     params,
+  //   );
+  //
+  //   final data = await _getJson(uri);
+  //
+  //   if (data is! List) {
+  //     logger.e("❌ Unexpected Keyword API structure");
+  //     throw Exception("Invalid API data");
+  //   }
+  //
+  //   final list = data.map<YouTubeVideo>((v) {
+  //     return YouTubeVideo(
+  //       id: v["id"] ?? "",
+  //       title: v["title"] ?? "",
+  //       thumbnailUrl: v["thumbnailUrl"] ?? "",
+  //       channelTitle: v["channelTitle"] ?? "",
+  //       publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+  //       viewCount: v["viewCount"] as int?,
+  //       durationSeconds: v["durationSeconds"] as int?,
+  //       score: (v["score"] as num?)?.toDouble(), // ⭐追加
+  //     );
+  //   }).toList();
+  //
+  //   // --------------------------------
+  //   // 💾 キャッシュ保存
+  //   // --------------------------------
+  //   _searchCache[key] = list;
+  //   _searchFetchedAt[key] = now;
+  //
+  //   return list;
+  // }
+
   Future<List<YouTubeVideo>> searchWithStats({
     required String categoryId,
     required String keyword,
@@ -201,18 +282,12 @@ class YouTubeApiService {
 
     final now = DateTime.now();
 
-    // --------------------------------
-    // 🌎 region override
-    // --------------------------------
     final String effectiveRegion =
         categoryId.toString() == "11" ? "US" : regionCode;
 
     final key =
         "search_${effectiveRegion}_${categoryId}_${kw.toLowerCase()}_${searchMode}_$maxResults";
 
-    // --------------------------------
-    // 💾 キャッシュ
-    // --------------------------------
     if (!forceRefresh &&
         _searchCache.containsKey(key) &&
         _searchFetchedAt.containsKey(key) &&
@@ -221,9 +296,6 @@ class YouTubeApiService {
       return _searchCache[key]!;
     }
 
-    // --------------------------------
-    // 🌐 API 呼び出し
-    // --------------------------------
     logger.i(
         "🌐 SearchWithStats API q=$kw mode=$searchMode region=$effectiveRegion max=$maxResults");
 
@@ -236,7 +308,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos_v2.php",
+      "/api/youtube_keyword_videos_v4.php",
       params,
     );
 
@@ -256,13 +328,12 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
-        score: (v["score"] as num?)?.toDouble(), // ⭐追加
+        score: (v["score"] as num?)?.toDouble(),
       );
     }).toList();
 
-    // --------------------------------
-    // 💾 キャッシュ保存
-    // --------------------------------
+    list.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+
     _searchCache[key] = list;
     _searchFetchedAt[key] = now;
 
