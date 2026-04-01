@@ -23,8 +23,8 @@ Future<bool> shouldAskForReviewThisMonth({
 }) async {
   final now = DateTime.now();
 
-  // 月ゲート（3月・12月）
-  if (now.month != 3 && now.month != 12) return false;
+  // 月ゲート（4月・12月）
+  if (now.month != 4 && now.month != 12) return false;
 
   final prefs = await SharedPreferences.getInstance();
 

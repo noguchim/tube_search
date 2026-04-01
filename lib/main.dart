@@ -214,6 +214,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       });
     });
 
+    // 🔥 postFrameで確実にattach後に登録
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pageController.position.isScrollingNotifier.addListener(() {
+        final isScrolling = _pageController.position.isScrollingNotifier.value;
+
+        if (isScrolling && _isScrollingDown) {
+          setState(() {
+            _isScrollingDown = false;
+          });
+        }
+      });
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       checkLatestVersion(context);
     });
@@ -236,7 +249,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     logger.w("🚀 Prefetch trigger AFTER Region init: $region");
 
-    // _prefetchTrending(region);
+    _prefetchTrending(region);
   }
 
   Future<void> _prefetchTrending(String region) async {
@@ -369,7 +382,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: AdBanner(),
+                  child: AdBanner(isMain: true),
                 ),
             ],
           ),

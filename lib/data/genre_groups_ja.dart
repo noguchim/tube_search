@@ -4,6 +4,7 @@ import 'base_genre_models.dart';
 
 /// グループのベースカテゴリ（日本）
 const baseCategoryIdsJa = {
+  'G00': 10,
   'G01': 24,
   'G02': 26,
   'G03': 27,
@@ -15,27 +16,53 @@ const baseCategoryIdsJa = {
 /// 🎉 🎉 🎉 ここから実データ（日本向け）
 /// ------------------------------------------------------------
 const genreGroupsJa = <GenreGroup>[
+  /// 🎵 G00：音楽（NEW）
+  GenreGroup(
+    groupId: "G00",
+    name: "音楽",
+    color: Color(0xFF1E88E5),
+    icon: Icons.library_music,
+    items: [
+      GenreCategory(
+        id: 10,
+        name: "トレンド",
+        isOfficial: false,
+        query: "音楽",
+        color: Color(0xFFE53935),
+      ),
+      // 🇯🇵 日本
+      GenreCategory(
+        id: 12,
+        name: "メガヒット（日本）",
+        isOfficial: false,
+        query: "音楽",
+        color: Color(0xFFFFB74D),
+      ),
+      // 🌍 世界
+      GenreCategory(
+        id: 13,
+        name: "メガヒット（海外）",
+        isOfficial: false,
+        query: "音楽",
+        color: Color(0xFF7E57C2),
+      ),
+    ],
+  ),
+
   /// 🟥 G01：エンタメ
   GenreGroup(
     groupId: "G01",
     name: "エンタメ",
-    color: Color(0xFFE53935),
+    color: Color(0xFFF4511E),
     icon: Icons.movie_filter,
     items: [
       GenreCategory(
-        id: 10,
-        name: "音楽",
+        id: 1300,
+        name: "#shorts",
         isOfficial: false,
-        query: "MV Official VEVO",
-        color: Color(0xFFE53935), // 音楽より少し明るい赤
+        query: "shorts",
+        color: Color(0xFF43A047),
       ),
-      // GenreCategory(
-      //   id: 11,
-      //   name: "洋楽",
-      //   isOfficial: false,
-      //   query: "VEVO Official MV",
-      //   color: Color(0xFF8E24AA), // 紫系で差別化
-      // ),
       GenreCategory(
           id: 1101,
           name: "ユーチューバー",
@@ -47,7 +74,7 @@ const genreGroupsJa = <GenreGroup>[
           name: "Vチューバー",
           isOfficial: false,
           query: "ブイチューバー",
-          color: Color(0xFFF4511E)),
+          color: Color(0xFF1E88E5)),
       GenreCategory(
         id: 1103,
         name: "アニメ",
@@ -73,12 +100,6 @@ const genreGroupsJa = <GenreGroup>[
           isOfficial: false,
           query: "パチスロ スマスロ",
           color: Color(0xFF455A64)),
-      // GenreCategory(
-      //     id: 24,
-      //     name: "エンターテイメント",
-      //     isOfficial: true,
-      //     query: "エンターテイメント Entertainment",
-      //     color: Color(0xFFD32F2F)),
       GenreCategory(
           id: 23,
           name: "コメディ",

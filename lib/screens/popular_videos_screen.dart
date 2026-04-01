@@ -1,6 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 import 'package:tube_search/data/youtube_video.dart';
 
@@ -47,6 +46,7 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
 
   late final IapProvider _iapProvider;
   late final RegionProvider _regionProvider;
+  double _lastOffset = 0;
 
   @override
   void initState() {
@@ -83,18 +83,54 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
     super.dispose();
   }
 
+  // void _onScroll() {
+  //   if (!_scrollController.hasClients) return;
+  //
+  //   // ===== 既存：スクロール方向検知 =====
+  //   final direction = _scrollController.position.userScrollDirection;
+  //   if (direction == ScrollDirection.reverse && !_isScrollingDown) {
+  //     _isScrollingDown = true;
+  //     widget.onScrollChanged?.call(true);
+  //   } else if (direction == ScrollDirection.forward && _isScrollingDown) {
+  //     _isScrollingDown = false;
+  //     widget.onScrollChanged?.call(false);
+  //   }
+  // }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
-    // ===== 既存：スクロール方向検知 =====
-    final direction = _scrollController.position.userScrollDirection;
-    if (direction == ScrollDirection.reverse && !_isScrollingDown) {
-      _isScrollingDown = true;
-      widget.onScrollChanged?.call(true);
-    } else if (direction == ScrollDirection.forward && _isScrollingDown) {
-      _isScrollingDown = false;
-      widget.onScrollChanged?.call(false);
+    final offset = _scrollController.offset;
+
+    // 🔥 トップ付近は常に表示（最重要）
+    if (offset <= 10) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+      _lastOffset = offset;
+      return;
     }
+
+    final delta = offset - _lastOffset;
+
+    // 🔽 下スクロール（ある程度動いた時だけ）
+    if (delta > 5) {
+      if (!_isScrollingDown) {
+        _isScrollingDown = true;
+        widget.onScrollChanged?.call(true);
+      }
+    }
+
+    // 🔼 上スクロール
+    else if (delta < -5) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+    }
+
+    _lastOffset = offset;
   }
 
   Future<List<YouTubeVideo>> _fetchVideos({bool forceRefresh = false}) async {

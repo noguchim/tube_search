@@ -10,7 +10,12 @@ import '../utils/app_logger.dart';
 import 'consent_manager.dart';
 
 class AdBanner extends StatefulWidget {
-  const AdBanner({super.key});
+  final bool isMain;
+
+  const AdBanner({
+    super.key,
+    required this.isMain,
+  });
 
   @override
   State<AdBanner> createState() => _AdBannerState();
@@ -85,7 +90,7 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
 
       final adSize = adaptive ?? AdSize.banner;
 
-      final adUnitId = AdMobConfig.bannerId;
+      final adUnitId = AdMobConfig.bannerId(isMain: widget.isMain);
 
       logger.i('🧪 AdUnitId: $adUnitId');
 
@@ -121,8 +126,6 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
       );
 
       banner.load();
-
-      banner.load(); // ← awaitしない
     } catch (e) {
       _isLoading = false;
     }

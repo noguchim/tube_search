@@ -13,6 +13,7 @@ import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
+import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/ad_banner.dart';
@@ -105,6 +106,48 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   // ---------------------------------------------------------
   // 🔥 API 統合フェッチ（キーワード or 人気ジャンル）
   // ---------------------------------------------------------
+  // Future<List<YouTubeVideo>> _loadVideos({bool forceRefresh = false}) async {
+  //   final kw = widget.keyword?.trim();
+  //   final cat = widget.categoryId == "0" ? "" : widget.categoryId;
+  //
+  //   final region = context.read<RegionProvider>().regionCode;
+  //   final api = context.read<YouTubeApiService>();
+  //   final iap = context.read<IapProvider>();
+  //
+  //   final limit = LimitService.videoListLimit(iap);
+  //
+  //   if (kw != null && kw.isNotEmpty) {
+  //     var search = await api.searchWithStats(
+  //       categoryId: cat,
+  //       keyword: kw,
+  //       searchMode: widget.searchMode,
+  //       maxResults: limit,
+  //       regionCode: region,
+  //       forceRefresh: forceRefresh,
+  //     );
+  //
+  //     if (search.isEmpty && cat.isNotEmpty) {
+  //       search = await api.searchWithStats(
+  //         categoryId: "",
+  //         keyword: kw,
+  //         searchMode: widget.searchMode,
+  //         maxResults: limit,
+  //         regionCode: region,
+  //         forceRefresh: forceRefresh,
+  //       );
+  //     }
+  //
+  //     return search.take(limit).toList();
+  //   }
+  //
+  //   return api.fetchPopularVideos(
+  //     videoCategoryId: cat,
+  //     maxResults: limit,
+  //     regionCode: region,
+  //     forceRefresh: forceRefresh,
+  //   );
+  // }
+
   Future<List<YouTubeVideo>> _loadVideos({bool forceRefresh = false}) async {
     final kw = widget.keyword?.trim();
     final cat = widget.categoryId == "0" ? "" : widget.categoryId;
@@ -115,6 +158,25 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     final limit = LimitService.videoListLimit(iap);
 
+    final mode = widget.searchMode;
+    logger.i(
+        "[_loadVideos]query=$kw mode=$mode max=$limit region=$region categoryId=$cat");
+
+    // // 🔥 10億再生/shortsは強制search
+    // if (cat == "12" || cat == "1300") {
+    //   final result = await api.searchWithStats(
+    //     categoryId: cat,
+    //     keyword: "",
+    //     // ←空でOK
+    //     searchMode: "or",
+    //     maxResults: limit,
+    //     regionCode: region,
+    //     forceRefresh: forceRefresh,
+    //   );
+    //   return result.take(limit).toList();
+    // }
+
+    // 通常検索
     if (kw != null && kw.isNotEmpty) {
       var search = await api.searchWithStats(
         categoryId: cat,
@@ -139,6 +201,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
       return search.take(limit).toList();
     }
 
+    // 通常カテゴリ
     return api.fetchPopularVideos(
       videoCategoryId: cat,
       maxResults: limit,
@@ -224,6 +287,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               }
 
               if (snap.hasError) {
+                logger.e("❌ FutureBuilder error: ${snap.error}");
+                logger.e("❌ StackTrace: ${snap.stackTrace}");
+
                 return NetworkErrorView(
                   onRetry: () {
                     setState(() {
@@ -303,7 +369,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: AdBanner(),
+              child: AdBanner(isMain: false),
             ),
 
           // =============================

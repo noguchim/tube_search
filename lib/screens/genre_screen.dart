@@ -4,12 +4,10 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/base_genre_models.dart';
-import '../data/genre_groups_ja.dart';
 import '../data/genre_provider.dart';
 import '../data/search_history_item.dart';
 import '../data/trending_keyword.dart';
@@ -53,6 +51,7 @@ class _GenreScreenState extends State<GenreScreen>
   bool _trendingLoaded = false;
   bool _showAllTrending = false;
   String _trendingTimestamp = "";
+  double _lastOffset = 0;
 
   // ============================================================
   // 🔎 Search History
@@ -139,15 +138,37 @@ class _GenreScreenState extends State<GenreScreen>
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
 
-    final direction = _scrollController.position.userScrollDirection;
+    final offset = _scrollController.offset;
 
-    if (direction == ScrollDirection.reverse && !_isScrollingDown) {
-      _isScrollingDown = true;
-      widget.onScrollChanged?.call(true);
-    } else if (direction == ScrollDirection.forward && _isScrollingDown) {
-      _isScrollingDown = false;
-      widget.onScrollChanged?.call(false);
+    // 🔥 トップ付近は常に表示（最重要）
+    if (offset <= 10) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+      _lastOffset = offset;
+      return;
     }
+
+    final delta = offset - _lastOffset;
+
+    // 🔽 下スクロール（ある程度動いた時だけ）
+    if (delta > 5) {
+      if (!_isScrollingDown) {
+        _isScrollingDown = true;
+        widget.onScrollChanged?.call(true);
+      }
+    }
+
+    // 🔼 上スクロール
+    else if (delta < -5) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+    }
+
+    _lastOffset = offset;
   }
 
   // ============================================================
@@ -527,6 +548,223 @@ class _GenreScreenState extends State<GenreScreen>
   // ----------------------------------------------------
   // 🔥 Trending chips
   // ----------------------------------------------------
+  // Widget _buildTrendingChips(ThemeData theme) {
+  //   logger.i(
+  //       "TrendTips start _trendingLoaded=$_trendingLoaded _trending=${_trending.map((e) => e.keyword).toList()}");
+  //
+  //   if (!_trendingLoaded || _trending.isEmpty) {
+  //     return const SizedBox.shrink();
+  //   }
+  //
+  //   final Color toggleColor =
+  //       theme.colorScheme.onSurface.withValues(alpha: 0.6);
+  //
+  //   final t = AppLocalizations.of(context)!;
+  //
+  //   return Padding(
+  //     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+  //     child: LayoutBuilder(
+  //       builder: (context, constraints) {
+  //         final double maxWidth = constraints.maxWidth;
+  //
+  //         double usedWidth = 0;
+  //         final List<TrendingKeyword> oneLine = [];
+  //
+  //         for (final t in _trending) {
+  //           final keyword = t.keyword.trim();
+  //           if (keyword.isEmpty) continue;
+  //
+  //           final textPainter = TextPainter(
+  //             text: TextSpan(
+  //               text: keyword,
+  //               style: const TextStyle(fontSize: 14),
+  //             ),
+  //             maxLines: 1,
+  //             textDirection: TextDirection.ltr,
+  //           )..layout();
+  //
+  //           final chipWidth = textPainter.width + 48;
+  //
+  //           if (usedWidth + chipWidth > maxWidth) break;
+  //
+  //           usedWidth += chipWidth + 8;
+  //           oneLine.add(t);
+  //         }
+  //
+  //         final List<TrendingKeyword> displayList =
+  //             _showAllTrending ? _trending : oneLine;
+  //
+  //         final bool hasMore = _trending.length > oneLine.length;
+  //
+  //         return Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             // タイトル
+  //             IntrinsicWidth(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Row(
+  //                     mainAxisSize: MainAxisSize.min,
+  //                     children: [
+  //                       Text(
+  //                         t.trendWords,
+  //                         style: TextStyle(
+  //                           fontSize: 18,
+  //                           fontWeight: FontWeight.w700,
+  //                           color: theme.colorScheme.onSurface,
+  //                         ),
+  //                       ),
+  //                       const SizedBox(width: 8),
+  //                       Container(
+  //                         height: 22,
+  //                         alignment: Alignment.bottomRight,
+  //                         child: Text(
+  //                           _trendingTimestamp,
+  //                           style: TextStyle(
+  //                             fontSize: 14,
+  //                             color: theme.colorScheme.onSurface
+  //                                 .withValues(alpha: 0.6),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   const SizedBox(height: 4),
+  //                   Container(
+  //                     height: 1.2,
+  //                     color: theme.colorScheme.onSurface
+  //                         .withValues(alpha: 0.6), // 下線色
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             const SizedBox(height: 10),
+  //
+  //             // チップ
+  //             Wrap(
+  //               spacing: 8,
+  //               runSpacing: 1,
+  //               children: displayList.asMap().entries.map((entry) {
+  //                 final index = entry.key;
+  //                 final t = entry.value;
+  //
+  //                 final keyword = t.keyword.trim();
+  //                 if (keyword.isEmpty) return const SizedBox.shrink();
+  //
+  //                 final bool isTop3 = index < 3;
+  //
+  //                 return Material(
+  //                   elevation: isTop3 ? 3 : 1.5,
+  //                   shadowColor: Colors.black.withValues(alpha: 0.15),
+  //                   borderRadius: BorderRadius.circular(22),
+  //                   color: Colors.transparent,
+  //                   child: ActionChip(
+  //                     pressElevation: 0,
+  //                     label: Text(
+  //                       "#$keyword",
+  //                       style: TextStyle(
+  //                         fontSize: 15,
+  //                         fontWeight:
+  //                             isTop3 ? FontWeight.w700 : FontWeight.w600,
+  //                         color: isTop3 ? Colors.white : Colors.black87,
+  //                       ),
+  //                     ),
+  //                     backgroundColor:
+  //                         isTop3 ? const Color(0xFF7C3AED) : Colors.white,
+  //                     side: isTop3
+  //                         ? BorderSide.none
+  //                         : const BorderSide(
+  //                             color: Color(0xFFCFD5D5),
+  //                             width: 1,
+  //                           ),
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(22),
+  //                     ),
+  //                     padding: const EdgeInsets.symmetric(
+  //                       horizontal: 8,
+  //                       vertical: 8,
+  //                     ),
+  //                     onPressed: () {
+  //                       logger.i("🔥 Trending chip tapped: $keyword");
+  //
+  //                       _saveHistory(
+  //                         SearchHistoryItem(
+  //                             type: "trending",
+  //                             title: keyword,
+  //                             keyword: keyword,
+  //                             searchMode: "or"),
+  //                       );
+  //
+  //                       Navigator.push(
+  //                         context,
+  //                         MaterialPageRoute(
+  //                           builder: (_) => GenreVideosScreen(
+  //                             categoryId: "",
+  //                             categoryTitle: keyword,
+  //                             keyword: keyword,
+  //                             searchMode: "or",
+  //                           ),
+  //                         ),
+  //                       );
+  //                     },
+  //                   ),
+  //                 );
+  //               }).toList(),
+  //             ),
+  //
+  //             // トグル
+  //             if (hasMore) ...[
+  //               Align(
+  //                 alignment: Alignment.centerLeft,
+  //                 child: Material(
+  //                   color: Colors.transparent,
+  //                   child: InkWell(
+  //                     onTap: () {
+  //                       setState(() {
+  //                         _showAllTrending = !_showAllTrending;
+  //                       });
+  //
+  //                       logger.i(
+  //                           "🔁 Trending toggle: showAll=$_showAllTrending total=${_trending.length}");
+  //                     },
+  //                     child: SizedBox(
+  //                       width: double.infinity,
+  //                       child: Padding(
+  //                         padding: const EdgeInsets.symmetric(vertical: 8),
+  //                         child: Row(
+  //                           children: [
+  //                             Icon(
+  //                               _showAllTrending
+  //                                   ? Icons.expand_less
+  //                                   : Icons.expand_more,
+  //                               size: 26,
+  //                               color: toggleColor,
+  //                             ),
+  //                             const SizedBox(width: 4),
+  //                             Text(
+  //                               _showAllTrending ? t.showPartial : t.showAll,
+  //                               style: TextStyle(
+  //                                 fontSize: 16,
+  //                                 fontWeight: FontWeight.w500,
+  //                                 color: toggleColor,
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ],
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
+
   Widget _buildTrendingChips(ThemeData theme) {
     logger.i(
         "TrendTips start _trendingLoaded=$_trendingLoaded _trending=${_trending.map((e) => e.keyword).toList()}");
@@ -595,6 +833,8 @@ class _GenreScreenState extends State<GenreScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
+
+                        // タイムスタンプ
                         Container(
                           height: 22,
                           alignment: Alignment.bottomRight,
@@ -605,6 +845,31 @@ class _GenreScreenState extends State<GenreScreen>
                               color: theme.colorScheme.onSurface
                                   .withValues(alpha: 0.6),
                             ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        // 🔥 追加：更新ボタン
+                        GestureDetector(
+                          onTap:
+                              _isRefreshingTrending ? null : _refreshTrending,
+                          child: Container(
+                            height: 22,
+                            alignment: Alignment.bottomCenter,
+                            child: _isRefreshingTrending
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : Icon(
+                                    Icons.refresh,
+                                    size: 21,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.8),
+                                  ),
                           ),
                         ),
                       ],
@@ -744,6 +1009,42 @@ class _GenreScreenState extends State<GenreScreen>
     );
   }
 
+  bool _isRefreshingTrending = false;
+
+  Future<void> _refreshTrending() async {
+    if (_isRefreshingTrending) return;
+
+    setState(() {
+      _isRefreshingTrending = true;
+    });
+
+    try {
+      final api = context.read<YouTubeApiService>();
+
+      final result = await api.fetchTrendingKeywords(
+        regionCode: context.read<RegionProvider>().regionCode,
+        max: 10,
+        forceRefresh: true,
+      );
+
+      setState(() {
+        _trending = result;
+        _trendingLoaded = true;
+
+        // 🔥 追加：表示リセット
+        _showAllTrending = false;
+
+        _trendingTimestamp = _buildTrendingNow();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshingTrending = false;
+        });
+      }
+    }
+  }
+
   // ----------------------------------------------------
   // 🔥 グループセクション
   // ----------------------------------------------------
@@ -853,33 +1154,24 @@ class _GenreScreenState extends State<GenreScreen>
                   searchMode: "or"),
             );
 
-            final groupId = group.groupId;
-            final baseCatId = baseCategoryIdsJa[groupId]!.toString();
+            final categoryId = cat.id.toString();
+            final categoryTitle = cat.name;
+            final keyword = cat.query;
 
-            if (cat.isOfficial && cat.query == null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => GenreVideosScreen(
-                    categoryId: cat.id.toString(),
-                    categoryTitle: cat.name,
-                    searchMode: "or",
-                  ),
+            logger.i(
+                "[_buildCategoryTile to GenreVideosScreen]categoryId=$categoryId "
+                "categoryTitle=$categoryTitle keyword=$keyword searchMode=or");
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GenreVideosScreen(
+                  categoryId: categoryId,
+                  categoryTitle: categoryTitle,
+                  keyword: keyword,
+                  searchMode: "or",
                 ),
-              );
-            } else {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => GenreVideosScreen(
-                    categoryId: baseCatId,
-                    categoryTitle: cat.name,
-                    keyword: cat.query,
-                    searchMode: "or",
-                  ),
-                ),
-              );
-            }
+              ),
+            );
           },
           child: Stack(
             children: [
@@ -1237,18 +1529,17 @@ class _GenreScreenState extends State<GenreScreen>
                 ),
               ),
             ),
-            // if (!_focusNode.hasFocus)
-            //   SliverToBoxAdapter(
-            //     child: Padding(
-            //       padding: const EdgeInsets.fromLTRB(0, 26, 16, 0),
-            //       child: _buildTrendingChips(theme),
-            //     ),
-            //   ),
             if (!_focusNode.hasFocus)
               SliverToBoxAdapter(
                 child: Padding(
-                  // padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                  padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(0, 26, 16, 0),
+                  child: _buildTrendingChips(theme),
+                ),
+              ),
+            if (!_focusNode.hasFocus)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                   child: Row(
                     children: [
                       IntrinsicWidth(
