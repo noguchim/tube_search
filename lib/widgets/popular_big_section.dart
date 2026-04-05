@@ -150,6 +150,7 @@ class _BigGrid extends StatelessWidget {
           video: video,
           rank: rank,
           onTap: () {
+            Feedback.forTap(context);
             context.read<ExpandedVideoController>().open(video, rank);
           },
         );

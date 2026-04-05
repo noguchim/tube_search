@@ -1,7 +1,7 @@
 name: tube_search
 description: youtube search
 publish_to: 'none'
-version: 1.7.2+29
+version: 1.7.4+31
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
