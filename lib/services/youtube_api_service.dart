@@ -196,7 +196,6 @@ class YouTubeApiService {
     logger.i("💾 SearchWithStats: start");
 
     final kw = keyword.trim();
-    // if ((categoryId != "12" || categoryId != "1300") && kw.isEmpty) return [];
     if (kw.isEmpty) return [];
 
     final now = DateTime.now();
@@ -229,7 +228,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos_v5.php",
+      "/api/youtube_keyword_videos_v6.php",
       params,
     );
 
@@ -252,8 +251,6 @@ class YouTubeApiService {
         score: (v["score"] as num?)?.toDouble(),
       );
     }).toList();
-
-    list.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
 
     _searchCache[key] = list;
     _searchFetchedAt[key] = now;

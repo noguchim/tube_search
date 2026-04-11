@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/youtube_video.dart';
 import '../providers/density_provider.dart';
@@ -53,12 +55,13 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   int _lastLimit = 20;
 
   bool _isSearching = false;
-  Completer<List<Map<String, dynamic>>>? _activeRequest;
   bool _showTopBar = true;
+  String _sort = "score";
 
   @override
   void initState() {
     super.initState();
+    _loadSort();
     _futureVideos = _loadVideos();
     _scrollController.addListener(_onScroll);
   }
@@ -101,53 +104,6 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     }
   }
 
-  String shortTitle(String t) => t.length > 12 ? '${t.substring(0, 12)}…' : t;
-
-  // ---------------------------------------------------------
-  // 🔥 API 統合フェッチ（キーワード or 人気ジャンル）
-  // ---------------------------------------------------------
-  // Future<List<YouTubeVideo>> _loadVideos({bool forceRefresh = false}) async {
-  //   final kw = widget.keyword?.trim();
-  //   final cat = widget.categoryId == "0" ? "" : widget.categoryId;
-  //
-  //   final region = context.read<RegionProvider>().regionCode;
-  //   final api = context.read<YouTubeApiService>();
-  //   final iap = context.read<IapProvider>();
-  //
-  //   final limit = LimitService.videoListLimit(iap);
-  //
-  //   if (kw != null && kw.isNotEmpty) {
-  //     var search = await api.searchWithStats(
-  //       categoryId: cat,
-  //       keyword: kw,
-  //       searchMode: widget.searchMode,
-  //       maxResults: limit,
-  //       regionCode: region,
-  //       forceRefresh: forceRefresh,
-  //     );
-  //
-  //     if (search.isEmpty && cat.isNotEmpty) {
-  //       search = await api.searchWithStats(
-  //         categoryId: "",
-  //         keyword: kw,
-  //         searchMode: widget.searchMode,
-  //         maxResults: limit,
-  //         regionCode: region,
-  //         forceRefresh: forceRefresh,
-  //       );
-  //     }
-  //
-  //     return search.take(limit).toList();
-  //   }
-  //
-  //   return api.fetchPopularVideos(
-  //     videoCategoryId: cat,
-  //     maxResults: limit,
-  //     regionCode: region,
-  //     forceRefresh: forceRefresh,
-  //   );
-  // }
-
   Future<List<YouTubeVideo>> _loadVideos({bool forceRefresh = false}) async {
     final kw = widget.keyword?.trim();
     final cat = widget.categoryId == "0" ? "" : widget.categoryId;
@@ -162,23 +118,11 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     logger.i(
         "[_loadVideos]query=$kw mode=$mode max=$limit region=$region categoryId=$cat");
 
-    // // 🔥 10億再生/shortsは強制search
-    // if (cat == "12" || cat == "1300") {
-    //   final result = await api.searchWithStats(
-    //     categoryId: cat,
-    //     keyword: "",
-    //     // ←空でOK
-    //     searchMode: "or",
-    //     maxResults: limit,
-    //     regionCode: region,
-    //     forceRefresh: forceRefresh,
-    //   );
-    //   return result.take(limit).toList();
-    // }
+    List<YouTubeVideo> list = [];
 
     // 通常検索
     if (kw != null && kw.isNotEmpty) {
-      var search = await api.searchWithStats(
+      list = await api.searchWithStats(
         categoryId: cat,
         keyword: kw,
         searchMode: widget.searchMode,
@@ -187,8 +131,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         forceRefresh: forceRefresh,
       );
 
-      if (search.isEmpty && cat.isNotEmpty) {
-        search = await api.searchWithStats(
+      if (list.isEmpty && cat.isNotEmpty) {
+        list = await api.searchWithStats(
           categoryId: "",
           keyword: kw,
           searchMode: widget.searchMode,
@@ -198,16 +142,93 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         );
       }
 
-      return search.take(limit).toList();
+      final result = list.take(limit).toList();
+      return _applySort(result);
     }
 
-    // 通常カテゴリ
-    return api.fetchPopularVideos(
-      videoCategoryId: cat,
-      maxResults: limit,
-      regionCode: region,
-      forceRefresh: forceRefresh,
-    );
+    return [];
+  }
+
+  Future<void> _loadSort() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString("sort_genre") ?? "score";
+
+    if (!mounted) return;
+
+    setState(() {
+      _sort = saved;
+    });
+  }
+
+  Future<void> _saveSort(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("sort_genre", value);
+  }
+
+  List<YouTubeVideo> _applySort(List<YouTubeVideo> list) {
+    switch (_sort) {
+      case "views":
+        list.sort((a, b) => (b.viewCount ?? 0).compareTo(a.viewCount ?? 0));
+        for (int i = 0; i < list.length; i++) {
+          final v = list[i];
+          final formattedDate = v.publishedAt != null
+              ? DateFormat('yyyy-MM-dd HH:mm').format(v.publishedAt!)
+              : "-";
+
+          logger.i(
+            "[$i] "
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
+          );
+        }
+        break;
+
+      case "date":
+        list.sort((a, b) => (b.publishedAt ?? DateTime(0))
+            .compareTo(a.publishedAt ?? DateTime(0)));
+        for (int i = 0; i < list.length; i++) {
+          final v = list[i];
+          final formattedDate = v.publishedAt != null
+              ? DateFormat('yyyy-MM-dd HH:mm').format(v.publishedAt!)
+              : "-";
+
+          logger.i(
+            "[$i] "
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
+          );
+        }
+        break;
+
+      case "score":
+      default:
+        list.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+        for (int i = 0; i < list.length; i++) {
+          final v = list[i];
+          final formattedDate = v.publishedAt != null
+              ? DateFormat('yyyy-MM-dd HH:mm').format(v.publishedAt!)
+              : "-";
+
+          logger.i(
+            "[$i] "
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
+          );
+        }
+    }
+
+    return list;
+  }
+
+  String _short(String s, [int max = 50]) {
+    if (s.length <= max) return s;
+    return "${s.substring(0, max)}...";
   }
 
   // ---------------------------------------------------------
@@ -385,7 +406,15 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               offset: _showTopBar ? Offset.zero : const Offset(0, -1.1),
               child: TopBarBack(
                 title: topTitle,
+                currentSort: _sort,
                 onBack: Navigator.of(context).pop,
+                onSortSelected: (value) async {
+                  setState(() {
+                    _sort = value;
+                    _futureVideos = _loadVideos(forceRefresh: true);
+                  });
+                  await _saveSort(value); // 🔥 追加
+                },
               ),
             ),
           ),

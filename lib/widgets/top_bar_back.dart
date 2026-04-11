@@ -4,10 +4,16 @@ class TopBarBack extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
 
+  // 🔥 ソート
+  final ValueChanged<String>? onSortSelected;
+  final String currentSort; // ← 追加（必須）
+
   const TopBarBack({
     super.key,
     required this.title,
     required this.onBack,
+    this.onSortSelected,
+    this.currentSort = "score", // ← デフォルト
   });
 
   @override
@@ -19,10 +25,9 @@ class TopBarBack extends StatelessWidget {
     final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
 
     return Container(
-      height: safeTop + 50, // ← ★ Tabs より低くてOK
+      height: safeTop + 50,
       padding: EdgeInsets.fromLTRB(8, safeTop, 8, 0),
       decoration: BoxDecoration(
-        // color: const Color(0xFF111111),
         color: bgColor,
         border: Border(
           bottom: BorderSide(
@@ -36,6 +41,7 @@ class TopBarBack extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // ← 戻る
             InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
@@ -51,7 +57,10 @@ class TopBarBack extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(width: 8),
+
+            // タイトル
             Expanded(
               child: Text(
                 title,
@@ -65,9 +74,52 @@ class TopBarBack extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 40), // バランス用
+
+            // 右側メニュー
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onSelected: onSortSelected,
+                itemBuilder: (context) => [
+                  _buildItem(context, "score", "スコア順"),
+                  _buildItem(context, "views", "再生順"),
+                  _buildItem(context, "date", "新着順"),
+                ],
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  // =============================
+  // 🔥 チェック付きメニュー
+  // =============================
+  PopupMenuItem<String> _buildItem(
+      BuildContext context, String value, String label) {
+    final isSelected = currentSort == value;
+
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            child: isSelected
+                ? const Icon(Icons.check, size: 18)
+                : const SizedBox(),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }
