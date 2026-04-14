@@ -31,10 +31,10 @@ class PopularVideosScreen extends StatefulWidget {
   });
 
   @override
-  State<PopularVideosScreen> createState() => _PopularVideosScreenState();
+  State<PopularVideosScreen> createState() => PopularVideosScreenState();
 }
 
-class _PopularVideosScreenState extends State<PopularVideosScreen>
+class PopularVideosScreenState extends State<PopularVideosScreen>
     with AutomaticKeepAliveClientMixin<PopularVideosScreen> {
   @override
   bool get wantKeepAlive => true;
@@ -47,6 +47,16 @@ class _PopularVideosScreenState extends State<PopularVideosScreen>
   late final IapProvider _iapProvider;
   late final RegionProvider _regionProvider;
   double _lastOffset = 0;
+
+  void scrollToTop() {
+    if (!_scrollController.hasClients) return;
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   void initState() {

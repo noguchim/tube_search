@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'Trending'**
   String get navPopular;
 
+  /// No description provided for @navTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get navTopic;
+
   /// No description provided for @navGenre.
   ///
   /// In en, this message translates to:

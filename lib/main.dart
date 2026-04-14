@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
+import 'package:tube_search/screens/topic_screen.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
@@ -181,11 +182,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   double _pageProgress = 0.0;
   bool _isTapNavigating = false;
   final GlobalKey _topBarKey = GlobalKey();
+  final _popularKey = GlobalKey<PopularVideosScreenState>();
 
   List<Widget> get _screens => [
         PopularVideosScreen(
           onScrollChanged: _onScrollChanged,
+          key: _popularKey,
         ),
+        TopicScreen(onScrollChanged: _onScrollChanged),
         GenreScreen(onScrollChanged: _onScrollChanged),
         const FavoritesScreen(),
         const SettingsScreen(),
@@ -353,9 +357,42 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       selectedIndex: _selectedIndex,
                       pageProgress: _pageProgress,
                       isTapNavigating: _isTapNavigating,
+                      // onTabSelected: (index) {
+                      //   Feedback.forTap(context);
+                      //
+                      //   setState(() {
+                      //     _isTapNavigating = true;
+                      //     _selectedIndex = index;
+                      //     _pageProgress = index.toDouble();
+                      //   });
+                      //
+                      //   _pageController.jumpToPage(index);
+                      //
+                      //   if (mounted) {
+                      //     setState(() {
+                      //       _isTapNavigating = false;
+                      //       _pageProgress = index.toDouble();
+                      //     });
+                      //   }
+                      // },
+
                       onTabSelected: (index) {
                         Feedback.forTap(context);
 
+                        // ==================================================
+                        // 🔥 同じタブ → スクロールTOP
+                        // ==================================================
+                        if (_selectedIndex == index) {
+                          if (index == 0) {
+                            _popularKey.currentState?.scrollToTop();
+                          }
+                          // 👉 他タブも後で追加できる
+                          return;
+                        }
+
+                        // ==================================================
+                        // 🔥 別タブ → 通常遷移
+                        // ==================================================
                         setState(() {
                           _isTapNavigating = true;
                           _selectedIndex = index;

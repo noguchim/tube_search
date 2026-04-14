@@ -12,6 +12,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navPopular => '人気急上昇';
 
   @override
+  String get navTopic => 'トピック';
+
+  @override
   String get navGenre => 'ジャンル';
 
   @override

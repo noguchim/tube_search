@@ -12,6 +12,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navPopular => 'Trending';
 
   @override
+  String get navTopic => 'Topic';
+
+  @override
   String get navGenre => 'Genres';
 
   @override
