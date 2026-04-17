@@ -182,17 +182,28 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   double _pageProgress = 0.0;
   bool _isTapNavigating = false;
   final GlobalKey _topBarKey = GlobalKey();
+
+  final _topicKey = GlobalKey<TopicScreenState>();
   final _popularKey = GlobalKey<PopularVideosScreenState>();
+  final _genreKey = GlobalKey<GenreScreenState>();
+  final _favoriteKey = GlobalKey<FavoritesScreenState>();
+  final _settingsKey = GlobalKey<SettingsScreenState>();
 
   List<Widget> get _screens => [
+        TopicScreen(
+          onScrollChanged: _onScrollChanged,
+          key: _topicKey,
+        ),
         PopularVideosScreen(
           onScrollChanged: _onScrollChanged,
           key: _popularKey,
         ),
-        TopicScreen(onScrollChanged: _onScrollChanged),
-        GenreScreen(onScrollChanged: _onScrollChanged),
-        const FavoritesScreen(),
-        const SettingsScreen(),
+        GenreScreen(
+          onScrollChanged: _onScrollChanged,
+          key: _genreKey,
+        ),
+        FavoritesScreen(onScrollChanged: _onScrollChanged, key: _favoriteKey),
+        SettingsScreen(key: _settingsKey),
       ];
 
   @override
@@ -253,31 +264,42 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     logger.w("🚀 Prefetch trigger AFTER Region init: $region");
 
-    _prefetchTrending(region);
+    _prefetchPopular(region);
   }
 
-  Future<void> _prefetchTrending(String region) async {
-    if (_trendingPrefetched) return;
-    _trendingPrefetched = true;
+  Future<void> _prefetchPopular(String region) async {
+    final api = context.read<YouTubeApiService>();
 
-    try {
-      logger.i("🔥 Trending Prefetch START (region=$region)");
-      final api = context.read<YouTubeApiService>();
-      final result = await api.fetchTrendingKeywords(
-        regionCode: region,
-        max: 10,
-      );
+    await api.fetchPopularVideos(
+      maxResults: 20,
+      regionCode: region,
+    );
 
-      if (result.isEmpty) {
-        logger.w("⚠️ Trending result is EMPTY");
-      }
-
-      logger.i("🔥 Trending Prefetch DONE");
-    } catch (e, st) {
-      logger.e("💥 Trending Prefetch ERROR: $e");
-      logger.e(st.toString());
-    }
+    logger.i("🔥 Popular Prefetch DONE");
   }
+
+  // Future<void> _prefetchTrending(String region) async {
+  //   if (_trendingPrefetched) return;
+  //   _trendingPrefetched = true;
+  //
+  //   try {
+  //     logger.i("🔥 Trending Prefetch START (region=$region)");
+  //     final api = context.read<YouTubeApiService>();
+  //     final result = await api.fetchTrendingKeywords(
+  //       regionCode: region,
+  //       max: 10,
+  //     );
+  //
+  //     if (result.isEmpty) {
+  //       logger.w("⚠️ Trending result is EMPTY");
+  //     }
+  //
+  //     logger.i("🔥 Trending Prefetch DONE");
+  //   } catch (e, st) {
+  //     logger.e("💥 Trending Prefetch ERROR: $e");
+  //     logger.e(st.toString());
+  //   }
+  // }
 
   Future<void> resetReviewDebugState() async {
     final prefs = await SharedPreferences.getInstance();
@@ -311,6 +333,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _onScrollChanged(bool isScrollingDown) {
     if (_isScrollingDown != isScrollingDown && mounted) {
       setState(() => _isScrollingDown = isScrollingDown);
+    }
+  }
+
+  void _handleReselectTab(int index) {
+    switch (index) {
+      case 0:
+        _topicKey.currentState?.scrollToTop();
+        break;
+      case 1:
+        _popularKey.currentState?.scrollToTop();
+        break;
+      case 2:
+        _genreKey.currentState?.scrollToTop();
+        break;
+      case 3:
+        _favoriteKey.currentState?.scrollToTop();
+        break;
+      case 4:
+        _settingsKey.currentState?.scrollToTop();
+        break;
     }
   }
 
@@ -357,25 +399,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       selectedIndex: _selectedIndex,
                       pageProgress: _pageProgress,
                       isTapNavigating: _isTapNavigating,
-                      // onTabSelected: (index) {
-                      //   Feedback.forTap(context);
-                      //
-                      //   setState(() {
-                      //     _isTapNavigating = true;
-                      //     _selectedIndex = index;
-                      //     _pageProgress = index.toDouble();
-                      //   });
-                      //
-                      //   _pageController.jumpToPage(index);
-                      //
-                      //   if (mounted) {
-                      //     setState(() {
-                      //       _isTapNavigating = false;
-                      //       _pageProgress = index.toDouble();
-                      //     });
-                      //   }
-                      // },
-
                       onTabSelected: (index) {
                         Feedback.forTap(context);
 
@@ -383,10 +406,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         // 🔥 同じタブ → スクロールTOP
                         // ==================================================
                         if (_selectedIndex == index) {
-                          if (index == 0) {
-                            _popularKey.currentState?.scrollToTop();
-                          }
-                          // 👉 他タブも後で追加できる
+                          _handleReselectTab(index);
                           return;
                         }
 

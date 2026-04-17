@@ -47,6 +47,7 @@ flutter:
     - assets/images/coming_soon.png
     - assets/images/splash_icon.png
     - assets/images/logo.png
+    - assets/images/no_image.png
 
   fonts:
     - family: NotoSansJP

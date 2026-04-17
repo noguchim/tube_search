@@ -1,4 +1,3 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/data/youtube_video.dart';
@@ -47,6 +46,9 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
   late final IapProvider _iapProvider;
   late final RegionProvider _regionProvider;
   double _lastOffset = 0;
+  List<YouTubeVideo>? _videos;
+  bool _isLoading = true;
+  Object? _error;
 
   void scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -61,7 +63,23 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
   @override
   void initState() {
     super.initState();
-    _futureVideos = _fetchVideos();
+
+    final api = context.read<YouTubeApiService>();
+    final region = context.read<RegionProvider>().regionCode;
+    final limit = LimitService.videoListLimit(context.read<IapProvider>());
+
+    final cached = api.getCachedPopular(
+      regionCode: region,
+      max: limit,
+    );
+
+    if (cached.isNotEmpty) {
+      _videos = cached;
+      _isLoading = false;
+    } else {
+      _loadVideos();
+    }
+
     _scrollController.addListener(_onScroll);
   }
 
@@ -92,20 +110,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     super.dispose();
   }
-
-  // void _onScroll() {
-  //   if (!_scrollController.hasClients) return;
-  //
-  //   // ===== 既存：スクロール方向検知 =====
-  //   final direction = _scrollController.position.userScrollDirection;
-  //   if (direction == ScrollDirection.reverse && !_isScrollingDown) {
-  //     _isScrollingDown = true;
-  //     widget.onScrollChanged?.call(true);
-  //   } else if (direction == ScrollDirection.forward && _isScrollingDown) {
-  //     _isScrollingDown = false;
-  //     widget.onScrollChanged?.call(false);
-  //   }
-  // }
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
@@ -143,6 +147,31 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     _lastOffset = offset;
   }
 
+  Future<void> _loadVideos({bool forceRefresh = false}) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final videos = await _fetchVideos(forceRefresh: forceRefresh);
+
+      if (!mounted) return;
+
+      setState(() {
+        _videos = videos;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = e;
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<List<YouTubeVideo>> _fetchVideos({bool forceRefresh = false}) async {
     final iap = context.read<IapProvider>();
     final limit = LimitService.videoListLimit(iap);
@@ -158,63 +187,45 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     return videos.take(limit).toList();
   }
 
-  Future<void> _refreshVideos() async {
-    try {
-      final iap = context.read<IapProvider>();
-      final limit = LimitService.videoListLimit(iap);
-
-      final online = await _isOnline();
-
-      final region = context.read<RegionProvider>().regionCode;
-      final api = context.read<YouTubeApiService>();
-
-      final videos = await api.fetchPopularVideos(
-        maxResults: limit,
-        regionCode: region,
-        forceRefresh: !online,
-      );
-
-      final trimmed = videos.take(limit).toList();
-
-      setState(() {
-        _futureVideos = Future.value(trimmed);
-      });
-    } catch (e) {
-      setState(() {
-        _futureVideos = Future.error(e);
-      });
-    }
-  }
-
   void _setFutureVideos(Future<List<YouTubeVideo>> future) {
     setState(() {
       _futureVideos = future;
     });
   }
 
-  Future<bool> _isOnline() async {
-    final result = await Connectivity().checkConnectivity();
-    return result == ConnectivityResult.mobile ||
-        result == ConnectivityResult.wifi ||
-        result == ConnectivityResult.ethernet;
-  }
-
   void _onIapChanged() {
-    if (!mounted) return;
-    final currentLimit = LimitService.videoListLimit(_iapProvider);
-    if (currentLimit == _lastLimit) return;
+    final limit = LimitService.videoListLimit(_iapProvider);
 
-    _lastLimit = currentLimit;
-    _setFutureVideos(_fetchVideos(forceRefresh: true));
+    final api = context.read<YouTubeApiService>();
+    final region = _regionProvider.regionCode;
+
+    final cached = api.getCachedPopular(
+      regionCode: region,
+      max: limit,
+    );
+
+    if (cached.isNotEmpty) {
+      _setFutureVideos(Future.value(cached));
+    } else {
+      _setFutureVideos(_fetchVideos(forceRefresh: true));
+    }
   }
 
   void _onRegionChanged() {
-    if (!mounted) return;
     final region = _regionProvider.regionCode;
-    if (region == _currentRegion) return;
 
-    _currentRegion = region;
-    _setFutureVideos(_fetchVideos(forceRefresh: true));
+    final api = context.read<YouTubeApiService>();
+
+    final cached = api.getCachedPopular(
+      regionCode: region,
+      max: _lastLimit,
+    );
+
+    if (cached.isNotEmpty) {
+      _setFutureVideos(Future.value(cached));
+    } else {
+      _setFutureVideos(_fetchVideos(forceRefresh: true));
+    }
   }
 
   Widget _densityControl(List<YouTubeVideo> videos) {
@@ -240,106 +251,115 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     context.watch<FavoritesService>();
 
     final density = context.watch<DensityProvider>().density;
-
     final expanded = context.watch<ExpandedVideoController>();
+
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final shortestSide = media.size.shortestSide;
     final isTablet = shortestSide >= 600;
     final extraTopGap = isTablet ? 12.0 : 8.0;
+
     final double topBarOffset =
         safeTop + TopBarSpec.barContentHeight + extraTopGap;
+
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
+    // =========================================================
+    // 🔥 状態分岐（ここが本体）
+    // =========================================================
+
+    Widget body;
+
+    // 🔄 ローディング
+    if (_isLoading) {
+      body = const Center(child: CircularProgressIndicator());
+    }
+
+    // ❌ エラー
+    else if (_error != null) {
+      body = NetworkErrorView(
+        onRetry: () {
+          _loadVideos(forceRefresh: true);
+        },
+      );
+    }
+
+    // ⚠ データなし
+    else if (_videos == null || _videos!.isEmpty) {
+      body = Center(
+        child: Text(
+          AppLocalizations.of(context)!.noVideosFound,
+          style: TextStyle(
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+          ),
+        ),
+      );
+    }
+
+    // ✅ 正常表示
+    else {
+      final videos = _videos!;
+
+      body = Stack(
+        children: [
+          // =============================
+          // 背面：リスト
+          // =============================
+          RefreshIndicator(
+            onRefresh: () => _loadVideos(forceRefresh: true),
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: topBarOffset),
+                ),
+                _densityControl(videos),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: UISpacing.bottomSpacer(
+                      context,
+                      hasFab: true,
+                      hasAd: !adsRemoved,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // =============================
+          // 前面：Expanded Overlay
+          // =============================
+          if (expanded.video != null)
+            Positioned.fill(
+              child: ExpandedVideoOverlay(
+                video: expanded.video!,
+                rank: expanded.rank!,
+                onClose: () {
+                  context.read<ExpandedVideoController>().close();
+                },
+              ),
+            ),
+        ],
+      );
+    }
+
+    // =========================================================
+    // 🧩 Scaffold
+    // =========================================================
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
+        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45),
         child: DensityFab(
           density: density,
           onToggle: () => context.read<DensityProvider>().toggle(),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: FutureBuilder<List<YouTubeVideo>>(
-        future: _futureVideos,
-        builder: (context, snapshot) {
-          // 🔄 ローディング
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          // ❌ エラー時（機内モード含む）
-          if (snapshot.hasError) {
-            return NetworkErrorView(
-              onRetry: () {
-                _setFutureVideos(_fetchVideos(forceRefresh: true));
-              },
-            );
-          }
-
-          // ⚠ データなし
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Text(
-                AppLocalizations.of(context)!.noVideosFound,
-                style: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.8),
-                ),
-              ),
-            );
-          }
-
-          final videos = snapshot.data!;
-
-          return Stack(
-            children: [
-              // =============================
-              // 背面：既存のリスト（今のコードそのまま）
-              // =============================
-              RefreshIndicator(
-                onRefresh: _refreshVideos,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: SizedBox(height: topBarOffset),
-                    ),
-                    _densityControl(videos),
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: UISpacing.bottomSpacer(
-                          context,
-                          hasFab: true,
-                          hasAd: !adsRemoved,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // =============================
-              // 前面：Expanded Overlay
-              // =============================
-              if (expanded.video != null)
-                Positioned.fill(
-                  child: ExpandedVideoOverlay(
-                    video: expanded.video!,
-                    rank: expanded.rank!,
-                    onClose: () {
-                      context.read<ExpandedVideoController>().close();
-                    },
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
+      body: body,
     );
   }
 }

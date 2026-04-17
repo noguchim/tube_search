@@ -98,6 +98,12 @@ abstract class AppLocalizations {
     Locale('ja')
   ];
 
+  /// No description provided for @newPickupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Picks'**
+  String get newPickupTitle;
+
   /// No description provided for @navPopular.
   ///
   /// In en, this message translates to:

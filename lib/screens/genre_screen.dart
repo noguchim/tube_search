@@ -16,6 +16,7 @@ import '../providers/region_provider.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
+import '../widgets/top_bar.dart';
 import 'genre_videos_screen.dart';
 
 class GenreScreen extends StatefulWidget {
@@ -24,10 +25,10 @@ class GenreScreen extends StatefulWidget {
   const GenreScreen({super.key, this.onScrollChanged});
 
   @override
-  State<GenreScreen> createState() => _GenreScreenState();
+  State<GenreScreen> createState() => GenreScreenState();
 }
 
-class _GenreScreenState extends State<GenreScreen>
+class GenreScreenState extends State<GenreScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   String _lastRegion = "JP";
   final ScrollController _scrollController = ScrollController();
@@ -63,6 +64,16 @@ class _GenreScreenState extends State<GenreScreen>
 
   @override
   bool get wantKeepAlive => true;
+
+  void scrollToTop() {
+    if (!_scrollController.hasClients) return;
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   void initState() {
@@ -1500,6 +1511,14 @@ class _GenreScreenState extends State<GenreScreen>
             showHistory ||
             (_searchCtrl.text.isNotEmpty && _suggestions.isNotEmpty));
 
+    final media = MediaQuery.of(context);
+    final safeTop = media.padding.top;
+    final shortestSide = media.size.shortestSide;
+    final isTablet = shortestSide >= 600;
+    final extraTopGap = isTablet ? 12.0 : 8.0;
+    final double topBarOffset =
+        safeTop + TopBarSpec.barContentHeight + extraTopGap;
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: GestureDetector(
@@ -1511,7 +1530,7 @@ class _GenreScreenState extends State<GenreScreen>
           key: const PageStorageKey("genre_scroll"),
           controller: _scrollController,
           slivers: [
-            const SliverToBoxAdapter(child: SizedBox(height: 60)),
+            SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
             SliverPersistentHeader(
               pinned: true,
               delegate: PinnedSearchHeaderDelegate(
@@ -1529,17 +1548,17 @@ class _GenreScreenState extends State<GenreScreen>
                 ),
               ),
             ),
+            // if (!_focusNode.hasFocus)
+            //   SliverToBoxAdapter(
+            //     child: Padding(
+            //       padding: const EdgeInsets.fromLTRB(0, 26, 16, 0),
+            //       child: _buildTrendingChips(theme),
+            //     ),
+            //   ),
             if (!_focusNode.hasFocus)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 26, 16, 0),
-                  child: _buildTrendingChips(theme),
-                ),
-              ),
-            if (!_focusNode.hasFocus)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Row(
                     children: [
                       IntrinsicWidth(
@@ -1647,10 +1666,6 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     final keyboardHeight = media.viewInsets.bottom;
     final isLandscape = media.orientation == Orientation.landscape;
     final bg = Theme.of(context).scaffoldBackgroundColor;
-
-    // final safeTopAdjusted = (safeTop * 0.7).clamp(14.0, 28.0);
-    final safeTopAdjusted = safeTop + 4;
-
     final shortest = media.size.shortestSide;
     final isTablet = shortest >= 600;
 
@@ -1662,7 +1677,8 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           Positioned(
             left: 0,
             right: 0,
-            top: safeTopAdjusted + _topPadding,
+            // top: safeTopAdjusted + _topPadding,
+            top: 10,
             height: _fieldHeight,
             child: searchField,
           ),
@@ -1670,7 +1686,8 @@ class PinnedSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
             Positioned(
               left: 0,
               right: 0,
-              top: safeTopAdjusted + _topPadding + _fieldHeight + _gap,
+              // top: safeTopAdjusted + _topPadding + _fieldHeight + _gap,
+              top: 10,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxHeight: media.size.height - keyboardHeight - 120,

@@ -22,7 +22,9 @@ enum _FavMenuAction {
 }
 
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({super.key});
+  final ValueChanged<bool>? onScrollChanged;
+
+  const FavoritesScreen({super.key, this.onScrollChanged});
 
   @override
   State<FavoritesScreen> createState() => FavoritesScreenState();
@@ -31,6 +33,17 @@ class FavoritesScreen extends StatefulWidget {
 class FavoritesScreenState extends State<FavoritesScreen>
     with WidgetsBindingObserver {
   bool _isPushing = false;
+  final ScrollController _scrollController = ScrollController();
+
+  void scrollToTop() {
+    if (!_scrollController.hasClients) return;
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   void initState() {
@@ -46,6 +59,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
     super.dispose();
   }
 

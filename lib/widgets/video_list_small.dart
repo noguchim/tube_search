@@ -66,8 +66,11 @@ class VideoListTileSmall extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final viewText =
-        formatViewCount(context, (video.viewCount ?? '0').toString());
+    final viewText = formatViewCount(
+      context,
+      (video.viewCount ?? 0).toString(),
+      format: ViewCountFormat.full,
+    );
     final isFav = fav.isFavoriteSync(id);
 
     const double thumbW = 136;

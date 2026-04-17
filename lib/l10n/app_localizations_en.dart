@@ -9,6 +9,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get newPickupTitle => 'New Picks';
+
+  @override
   String get navPopular => 'Trending';
 
   @override

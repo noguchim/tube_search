@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
-import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
@@ -10,20 +9,27 @@ import '../utils/app_logger.dart';
 import '../utils/format_published_ago.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
-import '../utils/rank_badge.dart';
-import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 
-class VideoListTile extends StatelessWidget {
+class VideoListTopic extends StatelessWidget {
   final YouTubeVideo video;
   final int rank;
 
-  const VideoListTile({
+  const VideoListTopic({
     super.key,
     required this.video,
     required this.rank,
   });
+
+  String separator(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    if (locale.languageCode == 'ja') {
+      return '・';
+    } else {
+      return ' • ';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +45,21 @@ class VideoListTile extends StatelessWidget {
 
     final BorderSide borderSide = BorderSide(
       color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.black.withValues(alpha: 0.05),
+          ? Colors.white.withValues(alpha: 0.30)
+          : Colors.black.withValues(alpha: 0.45),
       width: 1,
     );
 
     final List<BoxShadow> shadows = [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.55),
-        blurRadius: 16,
-        offset: const Offset(0, 10),
+        color: Colors.black.withValues(alpha: 0.25),
+        blurRadius: 6,
+        offset: const Offset(0, 2),
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.10),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
       ),
     ];
 
@@ -57,16 +68,12 @@ class VideoListTile extends StatelessWidget {
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
     final timeAgo = formatPublishedAgo(video.publishedAt);
-    final durationText =
-        (video.durationSeconds != null && video.durationSeconds! > 0)
-            ? formatDuration(video.durationSeconds!)
-            : "--:--";
-
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
-      format: ViewCountFormat.full,
+      format: ViewCountFormat.compact,
     );
+    final viewAndTime = '$viewText${separator(context)}$timeAgo';
 
     final isFav = fav.isFavoriteSync(id);
 
@@ -84,13 +91,12 @@ class VideoListTile extends StatelessWidget {
       }
     }
 
-    // final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
     bool isPressed = false;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
-        // width: cardWidth,
+        width: 240,
         child: Container(
           decoration: BoxDecoration(
             color: cardColor,
@@ -169,8 +175,6 @@ class VideoListTile extends StatelessWidget {
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 6, vertical: 2),
-                                          margin:
-                                              const EdgeInsets.only(right: 4),
                                           decoration: BoxDecoration(
                                             color: Colors.black
                                                 .withValues(alpha: 0.75),
@@ -178,25 +182,7 @@ class VideoListTile extends StatelessWidget {
                                                 BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            timeAgo,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.75),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            durationText,
+                                            viewAndTime,
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 13,
@@ -208,12 +194,24 @@ class VideoListTile extends StatelessWidget {
                                     ),
                                   ),
 
-                                  // Rank
+                                  // ❤️ お気に入り（サムネ右上）
                                   Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: IgnorePointer(
-                                      child: rankBadge(context, rank),
+                                    top: 6,
+                                    right: 6,
+                                    child: GestureDetector(
+                                      onTap: () => handleFavoriteTap(
+                                        context,
+                                        video: video,
+                                      ),
+                                      child: FavoriteButtonOverlay(
+                                        isFavorite: isFav,
+                                        showBackground: true,
+                                        scale: 0.8,
+                                        onTap: () => handleFavoriteTap(
+                                          context,
+                                          video: video,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -241,7 +239,7 @@ class VideoListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 13,
                           color: onSurface,
                         ),
                       ),
@@ -252,65 +250,8 @@ class VideoListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: onSurface.withValues(alpha: 0.72),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 28,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              bottom: -8,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => handleFavoriteTap(
-                                  context,
-                                  video: video,
-                                ),
-                                child: SizedBox(
-                                  width: 44,
-                                  height: 44,
-                                  child: Center(
-                                    child: FavoriteButtonOverlay(
-                                      isFavorite: isFav,
-                                      showBackground: false,
-                                      scale: 1.2,
-                                      onTap: () => handleFavoriteTap(
-                                        context,
-                                        video: video,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Row(
-                                children: [
-                                  PopularityChip(
-                                    popularity: video.popularity,
-                                    fontSize: UIScale.font(context, 18),
-                                    iconSize: UIScale.icon(context, 18),
-                                    height: UIScale.height(context, 24),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    viewText,
-                                    style: TextStyle(
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.bold,
-                                      color: onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ],

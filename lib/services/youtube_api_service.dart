@@ -20,7 +20,7 @@ class YouTubeApiService {
   // 人気動画キャッシュ
   // -------------------------
   final Map<String, List<YouTubeVideo>> _popularCache = {};
-  final Map<String, DateTime> _popularFetchedAt = {};
+  final Map<String, DateTime> _popularCacheTime = {};
   static const Duration _popularCacheTTL = Duration(minutes: 10);
 
   final Map<String, List<YouTubeVideo>> _searchCache = {};
@@ -89,6 +89,24 @@ class YouTubeApiService {
   // ============================================================
   // 1️⃣ 人気動画（PHP モジュールを経由）
   // ============================================================
+  List<YouTubeVideo> getCachedPopular({
+    required String regionCode,
+    required int max,
+  }) {
+    final key = "$regionCode-$max";
+
+    final cached = _popularCache[key];
+    final time = _popularCacheTime[key];
+
+    if (cached == null || time == null) return [];
+
+    if (DateTime.now().difference(time) > _popularCacheTTL) {
+      return [];
+    }
+
+    return cached;
+  }
+
   Future<List<YouTubeVideo>> fetchPopularVideos({
     String regionCode = "JP",
     int maxResults = 50,
@@ -108,8 +126,8 @@ class YouTubeApiService {
 
     if (!forceRefresh &&
         _popularCache.containsKey(key) &&
-        _popularFetchedAt.containsKey(key) &&
-        now.difference(_popularFetchedAt[key]!) < _popularCacheTTL) {
+        _popularCacheTime.containsKey(key) &&
+        now.difference(_popularCacheTime[key]!) < _popularCacheTTL) {
       logger.i("💾 PopularVideos: Using cache ($key)");
       return _popularCache[key]!;
     }
@@ -142,7 +160,7 @@ class YouTubeApiService {
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
         channelTitle: v["channelTitle"] ?? "",
-        publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
         score: (v["score"] as num?)?.toDouble(),
@@ -156,7 +174,7 @@ class YouTubeApiService {
     // ------------------------------
 
     _popularCache[key] = list;
-    _popularFetchedAt[key] = now;
+    _popularCacheTime[key] = now;
 
     return list;
   }
@@ -245,7 +263,7 @@ class YouTubeApiService {
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
         channelTitle: v["channelTitle"] ?? "",
-        publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
         score: (v["score"] as num?)?.toDouble(),
@@ -278,7 +296,7 @@ class YouTubeApiService {
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
         channelTitle: v["channelTitle"] ?? "",
-        publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
       );

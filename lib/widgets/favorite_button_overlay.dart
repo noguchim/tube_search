@@ -198,7 +198,7 @@ class _FavoriteButtonOverlayState extends State<FavoriteButtonOverlay>
                 height: baseCircleSize,
                 decoration: widget.showBackground
                     ? BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.10),
+                        color: Colors.black.withValues(alpha: 0.30),
                         shape: BoxShape.circle,
                       )
                     : null, // ← ★ 背景なし

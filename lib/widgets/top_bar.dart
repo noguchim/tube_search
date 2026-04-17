@@ -108,7 +108,7 @@ class _TopBarState extends State<TopBar> {
         color: bgColor,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             width: 1,
           ),
         ),
@@ -144,11 +144,22 @@ class _TopBarState extends State<TopBar> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.35),
+                    Colors.black.withValues(alpha: 0.35),
                     Colors.transparent,
                   ],
                 ),
               ),
+            ),
+          ),
+
+          // 上ハイライト
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
 
@@ -166,7 +177,7 @@ class _TopBarState extends State<TopBar> {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.white.withOpacity(0.08),
+                    Colors.white.withValues(alpha: 0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -185,8 +196,8 @@ class _TopBarState extends State<TopBar> {
     final l = AppLocalizations.of(context)!;
 
     final tabs = [
-      l.navPopular,
       l.navTopic,
+      l.navPopular,
       l.navGenre,
       l.navFavorites,
       l.navSettings,
@@ -232,11 +243,11 @@ class _TopBarState extends State<TopBar> {
 
   // 🔥 タブごとのカラー（TopBar内に追加）
   static const List<Color> _tabColors = [
-    Color(0xFFFF7A00), // 人気
     Color(0xFF3B82F6), // トピック
+    Color(0xFFFF7A00), // 人気
     Color(0xFF10B981), // ジャンル
     Color(0xFFEF4444), // お気に入り
-    Color(0xFF757575), // 設定
+    Color(0xFFFFFFFF), // 設定
   ];
 
   Widget _buildTab(
@@ -245,39 +256,27 @@ class _TopBarState extends State<TopBar> {
     required String label,
   }) {
     final bool isSelected = widget.selectedIndex == index;
-
     final Color baseColor = _tabColors[index];
-
     final Color highlightColor = Color.lerp(baseColor, Colors.white, 0.35)!;
-    final Color shadowColor = Color.lerp(baseColor, Colors.black, 0.15)!;
+    final Color shadowColor = Color.lerp(baseColor, Colors.black, 0.2)!;
 
     return GestureDetector(
       onTap: () {
         widget.onTabSelected?.call(index);
         _scrollToCenter(index);
       },
-
-      // 🔥 押した瞬間（縮む）
       onTapDown: (_) => setState(() => _pressedIndex = index),
       onTapUp: (_) => setState(() => _pressedIndex = null),
       onTapCancel: () => setState(() => _pressedIndex = null),
-
       child: AnimatedScale(
         duration: const Duration(milliseconds: 90),
-        scale: _pressedIndex == index ? 0.96 : 1.0, // 🔥 ここ
-
+        scale: _pressedIndex == index ? 0.96 : 1.0,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-
-          // 🔥 間隔も微調整（縦余白減らす）
+          constraints: const BoxConstraints(minWidth: 64),
           margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
-
-          // 🔥 内側も詰める
           padding: const EdgeInsets.symmetric(horizontal: 10),
-
-          // 🔥 高さダウン
-          height: 24,
-
+          height: 26,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? null : const Color(0xFF3A3A3A),
@@ -294,125 +293,130 @@ class _TopBarState extends State<TopBar> {
                   )
                 : null,
 
-            // 🔥 高さに合わせて少しだけ丸み減らす
             borderRadius: BorderRadius.circular(6),
 
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: baseColor
-                          .withOpacity(_pressedIndex == index ? 0.2 : 0.35),
-                      blurRadius: _pressedIndex == index ? 2 : 4,
-                      offset: _pressedIndex == index
-                          ? const Offset(0, 1)
-                          : const Offset(0, 2),
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     )
                   ]
-                : [],
+                : [], // ← これ重要
           ),
+          child: Stack(
+            children: [
+              // =========================
+              // 中央コンテンツ
+              // =========================
+              // Center(
+              //   child: index == 0
+              //       ? const SizedBox(
+              //           width: 45,
+              //           child: Center(
+              //             child: Icon(
+              //               Icons.home,
+              //               size: 18,
+              //               color: Colors.white, // ←後で分岐も可
+              //             ),
+              //           ),
+              //         )
+              //       : Text(
+              //           label,
+              //           style: TextStyle(
+              //             fontSize: 12,
+              //             fontWeight: FontWeight.bold,
+              //             color: isSelected
+              //                 ? (index == 4 ? Colors.black : Colors.white)
+              //                 : Colors.white,
+              //           ),
+              //         ),
+              // ),
 
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12, // 🔥 少しだけ下げるとバランス◎
-              fontWeight: FontWeight.bold,
-            ),
+              Center(
+                child: index == 0
+                    // 🏠 ホーム
+                    ? const SizedBox(
+                        width: 45,
+                        child: Center(
+                          child: Icon(
+                            Icons.home,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+
+                    // ⚙️ 設定
+                    : index == 4
+                        ? const SizedBox(
+                            width: 45,
+                            child: Center(
+                              child: Icon(
+                                Icons.settings,
+                                size: 18,
+                                color: Colors.black, // ← 指定通り黒
+                              ),
+                            ),
+                          )
+
+                        // 📝 その他
+                        : Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : Colors.white,
+                            ),
+                          ),
+              ),
+              // =========================
+              // 🔥 上ハイライト
+              // =========================
+              if (isSelected)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(6),
+                      ),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.95),
+                          Colors.white.withValues(alpha: 0.6),
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // =========================
+              // 🔥 下の締め
+              // =========================
+              if (isSelected)
+                Positioned(
+                  bottom: 0,
+                  left: 4,
+                  right: 4,
+                  child: Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      color: Colors.black.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
 }
-
-// ==========================================================
-// 🔥 アクティブタブ（既存流用）
-// ==========================================================
-// class ChromeActiveTab extends StatelessWidget {
-//   final String title;
-//   final double height;
-//
-//   const ChromeActiveTab({
-//     super.key,
-//     required this.title,
-//     required this.height,
-//   });
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final isDark = theme.brightness == Brightness.dark;
-//
-//     return SizedBox(
-//       height: height,
-//       child: CustomPaint(
-//         painter: _ChromeActiveTabPainter(
-//           bgColor: theme.scaffoldBackgroundColor,
-//           isDark: isDark,
-//         ),
-//         child: Center(
-//           child: Text(
-//             title,
-//             maxLines: 1,
-//             overflow: TextOverflow.ellipsis,
-//             style: TextStyle(
-//               fontSize: 13,
-//               fontWeight: FontWeight.w600,
-//               color: isDark ? Colors.white : Colors.black87,
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-// class _ChromeActiveTabPainter extends CustomPainter {
-//   final Color bgColor;
-//   final bool isDark;
-//
-//   _ChromeActiveTabPainter({
-//     required this.bgColor,
-//     required this.isDark,
-//   });
-//
-//   @override
-//   void paint(Canvas canvas, Size size) {
-//     final bgPaint = Paint()..color = bgColor;
-//
-//     final borderPaint = Paint()
-//       ..color = isDark
-//           ? Colors.white.withValues(alpha: 0.08)
-//           : Colors.black.withValues(alpha: 0.18)
-//       ..style = PaintingStyle.stroke
-//       ..strokeWidth = 1;
-//
-//     const double r = 9;
-//
-//     final path = Path()
-//       ..moveTo(0, size.height)
-//       ..lineTo(0, r)
-//       ..quadraticBezierTo(0, 0, r, 0)
-//       ..lineTo(size.width - r, 0)
-//       ..quadraticBezierTo(size.width, 0, size.width, r)
-//       ..lineTo(size.width, size.height)
-//       ..close();
-//
-//     canvas.drawPath(path, bgPaint);
-//
-//     final borderPath = Path()
-//       ..moveTo(0, size.height)
-//       ..lineTo(0, r)
-//       ..quadraticBezierTo(0, 0, r, 0)
-//       ..lineTo(size.width - r, 0)
-//       ..quadraticBezierTo(size.width, 0, size.width, r)
-//       ..lineTo(size.width, size.height);
-//
-//     canvas.drawPath(borderPath, borderPaint);
-//   }
-//
-//   @override
-//   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-// }
