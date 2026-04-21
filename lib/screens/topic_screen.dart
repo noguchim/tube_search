@@ -15,14 +15,10 @@ import '../widgets/top_bar.dart';
 import '../widgets/video_list_topic.dart';
 import 'genre_videos_screen.dart';
 
-int _selectedIndex = 0;
-Map<String, List<YouTubeVideo>> cache = {};
-Map<String, DateTime> cacheTime = {};
-
 final List<Map<String, String>> _genres = [
-  {"label": "音楽トレンド", "keyword": "Music"},
-  {"label": "ゲーム", "keyword": "ゲーム"},
-  {"label": "ユーチューバー", "keyword": "ユーチューバー"},
+  {"label": "全て", "type": "all"},
+  {"label": "ゲーム", "type": "game"},
+  {"label": "音楽", "type": "music"},
 ];
 
 class TopicScreen extends StatefulWidget {
@@ -36,23 +32,15 @@ class TopicScreen extends StatefulWidget {
 
 class TopicScreenState extends State<TopicScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  String _lastRegion = "JP";
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
-  bool _networkError = false;
 
   Timer? _debounce;
-  bool _isScrollingDown = false;
-
   late AnimationController _tapAnim;
-
   bool _didInitialJump = false;
-
   List<TrendingKeyword> _trending = [];
   bool _trendingLoaded = false;
-  bool _showAllTrending = false;
   String _trendingTimestamp = "";
-  double _lastOffset = 0;
 
   void scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -94,37 +82,50 @@ class TopicScreenState extends State<TopicScreen>
     final region = context.read<RegionProvider>().regionCode;
     final api = context.read<YouTubeApiService>();
 
-    // ① キャッシュ即表示
-    final cached = api.getCachedTrending(
+    // 🔥 ① 統一キャッシュから取得
+    final cached = api.getCachedContent(
+      type: "trend",
       regionCode: region,
-      max: 10,
     );
 
-    if (cached.isNotEmpty) {
+    if (cached != null) {
+      final list = cached["items"] as List;
+
       setState(() {
-        _trending = cached;
+        _trending = list.map((e) => TrendingKeyword.fromJson(e)).toList();
         _trendingLoaded = true;
         _trendingTimestamp = _buildTrendingNow();
       });
+
+      // 🔥 裏で更新（UX爆上がり）
+      _fetchTrending(silent: true);
+
       return;
     }
 
-    // ② なければfetch
+    // 🔥 ② なければfetch
     _fetchTrending();
   }
 
-  Future<void> _fetchTrending() async {
-    setState(() {
-      _trendingLoaded = false;
-    });
+  Future<void> _fetchTrending({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _trendingLoaded = false;
+      });
+    }
 
     try {
       final api = context.read<YouTubeApiService>();
+      final region = context.read<RegionProvider>().regionCode;
 
-      final result = await api.fetchTrendingKeywords(
-        regionCode: context.read<RegionProvider>().regionCode,
-        max: 10,
+      final data = await api.fetchContentJson(
+        type: "trend",
+        regionCode: region,
       );
+
+      final list = data["items"] as List;
+
+      final result = list.map((e) => TrendingKeyword.fromJson(e)).toList();
 
       if (!mounted) return;
 
@@ -134,12 +135,9 @@ class TopicScreenState extends State<TopicScreen>
         _trendingTimestamp = _buildTrendingNow();
       });
     } catch (e) {
-      logger.e("Trending fetch error: $e");
-
       if (!mounted) return;
 
       setState(() {
-        _trending = [];
         _trendingLoaded = true;
       });
     }
@@ -153,45 +151,6 @@ class TopicScreenState extends State<TopicScreen>
     _tapAnim.dispose();
     super.dispose();
   }
-
-  // ----------------------------------------------------
-  // 🔥 スクロール方向通知
-  // ----------------------------------------------------
-  // void _handleScroll() {
-  //   if (!_scrollController.hasClients) return;
-  //
-  //   final offset = _scrollController.offset;
-  //
-  //   // 🔥 トップ付近は常に表示（最重要）
-  //   if (offset <= 10) {
-  //     if (_isScrollingDown) {
-  //       _isScrollingDown = false;
-  //       widget.onScrollChanged?.call(false);
-  //     }
-  //     _lastOffset = offset;
-  //     return;
-  //   }
-  //
-  //   final delta = offset - _lastOffset;
-  //
-  //   // 🔽 下スクロール（ある程度動いた時だけ）
-  //   if (delta > 5) {
-  //     if (!_isScrollingDown) {
-  //       _isScrollingDown = true;
-  //       widget.onScrollChanged?.call(true);
-  //     }
-  //   }
-  //
-  //   // 🔼 上スクロール
-  //   else if (delta < -5) {
-  //     if (_isScrollingDown) {
-  //       _isScrollingDown = false;
-  //       widget.onScrollChanged?.call(false);
-  //     }
-  //   }
-  //
-  //   _lastOffset = offset;
-  // }
 
   String _buildTrendingNow() {
     final now = DateTime.now();
@@ -215,12 +174,12 @@ class TopicScreenState extends State<TopicScreen>
       );
     }
 
-    if (_trending.isEmpty) {
-      return const SizedBox(
-        height: 60,
-        child: Center(child: Text("No Trends")),
-      );
-    }
+    // if (_trending.isEmpty) {
+    //   return const SizedBox(
+    //     height: 60,
+    //     child: Center(child: Text("No Trends")),
+    //   );
+    // }
 
     final Color toggleColor =
         theme.colorScheme.onSurface.withValues(alpha: 0.6);
@@ -231,37 +190,7 @@ class TopicScreenState extends State<TopicScreen>
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final double maxWidth = constraints.maxWidth;
-
-          double usedWidth = 0;
-          final List<TrendingKeyword> oneLine = [];
-
-          for (final t in _trending) {
-            final keyword = t.keyword.trim();
-            if (keyword.isEmpty) continue;
-
-            final textPainter = TextPainter(
-              text: TextSpan(
-                text: keyword,
-                style: const TextStyle(fontSize: 14),
-              ),
-              maxLines: 1,
-              textDirection: TextDirection.ltr,
-            )..layout();
-
-            final chipWidth = textPainter.width + 48;
-
-            if (usedWidth + chipWidth > maxWidth) break;
-
-            usedWidth += chipWidth + 8;
-            oneLine.add(t);
-          }
-
-          final List<TrendingKeyword> displayList =
-              _showAllTrending ? _trending : oneLine;
-
-          final bool hasMore = _trending.length > oneLine.length;
-
+          final List<TrendingKeyword> displayList = _trending;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -315,7 +244,7 @@ class TopicScreenState extends State<TopicScreen>
                                   )
                                 : Icon(
                                     Icons.refresh,
-                                    size: 21,
+                                    size: 24,
                                     color: theme.colorScheme.onSurface
                                         .withValues(alpha: 0.8),
                                   ),
@@ -397,63 +326,6 @@ class TopicScreenState extends State<TopicScreen>
                   );
                 }).toList(),
               ),
-
-              // トグル
-              if (hasMore) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _showAllTrending = !_showAllTrending;
-                        });
-
-                        logger.i(
-                            "🔁 Trending toggle: showAll=$_showAllTrending total=${_trending.length}");
-
-                        // 🔥 レイアウト確定後にスクロール
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!_scrollController.hasClients) return;
-
-                          _scrollController.animateTo(
-                            _scrollController.position.maxScrollExtent,
-                            duration: const Duration(milliseconds: 350),
-                            curve: Curves.easeOut,
-                          );
-                        });
-                      },
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _showAllTrending
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                size: 26,
-                                color: toggleColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _showAllTrending ? t.showPartial : t.showAll,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: toggleColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ],
           );
         },
@@ -472,22 +344,27 @@ class TopicScreenState extends State<TopicScreen>
 
     try {
       final api = context.read<YouTubeApiService>();
+      final region = context.read<RegionProvider>().regionCode;
 
-      final result = await api.fetchTrendingKeywords(
-        regionCode: context.read<RegionProvider>().regionCode,
-        max: 10,
-        forceRefresh: true,
+      final data = await api.fetchContentJson(
+        type: "trend",
+        regionCode: region,
+        forceRefresh: true, // 🔥ここ重要
       );
+
+      final list = data["items"] as List;
+
+      final result = list.map((e) => TrendingKeyword.fromJson(e)).toList();
+
+      if (!mounted) return;
 
       setState(() {
         _trending = result;
         _trendingLoaded = true;
-
-        // 🔥 追加：表示リセット
-        _showAllTrending = false;
-
         _trendingTimestamp = _buildTrendingNow();
       });
+    } catch (e) {
+      logger.e("Trending refresh error: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -503,20 +380,7 @@ class TopicScreenState extends State<TopicScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
     final theme = Theme.of(context);
-    final region = context.watch<RegionProvider>().regionCode;
-    if (region != _lastRegion) {
-      _lastRegion = region;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _networkError = false;
-        });
-      });
-      cache.clear();
-    }
-
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final shortestSide = media.size.shortestSide;
@@ -537,36 +401,6 @@ class TopicScreenState extends State<TopicScreen>
           controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Row(
-                  children: [
-                    IntrinsicWidth(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.newPickupTitle,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            height: 1.2,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(0, 10, 16, 0),
@@ -575,7 +409,7 @@ class TopicScreenState extends State<TopicScreen>
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 10, 16, 0),
+                padding: const EdgeInsets.fromLTRB(0, 20, 16, 0),
                 child: _buildTrendingChips(theme),
               ),
             ),
@@ -610,12 +444,20 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
   bool _canScrollLeft = false;
   bool _canScrollRight = true;
-  static const double _sectionHeight = 230;
+  static const double _sectionHeight = 262;
+  String _pickupTimestamp = "";
+  bool _isRefreshingPickup = false;
+  int _selectedIndex = 0;
+  Map<String, List<YouTubeVideo>> cache = {};
+  Map<String, DateTime> cacheTime = {};
+  String _lastRegion = "JP";
 
   @override
   void initState() {
     super.initState();
     fetch();
+
+    _pickupTimestamp = _buildNowLabel();
 
     _listController.addListener(() {
       if (!_listController.hasClients) return;
@@ -636,46 +478,85 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     super.dispose();
   }
 
+  String _buildNowLabel() {
+    final now = DateTime.now();
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    final date = "${now.month}/${now.day}";
+    final time = "${two(now.hour)}:${two(now.minute)}";
+
+    return "$date $time updated";
+  }
+
+  Future<void> _refreshPickup() async {
+    if (_isRefreshingPickup) return;
+
+    setState(() {
+      _isRefreshingPickup = true;
+      isLoading = true;
+    });
+
+    try {
+      await fetch(forceRefresh: true);
+
+      if (!mounted) return;
+
+      setState(() {
+        _pickupTimestamp = _buildNowLabel();
+      });
+    } catch (e) {
+      logger.e("Pickup refresh error: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshingPickup = false;
+        });
+      }
+    }
+  }
+
   Future<void> fetch({bool forceRefresh = false}) async {
     final region = context.read<RegionProvider>().regionCode;
     final api = context.read<YouTubeApiService>();
-
-    final kw = _genres[_selectedIndex]["keyword"]!;
-
-    logger.i("[NewArrival fetch] q=$kw region=$region");
-
-    // =========================
-    // 🔥 キャッシュヒット
-    // =========================
+    final type = _genres[_selectedIndex]["type"]!;
     final now = DateTime.now();
-    final cachedAt = cacheTime[kw];
+    final key = "${region}_$type";
+
+    logger.i("[Pickup fetch] type=$type region=$region");
+
+    // =========================
+    // 🔥 キャッシュ（UI側）
+    // =========================
+    final cachedAt = cacheTime[key];
 
     if (!forceRefresh &&
-        cache.containsKey(kw) &&
+        cache.containsKey(key) &&
         cachedAt != null &&
         now.difference(cachedAt).inMinutes < 10) {
-      logger.i("✅ cache hit: $kw");
+      logger.i("✅ cache hit: $key");
 
       setState(() {
-        videos = cache[kw]!;
+        videos = cache[key]!;
         isLoading = false;
       });
 
       return;
     }
 
-    // =========================
-    // 🌐 API fetch
-    // =========================
     try {
-      final list = await api.searchWithStats(
-        categoryId: "2000",
-        keyword: kw,
-        searchMode: "or",
-        maxResults: 5,
+      // =========================
+      // 🌐 API 1回だけ
+      // =========================
+      final allData = await api.fetchPickupAll(
         regionCode: region,
         forceRefresh: forceRefresh,
       );
+
+      // =========================
+      // 🎯 type振り分け
+      // =========================
+      final list = allData[type] ?? [];
 
       if (!mounted) return;
 
@@ -683,12 +564,12 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
         videos = list;
         isLoading = false;
 
-        // 🔥 キャッシュ保存
-        cache[kw] = list;
-        cacheTime[kw] = DateTime.now();
+        // 🔥 キャッシュ保存（type単位）
+        cache[key] = list;
+        cacheTime[key] = DateTime.now();
       });
     } catch (e) {
-      logger.e("NewArrival fetch error: $e");
+      logger.e("Pickup fetch error: $e");
 
       if (!mounted) return;
 
@@ -701,13 +582,91 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final region = context.watch<RegionProvider>().regionCode;
+    if (region != _lastRegion) {
+      _lastRegion = region;
+      cache.clear();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(), // ← 常に表示
+        _buildTitle(theme),
+        _buildHeader(),
         const SizedBox(height: 4),
-        _buildContent(), // ← 状態ごとに切替
+        _buildContent(),
       ],
+    );
+  }
+
+  Widget _buildTitle(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: Row(
+        children: [
+          IntrinsicWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.newPickupTitle,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 22,
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        _pickupTimestamp,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: _isRefreshingPickup ? null : _refreshPickup,
+                      child: Container(
+                        height: 22,
+                        alignment: Alignment.bottomCenter,
+                        child: _isRefreshingPickup
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                Icons.refresh,
+                                size: 22,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.8),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  height: 1.2,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -716,7 +675,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -725,11 +684,11 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
             final bgColor = isSelected
                 ? (isDark ? Colors.white : Colors.black)
-                : Colors.transparent;
+                : (isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDCDCE1));
 
             final textColor = isSelected
                 ? (isDark ? Colors.black : Colors.white)
-                : theme.colorScheme.onSurface;
+                : (isDark ? Colors.white : Colors.black);
 
             return Padding(
               padding:
@@ -738,32 +697,60 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                 onTap: () {
                   if (_selectedIndex == index) return;
 
+                  final type = _genres[index]["type"]!;
+                  final region = context.read<RegionProvider>().regionCode;
+                  final key = "${region}_$type";
+
+                  // 🔥 先にキャッシュ確認
+                  if (cache.containsKey(key)) {
+                    setState(() {
+                      _selectedIndex = index;
+                      videos = cache[key]!; // 即表示
+                      isLoading = false;
+                    });
+
+                    _scrollToStart();
+                    return;
+                  }
+
+                  // 🔥 初回だけfetch
                   setState(() {
                     _selectedIndex = index;
                     isLoading = true;
                   });
 
+                  _scrollToStart();
+
                   fetch();
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 90, // ←ここで幅を底上げ
                   ),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    _genres[index]["label"]!,
-                    maxLines: 1,
-                    overflow: TextOverflow.visible,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    alignment: Alignment.center,
+                    // ←中央寄せ重要
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _genres[index]["label"]!,
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      // ←これもセット
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
                     ),
                   ),
                 ),
@@ -772,6 +759,16 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           }),
         ),
       ),
+    );
+  }
+
+  void _scrollToStart() {
+    if (!_listController.hasClients) return;
+
+    _listController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
     );
   }
 
@@ -842,19 +839,17 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     BuildContext context, {
     required IconData icon,
   }) {
-    final theme = Theme.of(context);
-
     return Container(
-      width: 28,
-      height: 28,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.72),
+        color: Colors.black.withValues(alpha: 0.5), // 🔥 黒透過
         borderRadius: BorderRadius.circular(14),
       ),
       child: Icon(
         icon,
-        size: 26,
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+        size: 22, // ←ついでに少し小さくするとバランス良い
+        color: Colors.white, // 🔥 見やすさ優先で白推奨
       ),
     );
   }

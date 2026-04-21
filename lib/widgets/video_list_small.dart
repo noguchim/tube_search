@@ -7,6 +7,7 @@ import 'package:tube_search/widgets/popularity_chip.dart';
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
@@ -66,6 +67,7 @@ class VideoListTileSmall extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
+    final timeAgo = formatPublishedAgo(video.publishedAt);
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -152,24 +154,36 @@ class VideoListTileSmall extends StatelessWidget {
                               SizedBox(
                                 width: thumbW,
                                 height: thumbH,
-                                child: thumbOk
-                                    ? Ink.image(
-                                        image: CachedNetworkImageProvider(
-                                            thumbnail),
+                                child: thumbnail.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: thumbnail,
                                         fit: BoxFit.cover,
-                                        child: const SizedBox.expand(),
-                                      )
-                                    : Container(
-                                        color: isDark
-                                            ? Colors.grey[850]
-                                            : Colors.grey[300],
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.wifi_off_rounded,
-                                            size: 20,
-                                            color: Colors.grey,
+
+                                        // 読み込み中
+                                        placeholder: (_, __) => Container(
+                                          color: isDark
+                                              ? Colors.grey[850]
+                                              : Colors.grey[300],
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                            ),
                                           ),
                                         ),
+
+                                        // エラー時
+                                        errorWidget: (_, __, ___) =>
+                                            Image.asset(
+                                          'assets/images/no_image.png',
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        'assets/images/no_image.png',
+                                        fit: BoxFit.cover,
                                       ),
                               ),
 
@@ -182,6 +196,34 @@ class VideoListTileSmall extends StatelessWidget {
                                       sizeOverride: 30, // ← Small最適サイズ（重要）
                                     ),
                                   ),
+                                ),
+                              ),
+
+                              // 🔥 投稿日
+                              Positioned(
+                                right: 4,
+                                bottom: 4,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.75),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        timeAgo,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
 

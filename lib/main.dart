@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
+import 'package:tube_search/screens/settings_screen.dart';
 import 'package:tube_search/screens/topic_screen.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
@@ -28,7 +29,6 @@ import 'providers/theme_provider.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/genre_screen.dart';
 import 'screens/popular_videos_screen.dart';
-import 'screens/settings_screen.dart';
 import 'services/favorites_service.dart';
 
 void main() async {
@@ -187,7 +187,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final _popularKey = GlobalKey<PopularVideosScreenState>();
   final _genreKey = GlobalKey<GenreScreenState>();
   final _favoriteKey = GlobalKey<FavoritesScreenState>();
-  final _settingsKey = GlobalKey<SettingsScreenState>();
+
+  // final _settingsKey = GlobalKey<SettingsScreenState>();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   List<Widget> get _screens => [
         TopicScreen(
@@ -203,7 +205,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           key: _genreKey,
         ),
         FavoritesScreen(onScrollChanged: _onScrollChanged, key: _favoriteKey),
-        SettingsScreen(key: _settingsKey),
+        // SettingsScreen(key: _settingsKey),
       ];
 
   @override
@@ -254,8 +256,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  bool _trendingPrefetched = false;
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -277,29 +277,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     logger.i("🔥 Popular Prefetch DONE");
   }
-
-  // Future<void> _prefetchTrending(String region) async {
-  //   if (_trendingPrefetched) return;
-  //   _trendingPrefetched = true;
-  //
-  //   try {
-  //     logger.i("🔥 Trending Prefetch START (region=$region)");
-  //     final api = context.read<YouTubeApiService>();
-  //     final result = await api.fetchTrendingKeywords(
-  //       regionCode: region,
-  //       max: 10,
-  //     );
-  //
-  //     if (result.isEmpty) {
-  //       logger.w("⚠️ Trending result is EMPTY");
-  //     }
-  //
-  //     logger.i("🔥 Trending Prefetch DONE");
-  //   } catch (e, st) {
-  //     logger.e("💥 Trending Prefetch ERROR: $e");
-  //     logger.e(st.toString());
-  //   }
-  // }
 
   Future<void> resetReviewDebugState() async {
     final prefs = await SharedPreferences.getInstance();
@@ -350,10 +327,36 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 3:
         _favoriteKey.currentState?.scrollToTop();
         break;
-      case 4:
-        _settingsKey.currentState?.scrollToTop();
-        break;
+      // case 4:
+      //   _settingsKey.currentState?.scrollToTop();
+      //   break;
     }
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            child: Text("Tube Plus"),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text("設定"),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -367,6 +370,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             iap.isReady && (!adsRemoved) && (!isKeyboardVisible);
 
         return Scaffold(
+          key: _scaffoldKey,
+          drawer: _buildDrawer(),
           extendBody: true,
           body: Stack(
             children: [
@@ -399,6 +404,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       selectedIndex: _selectedIndex,
                       pageProgress: _pageProgress,
                       isTapNavigating: _isTapNavigating,
+                      onMenuTap: () {
+                        _scaffoldKey.currentState?.openDrawer();
+                      },
                       onTabSelected: (index) {
                         Feedback.forTap(context);
 

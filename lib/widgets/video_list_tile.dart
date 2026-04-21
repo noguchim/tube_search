@@ -7,7 +7,7 @@ import 'package:tube_search/widgets/popularity_chip.dart';
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
-import '../utils/format_published_ago.dart';
+import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
@@ -57,7 +57,7 @@ class VideoListTile extends StatelessWidget {
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
     final timeAgo = formatPublishedAgo(video.publishedAt);
-    final durationText =
+    final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
             ? formatDuration(video.durationSeconds!)
             : "--:--";
@@ -67,6 +67,7 @@ class VideoListTile extends StatelessWidget {
       (video.viewCount ?? 0).toString(),
       format: ViewCountFormat.full,
     );
+    final timeAndDuration = '$timeAgo${separator(context)}$duration';
 
     final isFav = fav.isFavoriteSync(id);
 
@@ -159,7 +160,7 @@ class VideoListTile extends StatelessWidget {
                                   // ▶ 再生ボタン
                                   PlayButtonOverlay(pressed: isPressed),
 
-                                  // 🔥 動画時間 + 投稿日（ここが本体）
+                                  // 🔥 投稿日/動画時間
                                   Positioned(
                                     right: 8,
                                     bottom: 8,
@@ -178,29 +179,11 @@ class VideoListTile extends StatelessWidget {
                                                 BorderRadius.circular(4),
                                           ),
                                           child: Text(
-                                            timeAgo,
+                                            timeAndDuration,
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 13,
                                               fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.75),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            durationText,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),

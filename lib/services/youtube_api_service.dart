@@ -26,6 +26,9 @@ class YouTubeApiService {
   final Map<String, List<YouTubeVideo>> _searchCache = {};
   final Map<String, DateTime> _searchFetchedAt = {};
 
+  final Map<String, Map<String, dynamic>> _contentCache = {};
+  final Map<String, DateTime> _contentCacheTime = {};
+
   // ------------------------------------------------------------
   // 🔧 GET JSON 共通処理
   // ------------------------------------------------------------
@@ -84,6 +87,56 @@ class YouTubeApiService {
     _tokenExpiresAt = now.add(Duration(seconds: expiresIn - 30));
 
     logger.i("✅ API token ready (expires in ${expiresIn}s)");
+  }
+
+  Future<Map<String, dynamic>> fetchContentJson({
+    required String type,
+    String regionCode = "JP",
+    bool forceRefresh = false,
+  }) async {
+    final now = DateTime.now();
+    final key = "${type}_$regionCode";
+
+    if (!forceRefresh &&
+        _contentCache.containsKey(key) &&
+        _contentCacheTime.containsKey(key) &&
+        now.difference(_contentCacheTime[key]!) < _popularCacheTTL) {
+      return _contentCache[key]!;
+    }
+
+    final uri = Uri.https(baseApi, "/api/content_json.php", {
+      "type": type,
+      "region": regionCode,
+    });
+
+    final data = await _getJson(uri);
+
+    if (data is! Map<String, dynamic>) {
+      throw Exception("Invalid content API data");
+    }
+
+    _contentCache[key] = data;
+    _contentCacheTime[key] = now;
+
+    return data;
+  }
+
+  Map<String, dynamic>? getCachedContent({
+    required String type,
+    required String regionCode,
+  }) {
+    final key = "${type}_$regionCode";
+
+    final cached = _contentCache[key];
+    final time = _contentCacheTime[key];
+
+    if (cached == null || time == null) return null;
+
+    if (DateTime.now().difference(time) > _popularCacheTTL) {
+      return null;
+    }
+
+    return cached;
   }
 
   // ============================================================
@@ -246,7 +299,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos_v6.php",
+      "/api/youtube_keyword_videos_v7.php",
       params,
     );
 
@@ -279,186 +332,63 @@ class YouTubeApiService {
   }
 
   // ============================================================
-  // 4️⃣ ID リスト詳細取得（PHP モジュール）
+  // 5️⃣ 地域別トレンドキーワード（JWT + 新API仕様完全対応）
   // ============================================================
-  Future<List<YouTubeVideo>> fetchVideosByIds(String ids) async {
-    final uri = Uri.https(baseApi, "/api/youtube_videos.php", {
-      "ids": ids,
-    });
+  Future<List<TrendingKeyword>> fetchTrendingKeywords({
+    required String regionCode,
+    bool forceRefresh = false,
+  }) async {
+    final data = await fetchContentJson(
+      type: "trend",
+      regionCode: regionCode,
+      forceRefresh: forceRefresh,
+    );
 
-    final data = await _getJson(uri);
+    final list = data["items"] as List;
 
-    if (data is! List) return [];
-
-    return data.map<YouTubeVideo>((v) {
-      return YouTubeVideo(
-        id: v["id"] ?? "",
-        title: v["title"] ?? "",
-        thumbnailUrl: v["thumbnailUrl"] ?? "",
-        channelTitle: v["channelTitle"] ?? "",
-        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
-        viewCount: v["viewCount"] as int?,
-        durationSeconds: v["durationSeconds"] as int?,
+    return list.map<TrendingKeyword>((v) {
+      return TrendingKeyword(
+        keyword: v["keyword"] ?? "",
+        score: (v["score"] as num?)?.toDouble() ?? 0,
       );
     }).toList();
   }
 
-  // ============================================================
-  // 5️⃣ 地域別トレンドキーワード（JWT + 新API仕様完全対応）
-  // ============================================================
-  final Map<String, List<TrendingKeyword>> _trendingCache = {};
-  final Map<String, DateTime> _trendingFetchedAt = {};
-
-  Future<List<TrendingKeyword>> fetchTrendingKeywords({
-    required String regionCode, // 必須（多地域対応）
-    int max = 10,
+  Future<Map<String, List<YouTubeVideo>>> fetchPickupAll({
+    String regionCode = "JP",
     bool forceRefresh = false,
   }) async {
-    final region = regionCode.toUpperCase();
-    final now = DateTime.now();
+    final data = await fetchContentJson(
+      type: "pickup",
+      regionCode: regionCode,
+      forceRefresh: forceRefresh,
+    );
 
-    logger.w(
-        "🌐 fetchTrendingKeywords called region=$region max=$max force=$forceRefresh time=$now");
+    final items = data["items"] as Map<String, dynamic>;
 
-    // ★ popularと同思想のキャッシュキー（統一設計）
-    final key = "${region}_$max";
+    final result = <String, List<YouTubeVideo>>{};
 
-    // ------------------------
-    // 💾 キャッシュヒット（Popularと完全統一TTL）
-    // ------------------------
-    if (!forceRefresh &&
-        _trendingCache.containsKey(key) &&
-        _trendingFetchedAt.containsKey(key) &&
-        now.difference(_trendingFetchedAt[key]!) < _popularCacheTTL) {
-      logger.i("💾 TrendingKeywords: Using cache ($key)");
-      return _trendingCache[key]!;
-    }
+    items.forEach((type, list) {
+      final videos = (list as List).map<YouTubeVideo>((v) {
+        return YouTubeVideo(
+          id: v["id"] ?? "",
+          title: v["title"] ?? "",
+          thumbnailUrl: v["thumbnailUrl"] ?? "",
+          channelTitle: v["channelTitle"] ?? "",
+          publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
+          viewCount: v["viewCount"] as int?,
+          durationSeconds: v["durationSeconds"] as int?,
+          score: (v["score"] as num?)?.toDouble(),
+        );
+      }).toList();
 
-    // ------------------------
-    // 🌐 Trending API
-    // /api/trending.php?region=JP&max=10&hours=12
-    // ------------------------
-    final uri = Uri.https(baseApi, "/api/trending.php", {
-      "region": region,
-      "max": "$max",
-      "hours": "12", // ★ 半日サマリー（あなたの設計思想）
+      videos.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+
+      result[type] = videos;
     });
 
-    final data = await _getJson(uri);
-
-    // ------------------------
-    // 🧠 API構造チェック（堅牢化）
-    // 期待:
-    // {
-    //   "keywords": [...],
-    //   "generated_at": "ISO8601"
-    // }
-    // ------------------------
-    if (data is! Map<String, dynamic>) {
-      logger.w("⚠️ Trending API unexpected structure (not Map): $data");
-      return [];
-    }
-
-    final rawKeywords = data["keywords"];
-    final generatedAtStr = data["generated_at"];
-
-    if (rawKeywords is! List) {
-      logger.w("⚠️ Trending API missing keywords field: $data");
-      return [];
-    }
-
-    // generated_at パース（失敗してもOK）
-    DateTime? generatedAt;
-    if (generatedAtStr is String) {
-      generatedAt = DateTime.tryParse(generatedAtStr);
-    }
-
-    // ------------------------
-    // 🎯 Model変換（Popularと同思想）
-    // ------------------------
-    final keywords = rawKeywords
-        .map((e) => e.toString().trim())
-        .where((e) => e.isNotEmpty)
-        .map((keyword) => TrendingKeyword.fromApi(
-              keyword: keyword,
-              region: region,
-              generatedAt: generatedAt,
-            ))
-        .toList(growable: false);
-
-    // ------------------------
-    // 💾 キャッシュ保存（統一設計）
-    // ------------------------
-    _trendingCache[key] = keywords;
-    _trendingFetchedAt[key] = now;
-
-    logger
-        .i("🔥 Trending fetched: ${keywords.length} keywords (region=$region)");
-
-    if (keywords.isEmpty) {
-      logger.w("⚠️ Trending result is EMPTY (API/Batch/DB要確認)");
-    }
-
-    return keywords;
+    return result;
   }
-
-  List<TrendingKeyword> getCachedTrending({
-    required String regionCode,
-    int max = 10,
-  }) {
-    final key = "${regionCode.toUpperCase()}_$max";
-    return _trendingCache[key] ?? [];
-  }
-
-// Future<List<YouTubeVideo>> fetchVideosByKeyword({
-//   required String keyword,
-//   int maxResults = 20,
-//   bool forceRefresh = false,
-// }) async {
-//   final kw = keyword.trim();
-//   if (kw.isEmpty) return [];
-//
-//   final now = DateTime.now();
-//
-//   final key = "keyword_${kw.toLowerCase()}_$maxResults";
-//
-//   if (!forceRefresh &&
-//       _searchCache.containsKey(key) &&
-//       _searchFetchedAt.containsKey(key) &&
-//       now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
-//     logger.i("💾 KeywordVideos: Using cache ($key)");
-//     return _searchCache[key]!;
-//   }
-//
-//   final uri = Uri.https(baseApi, "/api/youtube_keyword_videos.php", {
-//     "q": kw,
-//     "max": "$maxResults",
-//   });
-//
-//   final data = await _getJson(uri);
-//
-//   if (data is! List) {
-//     logger.e("❌ Unexpected Keyword API structure");
-//     throw Exception("Invalid API data");
-//   }
-//
-//   final list = data.map<YouTubeVideo>((v) {
-//     return YouTubeVideo(
-//       id: v["id"] ?? "",
-//       title: v["title"] ?? "",
-//       thumbnailUrl: v["thumbnailUrl"] ?? "",
-//       channelTitle: v["channelTitle"] ?? "",
-//       publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
-//       viewCount: v["viewCount"] as int?,
-//       durationSeconds: v["durationSeconds"] as int?,
-//     );
-//   }).toList();
-//
-//   _searchCache[key] = list;
-//   _searchFetchedAt[key] = now;
-//
-//   return list;
-// }
 
 // ------------------------------------------------------------
 // サムネ選択系は PHP 側に任せるため Flutter では不要

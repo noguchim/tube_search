@@ -2,7 +2,7 @@ import 'dart:io';
 
 class AdMobConfig {
   static const bool useTestAds =
-      bool.fromEnvironment('TEST_ADS', defaultValue: false);
+      bool.fromEnvironment('TEST_ADS', defaultValue: true);
 
   static const String testBannerId = "ca-app-pub-3940256099942544/6300978111";
 

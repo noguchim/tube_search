@@ -35,35 +35,29 @@ class VideoGridTile extends StatelessWidget {
           // ===============================
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: thumbOk
+            child: thumbnail.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: thumbnail,
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
 
-                    // ★ 404・通信エラー時のフォールバック（最重要）
-                    errorWidget: (context, url, error) {
-                      return Container(
-                        color: isDark
-                            ? Colors.grey.shade800
-                            : Colors.grey.shade300,
-                        child: const Icon(
-                          Icons.play_circle_fill,
-                          size: 28,
-                          color: Colors.white70,
-                        ),
-                      );
-                    },
-
-                    // ★ 読み込み中のチラつき防止（UX改善）
-                    placeholder: (context, url) => Container(
-                      color:
-                          isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+                    // 読み込み中
+                    placeholder: (_, __) => Container(
+                      color: isDark ? Colors.grey[900] : Colors.grey[200],
                     ),
+
+                    // エラー時（統一）
+                    errorWidget: (_, __, ___) => Image.asset(
+                      'assets/images/no_image.png',
+                      fit: BoxFit.cover,
+                    ),
+
+                    fadeInDuration: const Duration(milliseconds: 200),
                   )
-                : Container(
-                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                : Image.asset(
+                    'assets/images/no_image.png',
+                    fit: BoxFit.cover,
                   ),
           ),
 

@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @newPickupTitle.
   ///
   /// In en, this message translates to:
-  /// **'New Picks'**
+  /// **'Picks'**
   String get newPickupTitle;
 
   /// No description provided for @navPopular.

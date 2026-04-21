@@ -1,23 +1,16 @@
 class TrendingKeyword {
   final String keyword;
-  final String region;
-  final DateTime? generatedAt;
+  final double score;
 
   const TrendingKeyword({
     required this.keyword,
-    required this.region,
-    this.generatedAt,
+    required this.score,
   });
 
-  factory TrendingKeyword.fromApi({
-    required String keyword,
-    required String region,
-    DateTime? generatedAt,
-  }) {
+  factory TrendingKeyword.fromJson(Map<String, dynamic> json) {
     return TrendingKeyword(
-      keyword: keyword,
-      region: region,
-      generatedAt: generatedAt,
+      keyword: json["keyword"] ?? "",
+      score: (json["score"] as num?)?.toDouble() ?? 0,
     );
   }
 }

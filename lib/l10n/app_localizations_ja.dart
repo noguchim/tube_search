@@ -9,7 +9,7 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get newPickupTitle => '新着ピックアップ';
+  String get newPickupTitle => 'ピックアップ';
 
   @override
   String get navPopular => '人気急上昇';

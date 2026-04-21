@@ -23,6 +23,7 @@ class TopBar extends StatefulWidget {
 
   final String? title;
   final VoidCallback? onBack;
+  final VoidCallback? onMenuTap;
 
   const TopBar({
     super.key,
@@ -33,6 +34,7 @@ class TopBar extends StatefulWidget {
     this.onTabSelected,
     this.title,
     this.onBack,
+    this.onMenuTap,
   });
 
   @override
@@ -200,12 +202,12 @@ class _TopBarState extends State<TopBar> {
       l.navPopular,
       l.navGenre,
       l.navFavorites,
-      l.navSettings,
+      // l.navSettings,
     ];
 
     return Row(
       children: [
-        // 🔥 ロゴ
+        _buildMenuButton(),
         _buildLogo(),
 
         // 🔥 タブ
@@ -231,7 +233,7 @@ class _TopBarState extends State<TopBar> {
   Widget _buildLogo() {
     return GestureDetector(
       child: Padding(
-        padding: const EdgeInsets.only(left: 10, right: 4),
+        padding: const EdgeInsets.only(left: 0, right: 4),
         child: Image.asset(
           'assets/images/logo.png',
           height: 20, // ← 調整ポイント
@@ -241,13 +243,21 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
+  Widget _buildMenuButton() {
+    return IconButton(
+      icon: const Icon(Icons.menu),
+      color: const Color(0xFFFFFFFF),
+      onPressed: widget.onMenuTap,
+    );
+  }
+
   // 🔥 タブごとのカラー（TopBar内に追加）
   static const List<Color> _tabColors = [
     Color(0xFF3B82F6), // トピック
     Color(0xFFFF7A00), // 人気
     Color(0xFF10B981), // ジャンル
     Color(0xFFEF4444), // お気に入り
-    Color(0xFFFFFFFF), // 設定
+    // Color(0xFFFFFFFF), // 設定
   ];
 
   Widget _buildTab(
@@ -274,9 +284,14 @@ class _TopBarState extends State<TopBar> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           constraints: const BoxConstraints(minWidth: 64),
-          margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          height: 26,
+
+          margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
+          // ← 少し詰める
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+
+          height: 34,
+          // 🔥 26 → 34 にUP
+
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? null : const Color(0xFF3A3A3A),
@@ -307,33 +322,6 @@ class _TopBarState extends State<TopBar> {
           ),
           child: Stack(
             children: [
-              // =========================
-              // 中央コンテンツ
-              // =========================
-              // Center(
-              //   child: index == 0
-              //       ? const SizedBox(
-              //           width: 45,
-              //           child: Center(
-              //             child: Icon(
-              //               Icons.home,
-              //               size: 18,
-              //               color: Colors.white, // ←後で分岐も可
-              //             ),
-              //           ),
-              //         )
-              //       : Text(
-              //           label,
-              //           style: TextStyle(
-              //             fontSize: 12,
-              //             fontWeight: FontWeight.bold,
-              //             color: isSelected
-              //                 ? (index == 4 ? Colors.black : Colors.white)
-              //                 : Colors.white,
-              //           ),
-              //         ),
-              // ),
-
               Center(
                 child: index == 0
                     // 🏠 ホーム
@@ -348,28 +336,28 @@ class _TopBarState extends State<TopBar> {
                         ),
                       )
 
-                    // ⚙️ 設定
-                    : index == 4
-                        ? const SizedBox(
-                            width: 45,
-                            child: Center(
-                              child: Icon(
-                                Icons.settings,
-                                size: 18,
-                                color: Colors.black, // ← 指定通り黒
-                              ),
-                            ),
-                          )
+                    // // ⚙️ 設定
+                    // : index == 4
+                    //     ? const SizedBox(
+                    //         width: 45,
+                    //         child: Center(
+                    //           child: Icon(
+                    //             Icons.settings,
+                    //             size: 18,
+                    //             color: Colors.black, // ← 指定通り黒
+                    //           ),
+                    //         ),
+                    //       )
 
-                        // 📝 その他
-                        : Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : Colors.white,
-                            ),
-                          ),
+                    // 📝 その他
+                    : Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : Colors.white,
+                        ),
+                      ),
               ),
               // =========================
               // 🔥 上ハイライト

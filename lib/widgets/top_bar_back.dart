@@ -7,13 +7,15 @@ class TopBarBack extends StatelessWidget {
   // 🔥 ソート
   final ValueChanged<String>? onSortSelected;
   final String currentSort; // ← 追加（必須）
+  final bool showSort;
 
   const TopBarBack({
     super.key,
     required this.title,
     required this.onBack,
     this.onSortSelected,
-    this.currentSort = "score", // ← デフォルト
+    this.currentSort = "score",
+    this.showSort = true,
   });
 
   @override
@@ -77,17 +79,18 @@ class TopBarBack extends StatelessWidget {
 
             // 右側メニュー
             SizedBox(
-              width: 40,
-              height: 40,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: onSortSelected,
-                itemBuilder: (context) => [
-                  _buildItem(context, "score", "スコア順"),
-                  _buildItem(context, "views", "再生順"),
-                  _buildItem(context, "date", "新着順"),
-                ],
-              ),
+              width: 48,
+              child: (showSort && onSortSelected != null)
+                  ? PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      onSelected: onSortSelected,
+                      itemBuilder: (context) => [
+                        _buildItem(context, "score", "スコア順"),
+                        _buildItem(context, "views", "再生順"),
+                        _buildItem(context, "date", "新着順"),
+                      ],
+                    )
+                  : const SizedBox(), // ← ダミー
             ),
           ],
         ),

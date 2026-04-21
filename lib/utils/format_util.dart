@@ -1,4 +1,4 @@
-import 'app_logger.dart';
+import 'package:flutter/cupertino.dart';
 
 String formatPublishedAgo(DateTime? published) {
   if (published == null) return "";
@@ -6,7 +6,7 @@ String formatPublishedAgo(DateTime? published) {
   final now = DateTime.now();
   final diff = now.difference(published);
 
-  logger.i("[formatPublishedAgo]published=$published now=$now diff=$diff");
+  // logger.i("[formatPublishedAgo]published=$published now=$now diff=$diff");
 
   if (diff.inSeconds < 60) {
     return "${diff.inSeconds}秒前";
@@ -22,6 +22,15 @@ String formatPublishedAgo(DateTime? published) {
     return "${(diff.inDays / 30).floor()}ヶ月前";
   } else {
     return "${(diff.inDays / 365).floor()}年前";
+  }
+}
+
+String separator(BuildContext context) {
+  final locale = Localizations.localeOf(context);
+  if (locale.languageCode == 'ja') {
+    return '・';
+  } else {
+    return ' • ';
   }
 }
 

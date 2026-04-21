@@ -6,7 +6,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
 import '../utils/app_logger.dart';
-import '../utils/format_published_ago.dart';
+import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/view_count_formatter.dart';
@@ -21,15 +21,6 @@ class VideoListTopic extends StatelessWidget {
     required this.video,
     required this.rank,
   });
-
-  String separator(BuildContext context) {
-    final locale = Localizations.localeOf(context);
-    if (locale.languageCode == 'ja') {
-      return '・';
-    } else {
-      return ' • ';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +87,7 @@ class VideoListTopic extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
-        width: 240,
+        width: 280,
         child: Container(
           decoration: BoxDecoration(
             color: cardColor,
@@ -165,7 +156,7 @@ class VideoListTopic extends StatelessWidget {
                                   // ▶ 再生ボタン
                                   PlayButtonOverlay(pressed: isPressed),
 
-                                  // 🔥 動画時間 + 投稿日（ここが本体）
+                                  // 🔥 再生数 + 投稿日
                                   Positioned(
                                     right: 8,
                                     bottom: 8,

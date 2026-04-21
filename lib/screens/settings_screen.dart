@@ -14,6 +14,7 @@ import '../providers/region_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/top_bar.dart';
+import '../widgets/top_bar_back.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -573,6 +574,145 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   // -------------------------------------------------------------------
 
+  // @override
+  // Widget build(BuildContext context) {
+  //   final theme = Theme.of(context);
+  //   final onSurface = theme.colorScheme.onSurface;
+  //   final isDark = theme.brightness == Brightness.dark;
+  //   final themeProvider = context.watch<ThemeProvider>();
+  //
+  //   final media = MediaQuery.of(context);
+  //   final safeTop = media.padding.top;
+  //   final shortestSide = media.size.shortestSide;
+  //   final isTablet = shortestSide >= 600;
+  //   final extraTopGap = isTablet ? 12.0 : 8.0;
+  //   final double topBarOffset =
+  //       safeTop + TopBarSpec.barContentHeight + extraTopGap;
+  //
+  //   return Scaffold(
+  //     backgroundColor: theme.scaffoldBackgroundColor,
+  //     body: CustomScrollView(
+  //       slivers: [
+  //         SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
+  //         SliverToBoxAdapter(
+  //           child: _loading
+  //               ? const Padding(
+  //                   padding: EdgeInsets.only(top: 40),
+  //                   child: Center(child: CircularProgressIndicator()),
+  //                 )
+  //               : Column(
+  //                   children: [
+  //                     const SizedBox(height: 5),
+  //
+  //                     // 1️⃣ テーマ
+  //                     _settingsCard(
+  //                       context: context,
+  //                       onTap: () => _showThemeDialog(context, themeProvider),
+  //                       leading:
+  //                           Icon(Icons.brightness_6_outlined, color: onSurface),
+  //                       title: AppLocalizations.of(context)!.settingsTheme,
+  //                       subtitle: _themeLabel(themeProvider.themeMode),
+  //                     ),
+  //
+  //                     // 2️⃣ お気に入り削除
+  //                     _settingsCard(
+  //                       context: context,
+  //                       onTap: () => _showDeleteConfirmDialog(context),
+  //                       leading: Icon(Icons.favorite_rounded, color: onSurface),
+  //                       title: AppLocalizations.of(context)!
+  //                           .settingsFavoriteDeleteTitle,
+  //                       subtitle: _skipDeleteConfirm
+  //                           ? AppLocalizations.of(context)!
+  //                               .settingsFavoriteDeleteOff
+  //                           : AppLocalizations.of(context)!
+  //                               .settingsFavoriteDeleteOn,
+  //                     ),
+  //
+  //                     // 3️⃣ ショップ
+  //                     _settingsCard(
+  //                       context: context,
+  //                       onTap: () {
+  //                         Navigator.push(
+  //                           context,
+  //                           MaterialPageRoute(
+  //                               builder: (_) => const ShopScreen()),
+  //                         );
+  //                       },
+  //                       leading: Icon(Icons.storefront, color: onSurface),
+  //                       title: AppLocalizations.of(context)!.settingsShop,
+  //                       subtitle:
+  //                           AppLocalizations.of(context)!.settingsShopSubtitle,
+  //                     ),
+  //
+  //                     // 4️⃣ 地域（YouTube ランキング）-Phase2
+  //                     // Consumer<RegionProvider>(
+  //                     //   builder: (context, provider, _) {
+  //                     //     final l = AppLocalizations.of(context)!;
+  //                     //     final current = regionOptions
+  //                     //         .firstWhere((r) => r.code == provider.regionCode);
+  //                     //
+  //                     //     return _settingsCard(
+  //                     //       context: context,
+  //                     //       onTap: () => _showRegionDialog(context),
+  //                     //       leading: Icon(Icons.public, color: onSurface),
+  //                     //       title: AppLocalizations.of(context)!.settingsRegion,
+  //                     //       subtitle: "${current.flag}  ${current.label(l)}",
+  //                     //     );
+  //                     //   },
+  //                     // ),
+  //
+  //                     // 5️⃣ 各種ポリシー
+  //                     _settingsCard(
+  //                       context: context,
+  //                       onTap: () => _showPolicyDialog(context),
+  //                       leading: Icon(Icons.policy, color: onSurface),
+  //                       title: AppLocalizations.of(context)!.settingsPolicies,
+  //                       subtitle: AppLocalizations.of(context)!
+  //                           .settingsPoliciesSubtitle,
+  //                     ),
+  //
+  //                     // 6️⃣ このアプリについて
+  //                     _settingsCard(
+  //                       context: context,
+  //                       onTap: () => _showAboutDialog(context),
+  //                       leading: Icon(Icons.info_outline, color: onSurface),
+  //                       title: AppLocalizations.of(context)!.settingsAbout,
+  //                       subtitle:
+  //                           AppLocalizations.of(context)!.settingsAboutSubtitle,
+  //                     ),
+  //
+  //                     SizedBox(
+  //                       height: UISpacing.bottomSpacer(
+  //                         context,
+  //                         hasFab: false,
+  //                         hasAd: true,
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //         ),
+  //         // =============================
+  //         // 🧭 TopBar（最前面・固定）
+  //         // =============================
+  //         Positioned(
+  //           top: 0,
+  //           left: 0,
+  //           right: 0,
+  //           child: AnimatedSlide(
+  //             duration: const Duration(milliseconds: 220),
+  //             curve: Curves.easeOutCubic,
+  //             offset: const Offset(0, -1.1),
+  //             child: TopBarBack(
+  //               title: "topTitle",
+  //               onBack: Navigator.of(context).pop,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -590,106 +730,135 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
-          SliverToBoxAdapter(
-            child: _loading
-                ? const Padding(
-                    padding: EdgeInsets.only(top: 40),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : Column(
-                    children: [
-                      const SizedBox(height: 5),
+      body: Stack(
+        children: [
+          // =============================
+          // 🔥 メイン（スクロール）
+          // =============================
+          CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
+              SliverToBoxAdapter(
+                child: _loading
+                    ? const Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : Column(
+                        children: [
+                          const SizedBox(height: 5),
 
-                      // 1️⃣ テーマ
-                      _settingsCard(
-                        context: context,
-                        onTap: () => _showThemeDialog(context, themeProvider),
-                        leading:
-                            Icon(Icons.brightness_6_outlined, color: onSurface),
-                        title: AppLocalizations.of(context)!.settingsTheme,
-                        subtitle: _themeLabel(themeProvider.themeMode),
+                          // 1️⃣ テーマ
+                          _settingsCard(
+                            context: context,
+                            onTap: () =>
+                                _showThemeDialog(context, themeProvider),
+                            leading: Icon(Icons.brightness_6_outlined,
+                                color: onSurface),
+                            title: AppLocalizations.of(context)!.settingsTheme,
+                            subtitle: _themeLabel(themeProvider.themeMode),
+                          ),
+
+                          // 2️⃣ お気に入り削除
+                          _settingsCard(
+                            context: context,
+                            onTap: () => _showDeleteConfirmDialog(context),
+                            leading:
+                                Icon(Icons.favorite_rounded, color: onSurface),
+                            title: AppLocalizations.of(context)!
+                                .settingsFavoriteDeleteTitle,
+                            subtitle: _skipDeleteConfirm
+                                ? AppLocalizations.of(context)!
+                                    .settingsFavoriteDeleteOff
+                                : AppLocalizations.of(context)!
+                                    .settingsFavoriteDeleteOn,
+                          ),
+
+                          // 3️⃣ ショップ
+                          _settingsCard(
+                            context: context,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const ShopScreen()),
+                              );
+                            },
+                            leading: Icon(Icons.storefront, color: onSurface),
+                            title: AppLocalizations.of(context)!.settingsShop,
+                            subtitle: AppLocalizations.of(context)!
+                                .settingsShopSubtitle,
+                          ),
+
+                          // 4️⃣ 地域（YouTube ランキング）-Phase2
+                          // Consumer<RegionProvider>(
+                          //   builder: (context, provider, _) {
+                          //     final l = AppLocalizations.of(context)!;
+                          //     final current = regionOptions
+                          //         .firstWhere((r) => r.code == provider.regionCode);
+                          //
+                          //     return _settingsCard(
+                          //       context: context,
+                          //       onTap: () => _showRegionDialog(context),
+                          //       leading: Icon(Icons.public, color: onSurface),
+                          //       title: AppLocalizations.of(context)!.settingsRegion,
+                          //       subtitle: "${current.flag}  ${current.label(l)}",
+                          //     );
+                          //   },
+                          // ),
+
+                          // 5️⃣ 各種ポリシー
+                          _settingsCard(
+                            context: context,
+                            onTap: () => _showPolicyDialog(context),
+                            leading: Icon(Icons.policy, color: onSurface),
+                            title:
+                                AppLocalizations.of(context)!.settingsPolicies,
+                            subtitle: AppLocalizations.of(context)!
+                                .settingsPoliciesSubtitle,
+                          ),
+
+                          // 6️⃣ このアプリについて
+                          _settingsCard(
+                            context: context,
+                            onTap: () => _showAboutDialog(context),
+                            leading: Icon(Icons.info_outline, color: onSurface),
+                            title: AppLocalizations.of(context)!.settingsAbout,
+                            subtitle: AppLocalizations.of(context)!
+                                .settingsAboutSubtitle,
+                          ),
+
+                          SizedBox(
+                            height: UISpacing.bottomSpacer(
+                              context,
+                              hasFab: false,
+                              hasAd: true,
+                            ),
+                          ),
+                        ],
                       ),
+              ),
+            ],
+          ),
 
-                      // 2️⃣ お気に入り削除
-                      _settingsCard(
-                        context: context,
-                        onTap: () => _showDeleteConfirmDialog(context),
-                        leading: Icon(Icons.favorite_rounded, color: onSurface),
-                        title: AppLocalizations.of(context)!
-                            .settingsFavoriteDeleteTitle,
-                        subtitle: _skipDeleteConfirm
-                            ? AppLocalizations.of(context)!
-                                .settingsFavoriteDeleteOff
-                            : AppLocalizations.of(context)!
-                                .settingsFavoriteDeleteOn,
-                      ),
-
-                      // 3️⃣ ショップ
-                      _settingsCard(
-                        context: context,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ShopScreen()),
-                          );
-                        },
-                        leading: Icon(Icons.storefront, color: onSurface),
-                        title: AppLocalizations.of(context)!.settingsShop,
-                        subtitle:
-                            AppLocalizations.of(context)!.settingsShopSubtitle,
-                      ),
-
-                      // 4️⃣ 地域（YouTube ランキング）-Phase2
-                      // Consumer<RegionProvider>(
-                      //   builder: (context, provider, _) {
-                      //     final l = AppLocalizations.of(context)!;
-                      //     final current = regionOptions
-                      //         .firstWhere((r) => r.code == provider.regionCode);
-                      //
-                      //     return _settingsCard(
-                      //       context: context,
-                      //       onTap: () => _showRegionDialog(context),
-                      //       leading: Icon(Icons.public, color: onSurface),
-                      //       title: AppLocalizations.of(context)!.settingsRegion,
-                      //       subtitle: "${current.flag}  ${current.label(l)}",
-                      //     );
-                      //   },
-                      // ),
-
-                      // 5️⃣ 各種ポリシー
-                      _settingsCard(
-                        context: context,
-                        onTap: () => _showPolicyDialog(context),
-                        leading: Icon(Icons.policy, color: onSurface),
-                        title: AppLocalizations.of(context)!.settingsPolicies,
-                        subtitle: AppLocalizations.of(context)!
-                            .settingsPoliciesSubtitle,
-                      ),
-
-                      // 6️⃣ このアプリについて
-                      _settingsCard(
-                        context: context,
-                        onTap: () => _showAboutDialog(context),
-                        leading: Icon(Icons.info_outline, color: onSurface),
-                        title: AppLocalizations.of(context)!.settingsAbout,
-                        subtitle:
-                            AppLocalizations.of(context)!.settingsAboutSubtitle,
-                      ),
-
-                      SizedBox(
-                        height: UISpacing.bottomSpacer(
-                          context,
-                          hasFab: false,
-                          hasAd: true,
-                        ),
-                      ),
-                    ],
-                  ),
-          )
+          // =============================
+          // 🧭 TopBar（最前面）
+          // =============================
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: const Offset(0, 0), // ← とりあえず表示
+              child: TopBarBack(
+                title: "topTitle",
+                onBack: Navigator.of(context).pop,
+                showSort: false,
+              ),
+            ),
+          ),
         ],
       ),
     );

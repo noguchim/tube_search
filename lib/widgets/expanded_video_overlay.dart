@@ -6,6 +6,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../services/favorites_service.dart';
+import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/ui_scale.dart';
@@ -116,11 +117,17 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
+    final timeAgo = formatPublishedAgo(video.publishedAt);
+    final duration =
+        (video.durationSeconds != null && video.durationSeconds! > 0)
+            ? formatDuration(video.durationSeconds!)
+            : "--:--";
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
       format: ViewCountFormat.full,
     );
+    final timeAndDuration = '$timeAgo${separator(context)}$duration';
     final isFav = fav.isFavoriteSync(id);
     final borderRadius = BorderRadius.circular(16);
 
@@ -190,30 +197,48 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                   borderRadius: borderRadius,
                   child: Ink(
                     child: ClipRRect(
-                      borderRadius: borderRadius,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
                       child: Stack(
                         children: [
                           AspectRatio(
                             aspectRatio: 16 / 9,
-                            child: thumbOk
-                                ? Ink.image(
-                                    image:
-                                        CachedNetworkImageProvider(thumbnail),
+                            child: thumbnail.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: thumbnail,
                                     fit: BoxFit.cover,
                                     width: double.infinity,
-                                    child: const SizedBox.expand(),
-                                  )
-                                : Container(
-                                    color: isDark
-                                        ? Colors.grey[850]
-                                        : Colors.grey[300],
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.wifi_off_rounded,
-                                        size: 36,
-                                        color: Colors.grey,
+
+                                    // 読み込み中
+                                    placeholder: (_, __) => Container(
+                                      color: isDark
+                                          ? Colors.grey[850]
+                                          : Colors.grey[300],
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
                                       ),
                                     ),
+
+                                    // エラー時
+                                    errorWidget: (_, __, ___) => Image.asset(
+                                      'assets/images/no_image.png',
+                                      fit: BoxFit.cover,
+                                    ),
+
+                                    fadeInDuration:
+                                        const Duration(milliseconds: 200),
+                                  )
+                                : Image.asset(
+                                    'assets/images/no_image.png',
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
                                   ),
                           ),
 
@@ -222,26 +247,60 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                             child: IgnorePointer(
                               child: Center(
                                 child: PlayButtonOverlay(
-                                  sizeOverride: 42, // ← Overlayは大きめがUX最強
+                                  sizeOverride: 40, // ← Overlayは大きめがUX最強
                                 ),
                               ),
+                            ),
+                          ),
+
+                          // 🔥 投稿日/動画時間
+                          Positioned(
+                            right: 4,
+                            bottom: 4,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  margin: const EdgeInsets.only(right: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    timeAndDuration,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
 
                           Positioned(
                             top: 8,
                             right: 8,
-                            child: Material(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.unfold_less,
-                                  size: 30,
-                                  color: Colors.white,
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Material(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: widget.onClose,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.unfold_less,
+                                      size: 24,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
-                                onPressed: widget.onClose,
-                                tooltip: 'Collapse',
                               ),
                             ),
                           ),
