@@ -180,9 +180,17 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     final videos = await api.fetchPopularVideos(
       maxResults: limit,
+      hours: 12,
       regionCode: region,
       forceRefresh: forceRefresh,
     );
+
+    // 📅 履歴
+    // await api.fetchPopularVideos(
+    //   regionCode: region,
+    //   date: "2026-04-25",
+    //   maxResults: 20,
+    // );
 
     return videos.take(limit).toList();
   }
@@ -259,8 +267,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     final isTablet = shortestSide >= 600;
     final extraTopGap = isTablet ? 12.0 : 8.0;
 
-    final double topBarOffset =
-        safeTop + TopBarSpec.barContentHeight + extraTopGap;
+    final double topBarOffset = TopBarSpec.total(safeTop) + extraTopGap;
 
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
@@ -346,9 +353,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
       );
     }
 
-    // =========================================================
-    // 🧩 Scaffold
-    // =========================================================
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
@@ -359,7 +363,11 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: body,
+      body: Stack(
+        children: [
+          body,
+        ],
+      ),
     );
   }
 }

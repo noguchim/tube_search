@@ -139,8 +139,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsShop => 'Shop';
 
   @override
-  String get settingsShopSubtitle =>
-      'Upgrade features for a better experience!';
+  String get settingsShopSubtitle => 'More features';
 
   @override
   String get settingsPolicies => 'Policies';

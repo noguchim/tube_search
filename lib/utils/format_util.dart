@@ -6,8 +6,6 @@ String formatPublishedAgo(DateTime? published) {
   final now = DateTime.now();
   final diff = now.difference(published);
 
-  // logger.i("[formatPublishedAgo]published=$published now=$now diff=$diff");
-
   if (diff.inSeconds < 60) {
     return "${diff.inSeconds}秒前";
   } else if (diff.inMinutes < 60) {

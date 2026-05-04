@@ -32,15 +32,17 @@ class TopicScreen extends StatefulWidget {
 
 class TopicScreenState extends State<TopicScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  String _lastRegion = "JP";
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _searchCtrl = TextEditingController();
-
-  Timer? _debounce;
-  late AnimationController _tapAnim;
+  bool _isScrollingDown = false;
   bool _didInitialJump = false;
+  double _lastOffset = 0;
   List<TrendingKeyword> _trending = [];
   bool _trendingLoaded = false;
   String _trendingTimestamp = "";
+
+  @override
+  bool get wantKeepAlive => true;
 
   void scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -53,17 +55,9 @@ class TopicScreenState extends State<TopicScreen>
   }
 
   @override
-  bool get wantKeepAlive => true;
-
-  @override
   void initState() {
     super.initState();
-    // _scrollController.addListener(_handleScroll);
-
-    _tapAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-    );
+    _scrollController.addListener(_handleScroll);
   }
 
   @override
@@ -146,9 +140,6 @@ class TopicScreenState extends State<TopicScreen>
   @override
   void dispose() {
     _scrollController.dispose();
-    _debounce?.cancel();
-    _searchCtrl.dispose();
-    _tapAnim.dispose();
     super.dispose();
   }
 
@@ -173,13 +164,6 @@ class TopicScreenState extends State<TopicScreen>
         child: Center(child: CircularProgressIndicator()),
       );
     }
-
-    // if (_trending.isEmpty) {
-    //   return const SizedBox(
-    //     height: 60,
-    //     child: Center(child: Text("No Trends")),
-    //   );
-    // }
 
     final Color toggleColor =
         theme.colorScheme.onSurface.withValues(alpha: 0.6);
@@ -375,56 +359,131 @@ class TopicScreenState extends State<TopicScreen>
   }
 
   // ----------------------------------------------------
+  // 🔥 スクロール方向通知
+  // ----------------------------------------------------
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final offset = _scrollController.offset;
+
+    // 🔥 トップ付近は常に表示（最重要）
+    if (offset <= 10) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+      _lastOffset = offset;
+      return;
+    }
+
+    final delta = offset - _lastOffset;
+
+    // 🔽 下スクロール（ある程度動いた時だけ）
+    if (delta > 5) {
+      if (!_isScrollingDown) {
+        _isScrollingDown = true;
+        widget.onScrollChanged?.call(true);
+      }
+    }
+
+    // 🔼 上スクロール
+    else if (delta < -5) {
+      if (_isScrollingDown) {
+        _isScrollingDown = false;
+        widget.onScrollChanged?.call(false);
+      }
+    }
+
+    _lastOffset = offset;
+  }
+
+  // ----------------------------------------------------
   // 🧩 本体
   // ----------------------------------------------------
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
     final theme = Theme.of(context);
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final shortestSide = media.size.shortestSide;
     final isTablet = shortestSide >= 600;
     final extraTopGap = isTablet ? 12.0 : 8.0;
-    final double topBarOffset =
-        safeTop + TopBarSpec.barContentHeight + extraTopGap;
+    final double topBarOffset = TopBarSpec.total(safeTop) + extraTopGap;
+
+    // final region = context.watch<RegionProvider>().regionCode;
+    // if (region != _lastRegion) {
+    //   _lastRegion = region;
+    //   WidgetsBinding.instance.addPostFrameCallback((_) {
+    //     if (!mounted) return;
+    //     setState(() {
+    //       _suggestions = [];
+    //       _networkError = false;
+    //     });
+    //     if (_searchCtrl.text.isNotEmpty) {
+    //       _onSearchChanged(_searchCtrl.text);
+    //     }
+    //   });
+    // }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          FocusManager.instance.primaryFocus?.unfocus();
-        },
-        child: CustomScrollView(
-          key: const PageStorageKey("genre_scroll"),
-          controller: _scrollController,
-          slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(0, 10, 16, 0),
-                child: NewArrivalSection(),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 20, 16, 0),
-                child: _buildTrendingChips(theme),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: UISpacing.bottomSpacer(
-                  context,
-                  hasFab: false,
-                  hasAd: true,
+      body: Stack(
+        children: [
+          // =============================
+          // 🔽 通常UI（そのまま）
+          // =============================
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            child: CustomScrollView(
+              key: const PageStorageKey("genre_scroll"),
+              controller: _scrollController,
+              slivers: [
+                SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(0, 10, 16, 0),
+                    child: NewArrivalSection(),
+                  ),
                 ),
-              ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 20, 16, 0),
+                    child: _buildTrendingChips(theme),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: UISpacing.bottomSpacer(
+                      context,
+                      hasFab: false,
+                      hasAd: true,
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
-        ),
+          ),
+
+          // =============================
+          // 🔥 検索Overlay（ここ追加）
+          // =============================
+          // Consumer<SearchUIProvider>(
+          //   builder: (context, search, _) {
+          //     if (!search.isOpen) return const SizedBox.shrink();
+          //
+          //     return SearchOverlay(
+          //       key: ValueKey(search.openId),
+          //       onClose: () => search.close(),
+          //     );
+          //   },
+          // ),
+        ],
       ),
     );
   }
@@ -444,7 +503,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
   bool _canScrollLeft = false;
   bool _canScrollRight = true;
-  static const double _sectionHeight = 262;
+  static const double _sectionHeight = 240;
   String _pickupTimestamp = "";
   bool _isRefreshingPickup = false;
   int _selectedIndex = 0;

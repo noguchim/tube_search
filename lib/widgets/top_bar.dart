@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../utils/app_logger.dart';
 
 enum TopBarMode {
   tabs,
@@ -10,7 +11,10 @@ enum TopBarMode {
 }
 
 class TopBarSpec {
-  static const double barContentHeight = 50.0;
+  static const double topRowHeight = 42.0;
+  static const double tabHeight = 50.0;
+
+  static double total(double safeTop) => safeTop + topRowHeight + tabHeight;
 }
 
 class TopBar extends StatefulWidget {
@@ -24,6 +28,7 @@ class TopBar extends StatefulWidget {
   final String? title;
   final VoidCallback? onBack;
   final VoidCallback? onMenuTap;
+  final VoidCallback? onSearchTap;
 
   const TopBar({
     super.key,
@@ -35,6 +40,7 @@ class TopBar extends StatefulWidget {
     this.title,
     this.onBack,
     this.onMenuTap,
+    this.onSearchTap,
   });
 
   @override
@@ -47,6 +53,7 @@ class _TopBarState extends State<TopBar> {
   // 🔥 タブ幅（固定）
   static const double _tabWidth = 90;
   int? _pressedIndex;
+  bool isSearchOpen = false;
 
   @override
   void initState() {
@@ -66,6 +73,20 @@ class _TopBarState extends State<TopBar> {
       _scrollToCenter(widget.selectedIndex);
     }
   }
+
+  // Widget _buildSearchButton() {
+  //   return IconButton(
+  //       icon: const Icon(Icons.search),
+  //       onPressed: () {
+  //         if (isSearchOpen) {
+  //           context.read<SearchUIProvider>().close();
+  //           isSearchOpen = false;
+  //         } else {
+  //           context.read<SearchUIProvider>().open();
+  //           isSearchOpen = true;
+  //         }
+  //       });
+  // }
 
   void _scrollToCenter(int index) {
     if (!_scrollController.hasClients) return;
@@ -103,9 +124,10 @@ class _TopBarState extends State<TopBar> {
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
     final double safeTop = MediaQuery.of(context).padding.top;
+    logger.i("[Topbar-build]safeTop height=$safeTop");
 
     return Container(
-      height: safeTop + 50,
+      height: TopBarSpec.total(safeTop),
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
@@ -202,21 +224,48 @@ class _TopBarState extends State<TopBar> {
       l.navPopular,
       l.navGenre,
       l.navFavorites,
-      // l.navSettings,
     ];
 
-    return Row(
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        _buildMenuButton(),
-        _buildLogo(),
+        SizedBox(
+          height: 40,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 🍔 ハンバーガー（閉じる）
+              IconButton(
+                icon: const Icon(Icons.menu),
+                iconSize: 26,
+                color: Colors.white,
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
 
-        // 🔥 タブ
-        Expanded(
+              // 🟩 ロゴ
+              Image.asset(
+                'assets/images/logo.png',
+                height: 22,
+                fit: BoxFit.contain,
+              ),
+              const Spacer(),
+              _buildSearchButton(),
+            ],
+          ),
+        ),
+
+        // =========================
+        // 🔥 下段：タブ
+        // =========================
+        SizedBox(
+          height: 50,
           child: ListView.builder(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             itemCount: tabs.length,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             itemBuilder: (context, index) {
               return _buildTab(
                 context,
@@ -230,24 +279,80 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-  Widget _buildLogo() {
-    return GestureDetector(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 0, right: 4),
-        child: Image.asset(
-          'assets/images/logo.png',
-          height: 20, // ← 調整ポイント
-          fit: BoxFit.contain,
+  Widget _buildSearchButton() {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: widget.onSearchTap,
+          child: const Icon(
+            Icons.search,
+            size: 22,
+            color: Colors.white,
+          ),
         ),
       ),
     );
   }
 
+  // Widget _buildLogo() {
+  //   return SizedBox(
+  //     height: 40,
+  //     child: Padding(
+  //       padding: const EdgeInsets.only(bottom: 2), // ←ここで微調整（1〜4）
+  //       child: Align(
+  //         alignment: Alignment.centerLeft,
+  //         child: Image.asset(
+  //           'assets/images/logo.png',
+  //           height: 22, // ←ここはそのままでOK
+  //           fit: BoxFit.contain,
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Widget _buildLogo() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.menu),
+          iconSize: 27,
+          color: Colors.white,
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
+
+        // 🟩 ロゴ
+        Image.asset(
+          'assets/images/logo.png',
+          height: 23,
+          fit: BoxFit.contain,
+        ),
+      ],
+    );
+  }
+
   Widget _buildMenuButton() {
-    return IconButton(
-      icon: const Icon(Icons.menu),
-      color: const Color(0xFFFFFFFF),
-      onPressed: widget.onMenuTap,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2), // ←ここで微調整（1〜4くらい）
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: IconButton(
+          color: Colors.white,
+          icon: const Icon(Icons.menu),
+          iconSize: 26,
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
+      ),
     );
   }
 
@@ -257,7 +362,6 @@ class _TopBarState extends State<TopBar> {
     Color(0xFFFF7A00), // 人気
     Color(0xFF10B981), // ジャンル
     Color(0xFFEF4444), // お気に入り
-    // Color(0xFFFFFFFF), // 設定
   ];
 
   Widget _buildTab(
@@ -283,7 +387,7 @@ class _TopBarState extends State<TopBar> {
         scale: _pressedIndex == index ? 0.96 : 1.0,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          constraints: const BoxConstraints(minWidth: 64),
+          constraints: const BoxConstraints(minWidth: 94),
 
           margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
           // ← 少し詰める
@@ -326,7 +430,7 @@ class _TopBarState extends State<TopBar> {
                 child: index == 0
                     // 🏠 ホーム
                     ? const SizedBox(
-                        width: 45,
+                        width: 55,
                         child: Center(
                           child: Icon(
                             Icons.home,
@@ -335,19 +439,6 @@ class _TopBarState extends State<TopBar> {
                           ),
                         ),
                       )
-
-                    // // ⚙️ 設定
-                    // : index == 4
-                    //     ? const SizedBox(
-                    //         width: 45,
-                    //         child: Center(
-                    //           child: Icon(
-                    //             Icons.settings,
-                    //             size: 18,
-                    //             color: Colors.black, // ← 指定通り黒
-                    //           ),
-                    //         ),
-                    //       )
 
                     // 📝 その他
                     : Text(

@@ -65,13 +65,13 @@ const genreGroupsJa = <GenreGroup>[
       ),
       GenreCategory(
           id: 1101,
-          name: "ユーチューバー",
+          name: "YouTuber",
           isOfficial: false,
           query: "ユーチューバー",
           color: Color(0xFFF4511E)),
       GenreCategory(
           id: 1102,
-          name: "Vチューバー",
+          name: "VTuber",
           isOfficial: false,
           query: "ブイチューバー",
           color: Color(0xFF1E88E5)),
@@ -220,7 +220,7 @@ const genreGroupsJa = <GenreGroup>[
           color: Color(0xFF546E7A)),
       GenreCategory(
           id: 1501,
-          name: "DIY",
+          name: "DIY           ",
           isOfficial: false,
           query: "DIY 作り方",
           color: Color(0xFF8D6E63)),

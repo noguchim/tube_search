@@ -6,6 +6,7 @@ import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
+import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
@@ -144,7 +145,10 @@ class VideoListTileSmall extends StatelessWidget {
                     ),
                     clipBehavior: Clip.antiAlias, // ← ★ 超重要
                     child: InkWell(
-                      onTap: pushPlayer,
+                      onTap: () {
+                        context.read<WatchHistoryService>().add(video);
+                        pushPlayer();
+                      },
                       borderRadius: thumbRadius,
                       child: Ink(
                         child: ClipRRect(

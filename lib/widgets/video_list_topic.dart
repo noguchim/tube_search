@@ -58,7 +58,7 @@ class VideoListTopic extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt);
+    final timeAgo = formatPublishedAgo(video.publishedAt?.toLocal());
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -87,7 +87,7 @@ class VideoListTopic extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
-        width: 280,
+        width: 240,
         child: Container(
           decoration: BoxDecoration(
             color: cardColor,

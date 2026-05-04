@@ -177,10 +177,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-            "${v.score?.toStringAsFixed(2)} "
-            "${v.viewCount} "
-            "$formattedDate "
-            "${_short(v.title)}",
+                "${v.score?.toStringAsFixed(2)} "
+                "${v.viewCount} "
+                "$formattedDate "
+                "${_short(v.title)}",
           );
         }
         break;
@@ -196,10 +196,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-            "${v.score?.toStringAsFixed(2)} "
-            "${v.viewCount} "
-            "$formattedDate "
-            "${_short(v.title)}",
+                "${v.score?.toStringAsFixed(2)} "
+                "${v.viewCount} "
+                "$formattedDate "
+                "${_short(v.title)}",
           );
         }
         break;
@@ -215,10 +215,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-            "${v.score?.toStringAsFixed(2)} "
-            "${v.viewCount} "
-            "$formattedDate "
-            "${_short(v.title)}",
+                "${v.score?.toStringAsFixed(2)} "
+                "${v.viewCount} "
+                "$formattedDate "
+                "${_short(v.title)}",
           );
         }
     }
@@ -282,7 +282,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final density = context.watch<DensityProvider>().density;
 
     final adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final bool shouldShowBanner = !adsRemoved;
 
     return Scaffold(
@@ -439,13 +439,13 @@ class _BottomAdDivider extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: isDark
               ? [
-                  Colors.white.withValues(alpha: 0.22),
-                  Colors.white.withValues(alpha: 0.05),
-                ]
+            Colors.white.withValues(alpha: 0.22),
+            Colors.white.withValues(alpha: 0.05),
+          ]
               : [
-                  Colors.black.withValues(alpha: 0.10),
-                  Colors.black.withValues(alpha: 0.02),
-                ],
+            Colors.black.withValues(alpha: 0.10),
+            Colors.black.withValues(alpha: 0.02),
+          ],
         ),
       ),
     );

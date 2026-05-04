@@ -34,6 +34,9 @@ class YouTubeVideo {
 
     final s = score!;
 
+    // 🔥 ガード
+    if (s.isNaN || s.isInfinite || s <= 0) return 0;
+
     return (sqrt(s) * 100).round();
   }
 }

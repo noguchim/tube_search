@@ -61,7 +61,7 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
 
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 90), (_) {
       if (!mounted) return;
       logger.i('🔄 Auto refresh banner');
       _reloadBanner();

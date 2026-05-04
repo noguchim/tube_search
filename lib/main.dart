@@ -10,11 +10,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
-import 'package:tube_search/screens/settings_screen.dart';
+import 'package:tube_search/providers/search_ui_provider.dart';
+import 'package:tube_search/providers/settings_provider.dart';
+import 'package:tube_search/screens/settings_drawer.dart';
 import 'package:tube_search/screens/topic_screen.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
+import 'package:tube_search/services/limit_service.dart';
+import 'package:tube_search/services/watch_history_service.dart';
 import 'package:tube_search/services/youtube_api_service.dart';
 import 'package:tube_search/theme/app_theme.dart';
 import 'package:tube_search/utils/app_logger.dart';
@@ -22,6 +26,7 @@ import 'package:tube_search/utils/app_version.dart';
 import 'package:tube_search/utils/request_review.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 import 'package:tube_search/widgets/consent_manager.dart';
+import 'package:tube_search/widgets/search_overlay.dart';
 import 'package:tube_search/widgets/top_bar.dart';
 
 import 'l10n/app_localizations.dart';
@@ -80,6 +85,18 @@ void main() async {
             p.load();
             return p;
           },
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => SettingsProvider()..load(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => WatchHistoryService()..load(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => SearchUIProvider(),
         ),
 
         // ★ IapService + IapProvider
@@ -269,13 +286,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Future<void> _prefetchPopular(String region) async {
     final api = context.read<YouTubeApiService>();
+    final iap = context.read<IapProvider>();
+    final limit = LimitService.videoListLimit(iap);
 
-    await api.fetchPopularVideos(
-      maxResults: 20,
-      regionCode: region,
-    );
+    try {
+      final list = await api.fetchPopularVideos(
+        regionCode: region,
+        hours: 12,
+        maxResults: limit,
+      );
 
-    logger.i("🔥 Popular Prefetch DONE");
+      logger.i("🔥 Popular Prefetch DONE count=${list.length}");
+    } catch (e, st) {
+      logger.e("❌ Popular Prefetch ERROR: $e", stackTrace: st);
+    }
   }
 
   Future<void> resetReviewDebugState() async {
@@ -327,42 +351,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 3:
         _favoriteKey.currentState?.scrollToTop();
         break;
-      // case 4:
-      //   _settingsKey.currentState?.scrollToTop();
-      //   break;
     }
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          const DrawerHeader(
-            child: Text("Tube Plus"),
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text("設定"),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final iap = context.watch<IapProvider>();
     final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
+    final search = context.watch<SearchUIProvider>();
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
@@ -371,7 +367,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
         return Scaffold(
           key: _scaffoldKey,
-          drawer: _buildDrawer(),
+          drawer: const SettingsDrawer(),
           extendBody: true,
           body: Stack(
             children: [
@@ -383,6 +379,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     if (_selectedIndex == index) return;
 
                     setState(() => _selectedIndex = index);
+                    context.read<SearchUIProvider>().close();
                   },
                   children: _screens,
                 ),
@@ -407,8 +404,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       onMenuTap: () {
                         _scaffoldKey.currentState?.openDrawer();
                       },
+                      onSearchTap: () {
+                        print("SEARCH TAP");
+                        print(context.read<SearchUIProvider>().isOpen);
+                        context.read<SearchUIProvider>().open();
+                      },
                       onTabSelected: (index) {
                         Feedback.forTap(context);
+
+                        // 🔥 キーボード・Focusを先に確実に解除
+                        FocusManager.instance.primaryFocus?.unfocus();
+
+                        // 🔥 検索Overlayを閉じる
+                        context.read<SearchUIProvider>().close();
 
                         // ==================================================
                         // 🔥 同じタブ → スクロールTOP
@@ -448,6 +456,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   right: 0,
                   bottom: 0,
                   child: AdBanner(isMain: true),
+                ),
+
+              if (search.isOpen)
+                Positioned.fill(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 120),
+                    opacity: 1,
+                    child: SearchOverlay(
+                      isOpen: true,
+                      onClose: () => search.close(),
+                    ),
+                  ),
                 ),
             ],
           ),

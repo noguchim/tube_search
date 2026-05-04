@@ -162,21 +162,17 @@ class YouTubeApiService {
 
   Future<List<YouTubeVideo>> fetchPopularVideos({
     String regionCode = "JP",
-    int maxResults = 50,
-    String? videoCategoryId,
+    int hours = 12,
+    int maxResults = 20,
+    String? date, // ←追加
     bool forceRefresh = false,
   }) async {
-    logger.w(
-        "🌐 fetchPopularVideos called region=$regionCode max=$maxResults force=$forceRefresh time=${DateTime.now()}");
-
     final now = DateTime.now();
-
-    final key = "${regionCode}_${videoCategoryId ?? 'all'}_$maxResults";
+    final key = "${regionCode}_${hours}_${maxResults}_${date ?? 'now'}";
 
     // ------------------------------
     // cache
     // ------------------------------
-
     if (!forceRefresh &&
         _popularCache.containsKey(key) &&
         _popularCacheTime.containsKey(key) &&
@@ -188,26 +184,24 @@ class YouTubeApiService {
     // ------------------------------
     // API
     // ------------------------------
-
-    final uri = Uri.https(baseApi, "/api/youtube_popular_v2.php", {
+    final uri = Uri.https(baseApi, "/api/youtube_popular_v3.php", {
       "region": regionCode,
       "max": "$maxResults",
-      if (videoCategoryId != null && videoCategoryId.isNotEmpty)
-        "category": videoCategoryId,
     });
 
     final data = await _getJson(uri);
 
-    if (data is! List) {
+    if (data is! Map || data["items"] is! List) {
       logger.e("❌ Unexpected Popular API structure");
       throw Exception("Invalid API data");
     }
 
+    final items = data["items"] as List;
+
     // ------------------------------
     // build model
     // ------------------------------
-
-    final list = data.map<YouTubeVideo>((v) {
+    final list = items.map<YouTubeVideo>((v) {
       return YouTubeVideo(
         id: v["id"] ?? "",
         title: v["title"] ?? "",
@@ -216,7 +210,12 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
-        score: (v["score"] as num?)?.toDouble(),
+        score: (() {
+          final vScore = (v["score"] as num?)?.toDouble();
+          if (vScore == null) return null;
+          if (vScore.isNaN || vScore.isInfinite) return null;
+          return vScore;
+        })(),
       );
     }).toList();
 
@@ -225,7 +224,6 @@ class YouTubeApiService {
     // ------------------------------
     // cache save
     // ------------------------------
-
     _popularCache[key] = list;
     _popularCacheTime[key] = now;
 
@@ -299,7 +297,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos_v7.php",
+      "/api/youtube_keyword_videos_v10.php",
       params,
     );
 
@@ -319,7 +317,12 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
-        score: (v["score"] as num?)?.toDouble(),
+        score: (() {
+          final vScore = (v["score"] as num?)?.toDouble();
+          if (vScore == null) return null;
+          if (vScore.isNaN || vScore.isInfinite) return null;
+          return vScore;
+        })(),
       );
     }).toList();
 
@@ -378,7 +381,12 @@ class YouTubeApiService {
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
           viewCount: v["viewCount"] as int?,
           durationSeconds: v["durationSeconds"] as int?,
-          score: (v["score"] as num?)?.toDouble(),
+          score: (() {
+            final vScore = (v["score"] as num?)?.toDouble();
+            if (vScore == null) return null;
+            if (vScore.isNaN || vScore.isInfinite) return null;
+            return vScore;
+          })(),
         );
       }).toList();
 

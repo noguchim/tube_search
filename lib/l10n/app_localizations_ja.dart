@@ -127,7 +127,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsThemeLabelDark => 'ダーク';
 
   @override
-  String get settingsFavoriteDeleteTitle => 'お気に入り削除時に確認';
+  String get settingsFavoriteDeleteTitle => 'お気に入り削除';
 
   @override
   String get settingsFavoriteDeleteOn => 'する';
@@ -139,7 +139,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsShop => 'ショップ';
 
   @override
-  String get settingsShopSubtitle => '便利な機能でより快適に！';
+  String get settingsShopSubtitle => '機能追加';
 
   @override
   String get settingsPolicies => '各種ポリシー';
@@ -151,7 +151,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsPrivacyPolicy => 'プライバシーポリシー';
 
   @override
-  String get aboutRankingCalculation => 'ランキング集計について';
+  String get aboutRankingCalculation => '集計方法について';
 
   @override
   String get settingsTerms => '利用規約';

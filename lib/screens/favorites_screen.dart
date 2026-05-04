@@ -394,7 +394,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
-    final double topBarOffset = safeTop + TopBarSpec.barContentHeight;
+    final double topBarOffset = TopBarSpec.total(safeTop);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

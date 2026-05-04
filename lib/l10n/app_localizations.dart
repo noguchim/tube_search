@@ -347,7 +347,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShopSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Upgrade features for a better experience!'**
+  /// **'More features'**
   String get settingsShopSubtitle;
 
   /// No description provided for @settingsPolicies.

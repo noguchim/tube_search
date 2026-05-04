@@ -7,15 +7,26 @@ class UIScale {
     final media = MediaQuery.of(context);
     final shortest = media.size.shortestSide;
 
-    // 基本スケール
+    // 🔥 guard①
+    if (shortest <= 0 || shortest.isNaN || shortest.isInfinite) {
+      return 1.0;
+    }
+
     double raw = shortest / _baseWidth;
 
-    // clamp
+    // 🔥 guard②
+    if (raw.isNaN || raw.isInfinite) {
+      return 1.0;
+    }
+
     raw = raw.clamp(0.9, 1.3);
 
-    // 🔥 ダンピング（重要）
-    // 1.0を基準に変化量を半分にする
     double scale = 1 + (raw - 1) * 0.5;
+
+    // 🔥 guard③（最終防御）
+    if (scale.isNaN || scale.isInfinite) {
+      return 1.0;
+    }
 
     return scale;
   }
