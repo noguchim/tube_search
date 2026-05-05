@@ -87,19 +87,19 @@ const genreGroupsJa = <GenreGroup>[
           name: "ゲーム",
           isOfficial: true,
           query: "ゲーム",
-          color: Color(0xFF7E57C2)),
+          color: Color(0xFF1976D2)),
       GenreCategory(
           id: 1104,
           name: "パチンコ",
           isOfficial: false,
           query: "パチンコ スマパチ",
-          color: Color(0xFF455A64)),
+          color: Color(0xFFFFB74D)),
       GenreCategory(
           id: 1105,
           name: "パチスロ",
           isOfficial: false,
           query: "パチスロ スマスロ",
-          color: Color(0xFF455A64)),
+          color: Color(0xFF26A69A)),
       GenreCategory(
           id: 23,
           name: "コメディ",
@@ -168,6 +168,12 @@ const genreGroupsJa = <GenreGroup>[
           isOfficial: true,
           query: "科学 技術",
           color: Color(0xFF26A69A)),
+      GenreCategory(
+          id: 30,
+          name: "カルチャー",
+          isOfficial: true,
+          query: "カルチャー",
+          color: Color(0xFF7E57C2)),
     ],
   ),
 
@@ -189,7 +195,7 @@ const genreGroupsJa = <GenreGroup>[
           name: "サッカー",
           isOfficial: false,
           query: "サッカー soccer",
-          color: Color(0xFF2E7D32)),
+          color: Color(0xFF4DB6AC)),
       GenreCategory(
           id: 1403,
           name: "格闘技",

@@ -230,16 +230,26 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                     width: 160,
                     height: 90,
                     fit: BoxFit.cover,
+
+                    // 🔥 ここ追加
+                    errorBuilder: (_, __, ___) {
+                      return Image.asset(
+                        'assets/images/no_image.png',
+                        width: 160,
+                        height: 90,
+                        fit: BoxFit.cover,
+                      );
+                    },
                   ),
 
-                  // ▶ 再生ボタン（中央）
+                  // ▶ 再生ボタン
                   const Positioned.fill(
                     child: PlayButtonOverlay(
                       sizeOverride: 30,
                     ),
                   ),
 
-                  // ❤️ お気に入り（右上）
+                  // ❤️ お気に入り
                   Positioned(
                     top: -4,
                     right: -2,

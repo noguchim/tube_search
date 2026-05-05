@@ -29,7 +29,8 @@ class VideoListTopic extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color cardColor = theme.colorScheme.surface;
+    final Color cardColor =
+        isDark ? Color(0xFF282828) : theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
     final BorderRadius borderRadius = BorderRadius.circular(12);
@@ -87,23 +88,23 @@ class VideoListTopic extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
-        width: 240,
+        width: 270,
         child: Container(
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: borderRadius,
             border: Border.fromBorderSide(borderSide),
             boxShadow: shadows,
-            gradient: isDark
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.02),
-                      Colors.transparent,
-                    ],
-                  )
-                : null,
+            // gradient: isDark
+            //     ? LinearGradient(
+            //         begin: Alignment.topCenter,
+            //         end: Alignment.bottomCenter,
+            //         colors: [
+            //           Colors.white.withValues(alpha: 0.02),
+            //           Colors.transparent,
+            //         ],
+            //       )
+            //     : null,
           ),
           clipBehavior: Clip.antiAlias,
           child: Material(
@@ -187,8 +188,8 @@ class VideoListTopic extends StatelessWidget {
 
                                   // ❤️ お気に入り（サムネ右上）
                                   Positioned(
-                                    top: 6,
-                                    right: 6,
+                                    top: 1,
+                                    right: 4,
                                     child: GestureDetector(
                                       onTap: () => handleFavoriteTap(
                                         context,
@@ -197,7 +198,7 @@ class VideoListTopic extends StatelessWidget {
                                       child: FavoriteButtonOverlay(
                                         isFavorite: isFav,
                                         showBackground: true,
-                                        scale: 0.8,
+                                        scale: 0.9,
                                         onTap: () => handleFavoriteTap(
                                           context,
                                           video: video,

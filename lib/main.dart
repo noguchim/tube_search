@@ -23,6 +23,7 @@ import 'package:tube_search/services/youtube_api_service.dart';
 import 'package:tube_search/theme/app_theme.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/utils/app_version.dart';
+import 'package:tube_search/utils/navigator_key.dart';
 import 'package:tube_search/utils/request_review.dart';
 import 'package:tube_search/widgets/ad_banner.dart';
 import 'package:tube_search/widgets/consent_manager.dart';
@@ -175,13 +176,11 @@ class _MyAppState extends State<MyApp> {
       // ← Provider で切替
 
       home: const MainNavigationScreen(),
+      navigatorKey: rootNavigatorKey,
     );
   }
 }
 
-/// ----------------------------------------------------------------
-/// 🧭 BottomNavigation 管理画面（背景のダーク対応を改善済み）
-/// ----------------------------------------------------------------
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 

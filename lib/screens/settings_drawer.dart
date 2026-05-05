@@ -14,6 +14,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/region_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
+import '../utils/navigator_key.dart';
 
 String localizedPage(BuildContext context, String page) {
   final locale = Localizations.localeOf(context).languageCode;
@@ -161,22 +162,26 @@ class SettingsDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.only(top: 10),
               children: [
-                item(
-                  context,
-                  icon: Icons.brightness_6_outlined,
-                  title: l.settingsTheme,
-                  value: logic.themeLabel(themeProvider.themeMode),
-                  onTap: () {
-                    logic.showThemeDialog(context, themeProvider);
-                  },
-                ),
-                item(
-                  context,
-                  icon: Icons.favorite_border,
-                  title: l.settingsFavoriteDeleteTitle,
-                  value: settingsProvider.label,
-                  onTap: () => logic.showDeleteConfirmDialog(context),
-                ),
+                item(context,
+                    icon: Icons.brightness_6_outlined,
+                    title: l.settingsTheme,
+                    value: logic.themeLabel(themeProvider.themeMode),
+                    onTap: () {
+                  Navigator.pop(context); // Drawer閉じる
+
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    logic.showThemeDialog(themeProvider);
+                  });
+                }),
+                item(context,
+                    icon: Icons.favorite_border,
+                    title: l.settingsFavoriteDeleteTitle,
+                    value: settingsProvider.label, onTap: () {
+                  Navigator.pop(context);
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    logic.showDeleteConfirmDialog();
+                  });
+                }),
                 item(
                   context,
                   icon: Icons.history,
@@ -238,20 +243,24 @@ class SettingsDrawer extends StatelessWidget {
                     );
                   },
                 ),
-                item(
-                  context,
-                  icon: Icons.policy,
-                  title: l.settingsPolicies,
-                  value: "",
-                  onTap: () => logic.showPolicyDialog(context),
-                ),
-                item(
-                  context,
-                  icon: Icons.info_outline,
-                  title: l.settingsAbout,
-                  value: "",
-                  onTap: () => logic.showAboutDialog(context),
-                ),
+                item(context,
+                    icon: Icons.policy,
+                    title: l.settingsPolicies,
+                    value: "", onTap: () {
+                  Navigator.pop(context);
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    logic.showPolicyDialog();
+                  });
+                }),
+                item(context,
+                    icon: Icons.info_outline,
+                    title: l.settingsAbout,
+                    value: "", onTap: () {
+                  Navigator.pop(context);
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    logic.showAboutDialog();
+                  });
+                }),
               ],
             ),
           ),
@@ -292,7 +301,8 @@ class SettingsLogic {
   // -------------------------------------------------------------------
   // 🔥 テーマ変更ダイアログ
   // -------------------------------------------------------------------
-  void showThemeDialog(BuildContext context, ThemeProvider provider) {
+  void showThemeDialog(ThemeProvider provider) {
+    final context = rootNavigatorKey.currentContext!;
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
 
@@ -377,7 +387,8 @@ class SettingsLogic {
   // -------------------------------------------------------------------
   // 🔥 お気に入り削除設定ダイアログ
   // -------------------------------------------------------------------
-  void showDeleteConfirmDialog(BuildContext context) {
+  void showDeleteConfirmDialog() {
+    final context = rootNavigatorKey.currentContext!;
     final theme = Theme.of(context);
     final settingsProvider = context.read<SettingsProvider>();
 
@@ -464,7 +475,8 @@ class SettingsLogic {
     loading = false;
   }
 
-  void showPolicyDialog(BuildContext context) {
+  void showPolicyDialog() {
+    final context = rootNavigatorKey.currentContext!;
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
@@ -543,7 +555,8 @@ class SettingsLogic {
     );
   }
 
-  void showAboutDialog(BuildContext context) {
+  void showAboutDialog() {
+    final context = rootNavigatorKey.currentContext!;
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
 

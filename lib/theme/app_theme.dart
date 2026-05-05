@@ -104,7 +104,10 @@ final ThemeData appDarkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
 
-  scaffoldBackgroundColor: const Color(0xFF282828),
+  // scaffoldBackgroundColor: const Color(0xFF282828),
+  // scaffoldBackgroundColor: const Color(0xFF303030),
+  // scaffoldBackgroundColor: const Color(0xFF323232),
+  scaffoldBackgroundColor: const Color(0xFF383838),
 
   dividerColor: Colors.white.withValues(alpha: 0.12),
   dividerTheme: DividerThemeData(

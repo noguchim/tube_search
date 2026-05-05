@@ -91,7 +91,7 @@ class WatchHistoryService extends ChangeNotifier {
     _cache.insert(0, map);
 
     // 最大100件
-    if (_cache.length > 100) {
+    if (_cache.length > 50) {
       _cache.removeLast();
     }
 

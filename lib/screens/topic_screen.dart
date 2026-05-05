@@ -154,7 +154,32 @@ class TopicScreenState extends State<TopicScreen>
     return "$date $time updated";
   }
 
-  Widget _buildTrendingChips(ThemeData theme) {
+  Widget _buildTrendingChips() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final Color cardColor = theme.colorScheme.surface;
+    final BorderRadius borderRadius = BorderRadius.circular(12);
+
+    final BorderSide borderSide = BorderSide(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.30)
+          : Colors.black.withValues(alpha: 0.45),
+      width: 1,
+    );
+
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.25),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.10),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
+      ),
+    ];
+
     logger.i(
         "TrendTips start _trendingLoaded=$_trendingLoaded _trending=${_trending.map((e) => e.keyword).toList()}");
 
@@ -165,154 +190,172 @@ class TopicScreenState extends State<TopicScreen>
       );
     }
 
-    final Color toggleColor =
-        theme.colorScheme.onSurface.withValues(alpha: 0.6);
-
     final t = AppLocalizations.of(context)!;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final List<TrendingKeyword> displayList = _trending;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // タイトル
-              IntrinsicWidth(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          t.trendWords,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // タイムスタンプ
-                        Container(
-                          height: 22,
-                          alignment: Alignment.bottomRight,
-                          child: Text(
-                            _trendingTimestamp,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(width: 6),
-
-                        // 🔥 更新ボタン
-                        GestureDetector(
-                          onTap:
-                              _isRefreshingTrending ? null : _refreshTrending,
-                          child: Container(
-                            height: 22,
-                            alignment: Alignment.bottomCenter,
-                            child: _isRefreshingTrending
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : Icon(
-                                    Icons.refresh,
-                                    size: 24,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.8),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: SizedBox(
+        width: 270,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: borderRadius,
+            border: Border.fromBorderSide(borderSide),
+            boxShadow: shadows,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(25, 20, 16, 25),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final List<TrendingKeyword> displayList = _trending;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // タイトル
+                      IntrinsicWidth(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  t.trendWords,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSurface,
                                   ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 1.2,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6), // 下線色
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
+                                ),
+                                const SizedBox(width: 8),
 
-              // チップ
-              Wrap(
-                spacing: 8,
-                runSpacing: 1,
-                children: displayList.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final t = entry.value;
+                                // タイムスタンプ
+                                Container(
+                                  height: 22,
+                                  alignment: Alignment.bottomRight,
+                                  child: Text(
+                                    _trendingTimestamp,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ),
 
-                  final keyword = t.keyword.trim();
-                  if (keyword.isEmpty) return const SizedBox.shrink();
+                                const SizedBox(width: 6),
 
-                  final bool isTop3 = index < 3;
-
-                  return Material(
-                    elevation: isTop3 ? 3 : 1.5,
-                    shadowColor: Colors.black.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(22),
-                    color: Colors.transparent,
-                    child: ActionChip(
-                      pressElevation: 0,
-                      label: Text(
-                        "#$keyword",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight:
-                              isTop3 ? FontWeight.w700 : FontWeight.w600,
-                          color: isTop3 ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      backgroundColor:
-                          isTop3 ? const Color(0xFF7C3AED) : Colors.white,
-                      side: isTop3
-                          ? BorderSide.none
-                          : const BorderSide(
-                              color: Color(0xFFCFD5D5),
-                              width: 1,
+                                // 🔥 更新ボタン
+                                GestureDetector(
+                                  onTap: _isRefreshingTrending
+                                      ? null
+                                      : _refreshTrending,
+                                  child: Container(
+                                    height: 22,
+                                    alignment: Alignment.bottomCenter,
+                                    child: _isRefreshingTrending
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : Icon(
+                                            Icons.refresh,
+                                            size: 24,
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.8),
+                                          ),
+                                  ),
+                                ),
+                              ],
                             ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      onPressed: () {
-                        logger.i("🔥 Trending chip tapped: $keyword");
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => GenreVideosScreen(
-                              categoryId: "",
-                              categoryTitle: keyword,
-                              keyword: keyword,
-                              searchMode: "or",
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 1.8,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6), // 下線色
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // チップ
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 1,
+                        children: displayList.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final t = entry.value;
+
+                          final keyword = t.keyword.trim();
+                          if (keyword.isEmpty) return const SizedBox.shrink();
+
+                          final bool isTop3 = index < 3;
+
+                          return Material(
+                            elevation: isTop3 ? 0 : 1.5,
+                            shadowColor: Colors.black.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(22),
+                            color: Colors.transparent,
+                            child: ActionChip(
+                              pressElevation: 0,
+                              label: Text(
+                                "#$keyword",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isTop3
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  color: isTop3 ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              backgroundColor: isTop3
+                                  ? const Color(0xFF7C3AED)
+                                  : Colors.white,
+                              side: isTop3
+                                  ? BorderSide.none
+                                  : const BorderSide(
+                                      color: Color(0xFFCFD5D5),
+                                      width: 1,
+                                    ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                              onPressed: () {
+                                logger.i("🔥 Trending chip tapped: $keyword");
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => GenreVideosScreen(
+                                      categoryId: "",
+                                      categoryTitle: keyword,
+                                      keyword: keyword,
+                                      searchMode: "or",
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   );
-                }).toList(),
+                },
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -409,7 +452,7 @@ class TopicScreenState extends State<TopicScreen>
     final safeTop = media.padding.top;
     final shortestSide = media.size.shortestSide;
     final isTablet = shortestSide >= 600;
-    final extraTopGap = isTablet ? 12.0 : 8.0;
+    final extraTopGap = isTablet ? 8.0 : 4.0;
     final double topBarOffset = TopBarSpec.total(safeTop) + extraTopGap;
 
     // final region = context.watch<RegionProvider>().regionCode;
@@ -446,14 +489,14 @@ class TopicScreenState extends State<TopicScreen>
                 SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
                 const SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(0, 10, 16, 0),
+                    padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
                     child: NewArrivalSection(),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 20, 16, 0),
-                    child: _buildTrendingChips(theme),
+                    padding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
+                    child: _buildTrendingChips(),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -465,24 +508,9 @@ class TopicScreenState extends State<TopicScreen>
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
             ),
           ),
-
-          // =============================
-          // 🔥 検索Overlay（ここ追加）
-          // =============================
-          // Consumer<SearchUIProvider>(
-          //   builder: (context, search, _) {
-          //     if (!search.isOpen) return const SizedBox.shrink();
-          //
-          //     return SearchOverlay(
-          //       key: ValueKey(search.openId),
-          //       onClose: () => search.close(),
-          //     );
-          //   },
-          // ),
         ],
       ),
     );
@@ -503,7 +531,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
   bool _canScrollLeft = false;
   bool _canScrollRight = true;
-  static const double _sectionHeight = 240;
+  static const double _sectionHeight = 255;
   String _pickupTimestamp = "";
   bool _isRefreshingPickup = false;
   int _selectedIndex = 0;
@@ -642,27 +670,79 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final Color cardColor = theme.colorScheme.surface;
+    final Color onSurface = theme.colorScheme.onSurface;
+    final BorderRadius borderRadius = BorderRadius.circular(12);
 
-    final region = context.watch<RegionProvider>().regionCode;
-    if (region != _lastRegion) {
-      _lastRegion = region;
-      cache.clear();
-    }
+    final BorderSide borderSide = BorderSide(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.30)
+          : Colors.black.withValues(alpha: 0.45),
+      width: 1,
+    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitle(theme),
-        _buildHeader(),
-        const SizedBox(height: 4),
-        _buildContent(),
-      ],
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.25),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.10),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: SizedBox(
+        width: 270,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: borderRadius,
+            border: Border.fromBorderSide(borderSide),
+            boxShadow: shadows,
+            // gradient: isDark
+            //     ? LinearGradient(
+            //         begin: Alignment.topCenter,
+            //         end: Alignment.bottomCenter,
+            //         colors: [
+            //           Colors.white.withValues(alpha: 0.02),
+            //           Colors.transparent,
+            //         ],
+            //       )
+            //     : null,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 18),
+                _buildTitle(theme),
+                const SizedBox(height: 12),
+                _buildHeader(),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 243,
+                  child: _buildList(),
+                ),
+                const SizedBox(height: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildTitle(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.fromLTRB(25, 0, 0, 0),
       child: Row(
         children: [
           IntrinsicWidth(
@@ -718,7 +798,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  height: 1.2,
+                  height: 1.8,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ],
@@ -734,7 +814,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      padding: const EdgeInsets.fromLTRB(25, 0, 0, 0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -839,7 +919,8 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           ListView.builder(
             controller: _listController,
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.zero,
+            // ← ここ重要（消す）
             itemCount: videos.length,
             itemBuilder: (_, i) {
               final isFirst = i == 0;
@@ -847,8 +928,8 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
               return Padding(
                 padding: EdgeInsets.only(
-                  left: isFirst ? 8 : 0,
-                  right: isLast ? 8 : 0,
+                  left: isFirst ? 4 : 2, // ← 最初だけ広く
+                  right: isLast ? 4 : 0, // ← 最後だけ広く
                 ),
                 child: VideoListTopic(
                   video: videos[i],
@@ -861,7 +942,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           // 左矢印
           if (_canScrollLeft)
             Positioned(
-              left: 4,
+              left: 0,
               top: 0,
               bottom: 15,
               child: IgnorePointer(
@@ -877,7 +958,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           // 右矢印
           if (_canScrollRight)
             Positioned(
-              right: 4,
+              right: 0,
               top: 0,
               bottom: 15,
               child: IgnorePointer(

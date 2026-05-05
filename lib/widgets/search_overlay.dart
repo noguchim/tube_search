@@ -66,7 +66,6 @@ class _SearchOverlayState extends State<SearchOverlay>
   }
 
   void _onSearchChanged(String text) {
-    // setState(() {});
     _debounce?.cancel();
 
     _debounce = Timer(const Duration(milliseconds: 260), () async {
@@ -74,14 +73,15 @@ class _SearchOverlayState extends State<SearchOverlay>
         setState(() {
           _suggestions = [];
           _networkError = false;
+          _isLoadingSuggest = false;
         });
         return;
       }
 
-      // setState(() {
-      //   _isLoadingSuggest = true;
-      //   _networkError = false;
-      // });
+      setState(() {
+        _isLoadingSuggest = true;
+        _networkError = false;
+      });
 
       try {
         final region = context.read<RegionProvider>().regionCode;
@@ -127,13 +127,6 @@ class _SearchOverlayState extends State<SearchOverlay>
           color: Colors.black.withValues(alpha: 0.4),
           child: Stack(
             children: [
-              // Positioned(
-              //   top: safeTop + 90,
-              //   left: 0,
-              //   right: 0,
-              //   bottom: bottomInset + 60,
-              //   child: _buildSuggestions(),
-              // ),
               Positioned(
                 top: safeTop + 90,
                 left: 0,
@@ -221,148 +214,6 @@ class _SearchOverlayState extends State<SearchOverlay>
 
     return "or";
   }
-
-  // ==========================================
-  // 🔍 検索フォーム
-  // ==========================================
-  // Widget _buildSearchField() {
-  //   final theme = Theme.of(context);
-  //   final isDark = theme.brightness == Brightness.dark;
-  //
-  //   final Color searchBg = isDark
-  //       ? const Color(0xFF2A2A2A) // ←しっかりした背景
-  //       : Colors.white; // ←白固定
-  //
-  //   final Color actionBg = isDark
-  //       ? Colors.white.withValues(alpha: 0.18)
-  //       : Colors.black.withValues(alpha: 0.08);
-  //
-  //   final bool canSearch = _searchCtrl.text.trim().isNotEmpty;
-  //
-  //   return AnimatedBuilder(
-  //     animation: _tapAnim,
-  //     builder: (context, child) {
-  //       return Transform.scale(
-  //         scale: _scaleAnim.value,
-  //         child: Material(
-  //           elevation: 0,
-  //           borderRadius: BorderRadius.circular(10),
-  //           color: Colors.transparent,
-  //           child: Container(
-  //             height: 50,
-  //             decoration: BoxDecoration(
-  //               color: searchBg,
-  //               borderRadius: BorderRadius.circular(10),
-  //               border: Border.all(
-  //                 color: isDark
-  //                     ? Colors.white.withValues(alpha: 0.08)
-  //                     : Colors.black.withValues(alpha: 0.08),
-  //                 width: 1,
-  //               ),
-  //             ),
-  //             child: Row(
-  //               children: [
-  //                 // =========================
-  //                 // 🔍 入力欄
-  //                 // =========================
-  //                 Expanded(
-  //                   child: Padding(
-  //                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 1),
-  //                     child: TextField(
-  //                       autofocus: true,
-  //                       controller: _searchCtrl,
-  //                       focusNode: _focusNode,
-  //                       onChanged: (text) {
-  //                         _onSearchChanged(text);
-  //                       },
-  //                       onSubmitted: (text) {
-  //                         final kw = text.trim();
-  //                         if (kw.isEmpty) return;
-  //                         _executeSearch(kw);
-  //                       },
-  //                       style: TextStyle(
-  //                         color: isDark
-  //                             ? Colors.white.withValues(alpha: 0.90)
-  //                             : Colors.black87,
-  //                       ),
-  //                       decoration: InputDecoration(
-  //                         border: InputBorder.none,
-  //                         hintText:
-  //                             AppLocalizations.of(context)!.genreSearchHeader,
-  //                         hintStyle: TextStyle(
-  //                           fontSize: 18,
-  //                           color: theme.colorScheme.onSurface
-  //                               .withValues(alpha: 0.75),
-  //                         ),
-  //                         prefixIcon: Icon(
-  //                           Icons.search,
-  //                           size: 26,
-  //                           color: theme.colorScheme.onSurface
-  //                               .withValues(alpha: 0.7),
-  //                         ),
-  //                         prefixIconConstraints: const BoxConstraints(
-  //                           minWidth: 36,
-  //                           minHeight: 36,
-  //                         ),
-  //                         contentPadding: const EdgeInsets.only(
-  //                           top: 10,
-  //                           bottom: 10,
-  //                         ),
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ),
-  //
-  //                 // =========================
-  //                 // 🔥 右アクション（検索ボタン）
-  //                 // =========================
-  //                 Container(
-  //                   width: 52,
-  //                   height: double.infinity,
-  //                   decoration: BoxDecoration(
-  //                     color: actionBg,
-  //                     borderRadius: const BorderRadius.only(
-  //                       topRight: Radius.circular(14),
-  //                       bottomRight: Radius.circular(14),
-  //                     ),
-  //                   ),
-  //                   child: Center(
-  //                     child: _isSearchingFromSuggest
-  //                         ? const SizedBox(
-  //                             width: 18,
-  //                             height: 18,
-  //                             child: CircularProgressIndicator(
-  //                               strokeWidth: 2,
-  //                               color: Colors.white,
-  //                             ),
-  //                           )
-  //                         : IconButton(
-  //                             icon: Icon(
-  //                               Icons.search,
-  //                               size: 26,
-  //                               color: canSearch
-  //                                   ? Colors.black
-  //                                   : Colors.black.withValues(alpha: 0.4),
-  //                             ),
-  //                             onPressed: canSearch
-  //                                 ? () {
-  //                                     final kw = _searchCtrl.text.trim();
-  //                                     if (kw.isEmpty) return;
-  //
-  //                                     _executeSearch(kw);
-  //                                   }
-  //                                 : null,
-  //                           ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget _buildSearchField() {
     final bool canSearch = _searchCtrl.text.trim().isNotEmpty;
@@ -499,7 +350,6 @@ class _SearchOverlayState extends State<SearchOverlay>
   Widget _buildSuggestions() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
     final t = AppLocalizations.of(context)!;
 
     // =========================

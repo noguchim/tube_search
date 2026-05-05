@@ -74,20 +74,6 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-  // Widget _buildSearchButton() {
-  //   return IconButton(
-  //       icon: const Icon(Icons.search),
-  //       onPressed: () {
-  //         if (isSearchOpen) {
-  //           context.read<SearchUIProvider>().close();
-  //           isSearchOpen = false;
-  //         } else {
-  //           context.read<SearchUIProvider>().open();
-  //           isSearchOpen = true;
-  //         }
-  //       });
-  // }
-
   void _scrollToCenter(int index) {
     if (!_scrollController.hasClients) return;
 
@@ -252,6 +238,7 @@ class _TopBarState extends State<TopBar> {
               ),
               const Spacer(),
               _buildSearchButton(),
+              const SizedBox(width: 16),
             ],
           ),
         ),
@@ -290,7 +277,7 @@ class _TopBarState extends State<TopBar> {
           onTap: widget.onSearchTap,
           child: const Icon(
             Icons.search,
-            size: 22,
+            size: 26,
             color: Colors.white,
           ),
         ),
