@@ -5,7 +5,9 @@ import 'package:tube_search/data/youtube_video.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
+import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
+import '../services/watch_history_service.dart';
 import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
@@ -43,7 +45,7 @@ class ExpandedVideoOverlay extends StatelessWidget {
         ? 530
         : isTablet
             ? 400
-            : 330;
+            : 335;
 
     return Material(
       color: Colors.transparent,
@@ -131,7 +133,11 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     final isFav = fav.isFavoriteSync(id);
     final borderRadius = BorderRadius.circular(16);
 
-    bool isPushing = false;
+    final controller = context.watch<ExpandedVideoController>();
+    final showRankingInfo =
+        controller.presentationMode == VideoPresentationMode.ranked;
+
+    bool isTaping = false;
 
     final BorderSide borderSide = BorderSide(
       color: isDark
@@ -149,18 +155,16 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     ];
 
     Future<void> pushPlayer() async {
-      if (isPushing) return;
-      isPushing = true;
+      if (isTaping) return;
+      isTaping = true;
       try {
         final id = video.id;
         if (id.isEmpty) return;
         await openYouTubeInInAppBrowser(context, videoId: id);
       } finally {
-        isPushing = false;
+        isTaping = false;
       }
     }
-
-    final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -183,7 +187,6 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
         ),
         clipBehavior: Clip.antiAlias,
         child: Material(
-          color: Colors.transparent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -193,7 +196,10 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: pushPlayer,
+                  onTap: () {
+                    context.read<WatchHistoryService>().add(video);
+                    pushPlayer();
+                  },
                   borderRadius: borderRadius,
                   child: Ink(
                     child: ClipRRect(
@@ -322,16 +328,22 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                     // =========================
                     // タイトル
                     // =========================
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: onSurface,
+                    SizedBox(
+                      height: 40,
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          height: 1.35,
+                          color: onSurface,
+                        ),
                       ),
                     ),
+
+                    const SizedBox(height: 10),
 
                     // =========================
                     // チャンネル名
@@ -342,8 +354,8 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(
-                        fontSize: 13,
-                        color: onSurface.withValues(alpha: 0.72),
+                        fontSize: 14,
+                        color: onSurface,
                       ),
                     ),
 
@@ -362,12 +374,13 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              PopularityChip(
-                                popularity: video.popularity,
-                                fontSize: UIScale.font(context, 18),
-                                iconSize: UIScale.icon(context, 18),
-                                height: UIScale.height(context, 24),
-                              ),
+                              if (showRankingInfo)
+                                PopularityChip(
+                                  popularity: video.popularity,
+                                  fontSize: UIScale.font(context, 18),
+                                  iconSize: UIScale.icon(context, 18),
+                                  height: UIScale.height(context, 24),
+                                ),
                               const SizedBox(width: 8),
                               Text(
                                 viewText,

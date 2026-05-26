@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "255834247953",
+    "project_id": "tube-plus-push",
+    "storage_bucket": "tube-plus-push.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:255834247953:android:2d631820f4de1b057db2b0",
+        "android_client_info": {
+          "package_name": "jp.nbfactory.tubesearch.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKkYT4irY3HgHY9ncPbMXXHzfoXGFrdzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

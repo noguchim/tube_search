@@ -27,7 +27,8 @@ Future<PreviewAction?> showRepeatPreviewDialog({
 }) async {
   return showDialog<PreviewAction>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.3),
     builder: (_) {
       return AppDialog(
         title: "プレビュー",

@@ -5,7 +5,9 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
+import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
+import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
@@ -14,15 +16,20 @@ import '../utils/rank_badge.dart';
 import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'new_video_badge.dart';
 
 class VideoListTile extends StatelessWidget {
   final YouTubeVideo video;
   final int rank;
+  final bool showNewBadge;
+  final VideoPresentationMode presentationMode;
 
   const VideoListTile({
     super.key,
     required this.video,
     required this.rank,
+    this.showNewBadge = false,
+    this.presentationMode = VideoPresentationMode.ranked,
   });
 
   @override
@@ -71,21 +78,22 @@ class VideoListTile extends StatelessWidget {
 
     final isFav = fav.isFavoriteSync(id);
 
-    bool isPushing = false;
+    final showRankingInfo = presentationMode == VideoPresentationMode.ranked;
+
+    bool isTaping = false;
 
     Future<void> pushPlayer() async {
-      if (isPushing) return;
-      isPushing = true;
+      if (isTaping) return;
+      isTaping = true;
       try {
         if (id.isEmpty) return;
         logger.w("🚨 OPEN CCT id=$id");
         await openYouTubeInInAppBrowser(context, videoId: id);
       } finally {
-        isPushing = false;
+        isTaping = false;
       }
     }
 
-    // final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
     bool isPressed = false;
 
     return Padding(
@@ -123,7 +131,10 @@ class VideoListTile extends StatelessWidget {
                   child: StatefulBuilder(
                     builder: (context, setState) {
                       return InkWell(
-                        onTap: pushPlayer,
+                        onTap: () {
+                          context.read<WatchHistoryService>().add(video);
+                          pushPlayer();
+                        },
                         onTapDown: (_) => setState(() => isPressed = true),
                         onTapUp: (_) => setState(() => isPressed = false),
                         onTapCancel: () => setState(() => isPressed = false),
@@ -192,13 +203,22 @@ class VideoListTile extends StatelessWidget {
                                   ),
 
                                   // Rank
-                                  Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: IgnorePointer(
-                                      child: rankBadge(context, rank),
+                                  if (showNewBadge)
+                                    const Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: IgnorePointer(
+                                        child: NewVideoBadge(),
+                                      ),
+                                    )
+                                  else if (showRankingInfo)
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: IgnorePointer(
+                                        child: rankBadge(context, rank),
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -235,8 +255,8 @@ class VideoListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                         style: TextStyle(
-                          fontSize: 13,
-                          color: onSurface.withValues(alpha: 0.72),
+                          fontSize: 14,
+                          color: onSurface,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -275,12 +295,13 @@ class VideoListTile extends StatelessWidget {
                               bottom: 0,
                               child: Row(
                                 children: [
-                                  PopularityChip(
-                                    popularity: video.popularity,
-                                    fontSize: UIScale.font(context, 18),
-                                    iconSize: UIScale.icon(context, 18),
-                                    height: UIScale.height(context, 24),
-                                  ),
+                                  if (showRankingInfo)
+                                    PopularityChip(
+                                      popularity: video.popularity,
+                                      fontSize: UIScale.font(context, 18),
+                                      iconSize: UIScale.icon(context, 18),
+                                      height: UIScale.height(context, 24),
+                                    ),
                                   const SizedBox(width: 8),
                                   Text(
                                     viewText,

@@ -5,6 +5,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../data/youtube_video.dart';
 import '../services/favorites_service.dart';
+import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/format_util.dart';
 import '../utils/handle_favorite_tap.dart';
@@ -15,11 +16,13 @@ import 'favorite_button_overlay.dart';
 class VideoListTopic extends StatelessWidget {
   final YouTubeVideo video;
   final int rank;
+  final bool showNewBadge;
 
   const VideoListTopic({
     super.key,
     required this.video,
     required this.rank,
+    this.showNewBadge = false,
   });
 
   @override
@@ -120,7 +123,10 @@ class VideoListTopic extends StatelessWidget {
                   child: StatefulBuilder(
                     builder: (context, setState) {
                       return InkWell(
-                        onTap: pushPlayer,
+                        onTap: () {
+                          context.read<WatchHistoryService>().add(video);
+                          pushPlayer();
+                        },
                         onTapDown: (_) => setState(() => isPressed = true),
                         onTapUp: (_) => setState(() => isPressed = false),
                         onTapCancel: () => setState(() => isPressed = false),
@@ -153,6 +159,13 @@ class VideoListTopic extends StatelessWidget {
                                             fit: BoxFit.cover,
                                           ),
                                   ),
+
+                                  if (showNewBadge)
+                                    const Positioned(
+                                      left: 8,
+                                      top: 8,
+                                      child: _NewVideoBadge(),
+                                    ),
 
                                   // ▶ 再生ボタン
                                   PlayButtonOverlay(pressed: isPressed),
@@ -243,7 +256,7 @@ class VideoListTopic extends StatelessWidget {
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 12,
-                          color: onSurface.withValues(alpha: 0.72),
+                          color: onSurface,
                         ),
                       ),
                     ],
@@ -253,6 +266,55 @@ class VideoListTopic extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _NewVideoBadge extends StatelessWidget {
+  const _NewVideoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Colors.white,
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.30),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.fiber_manual_record,
+            size: 8,
+            color: Colors.white,
+          ),
+          SizedBox(width: 4),
+          Text(
+            "新着",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              height: 1.0,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }

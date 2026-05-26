@@ -29,6 +29,7 @@ class TopBar extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onMenuTap;
   final VoidCallback? onSearchTap;
+  final VoidCallback? onTrendTap;
 
   const TopBar({
     super.key,
@@ -41,6 +42,7 @@ class TopBar extends StatefulWidget {
     this.onBack,
     this.onMenuTap,
     this.onSearchTap,
+    this.onTrendTap,
   });
 
   @override
@@ -237,6 +239,8 @@ class _TopBarState extends State<TopBar> {
                 fit: BoxFit.contain,
               ),
               const Spacer(),
+              _buildTrendButton(),
+              const SizedBox(width: 4),
               _buildSearchButton(),
               const SizedBox(width: 16),
             ],
@@ -266,6 +270,25 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
+  Widget _buildTrendButton() {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: widget.onTrendTap,
+          child: const Icon(
+            Icons.trending_up,
+            size: 25,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchButton() {
     return SizedBox(
       width: 40,
@@ -280,64 +303,6 @@ class _TopBarState extends State<TopBar> {
             size: 26,
             color: Colors.white,
           ),
-        ),
-      ),
-    );
-  }
-
-  // Widget _buildLogo() {
-  //   return SizedBox(
-  //     height: 40,
-  //     child: Padding(
-  //       padding: const EdgeInsets.only(bottom: 2), // ←ここで微調整（1〜4）
-  //       child: Align(
-  //         alignment: Alignment.centerLeft,
-  //         child: Image.asset(
-  //           'assets/images/logo.png',
-  //           height: 22, // ←ここはそのままでOK
-  //           fit: BoxFit.contain,
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget _buildLogo() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.menu),
-          iconSize: 27,
-          color: Colors.white,
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
-        ),
-
-        // 🟩 ロゴ
-        Image.asset(
-          'assets/images/logo.png',
-          height: 23,
-          fit: BoxFit.contain,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMenuButton() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2), // ←ここで微調整（1〜4くらい）
-      child: SizedBox(
-        width: 40,
-        height: 40,
-        child: IconButton(
-          color: Colors.white,
-          icon: const Icon(Icons.menu),
-          iconSize: 26,
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
         ),
       ),
     );

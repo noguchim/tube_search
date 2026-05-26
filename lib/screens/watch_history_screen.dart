@@ -16,11 +16,6 @@ import '../widgets/favorite_button_overlay.dart';
 import '../widgets/play_button_overlay.dart';
 import '../widgets/top_bar_back.dart';
 
-enum _HistoryMenuAction {
-  favorite,
-  delete,
-}
-
 class WatchHistoryScreen extends StatefulWidget {
   const WatchHistoryScreen({super.key});
 

@@ -8,6 +8,7 @@ import '../data/youtube_video.dart';
 
 class WatchHistoryService extends ChangeNotifier {
   static const String key = "watch_history";
+  static const int maxItems = 50;
 
   List<Map<String, dynamic>> _cache = [];
   bool _loaded = false;
@@ -51,6 +52,11 @@ class WatchHistoryService extends ChangeNotifier {
         .where((e) => e.isNotEmpty)
         .toList();
 
+    // 🔥 追加：50件制限（古いの削除）
+    if (_cache.length > maxItems) {
+      _cache = _cache.sublist(0, 50);
+    }
+
     _loaded = true;
   }
 
@@ -90,8 +96,8 @@ class WatchHistoryService extends ChangeNotifier {
 
     _cache.insert(0, map);
 
-    // 最大100件
-    if (_cache.length > 50) {
+    // 最大50件
+    if (_cache.length > maxItems) {
       _cache.removeLast();
     }
 

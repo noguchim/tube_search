@@ -16,9 +16,9 @@ import '../utils/ui_spacing.dart';
 import '../widgets/density_fab.dart';
 import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
-import '../widgets/popular_big_section.dart';
-import '../widgets/popular_middle_section.dart';
-import '../widgets/popular_small_section.dart';
+import '../widgets/section_big.dart';
+import '../widgets/section_middle.dart';
+import '../widgets/section_small.dart';
 import '../widgets/top_bar.dart';
 
 class PopularVideosScreen extends StatefulWidget {
@@ -241,13 +241,13 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     switch (density) {
       case CardDensity.big:
-        return PopularBigSection(videos: videos);
+        return SectionBig(videos: videos);
 
       case CardDensity.middle:
-        return PopularMiddleSection(videos: videos);
+        return SectionMiddle(videos: videos);
 
       case CardDensity.small:
-        return PopularSmallSection(videos: videos);
+        return SectionSmall(videos: videos);
     }
   }
 
@@ -271,6 +271,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final controller = context.read<ExpandedVideoController>();
 
     // =========================================================
     // 🔥 状態分岐（ここが本体）
@@ -345,7 +346,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
                 video: expanded.video!,
                 rank: expanded.rank!,
                 onClose: () {
-                  context.read<ExpandedVideoController>().close();
+                  controller.close();
                 },
               ),
             ),

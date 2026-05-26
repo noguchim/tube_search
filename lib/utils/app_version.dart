@@ -108,11 +108,11 @@ void showUpdateAvailable(
   showDialog(
     context: context,
     barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.3),
     builder: (_) {
       return AppDialog(
         title: l.updateAvailableTitle,
         message: l.updateAvailableMessage,
-        style: AppDialogStyle.info,
         showCloseButton: true,
         onClose: () => Navigator.pop(context),
         actionsAlignment: AppDialogActionsAlignment.end,
@@ -124,7 +124,6 @@ void showUpdateAvailable(
             },
             child: Text(
               l.updateLater,
-              style: const TextStyle(color: Color(0xFF111111)),
             ),
           ),
           ElevatedButton(

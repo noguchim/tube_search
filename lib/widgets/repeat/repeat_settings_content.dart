@@ -170,7 +170,6 @@ class _RepeatSettingsContentState extends State<RepeatSettingsContent> {
           context: context,
           builder: (_) => AppDialog(
             title: "保存上限に達しました",
-            style: AppDialogStyle.info,
             message: "連続再生リストは最大 $repeatListLimit 件まで保存できます。\n\n"
                 "新しく保存する場合は、不要なリストを削除してください。",
             actions: [

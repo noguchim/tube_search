@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/limit_service.dart';
+import '../services/watch_history_service.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/request_review.dart';
@@ -149,7 +150,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     return SliverToBoxAdapter(
       child: Container(
-        height: 28,
+        height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         color: theme.brightness == Brightness.dark
             ? Colors.white.withValues(alpha: 0.04)
@@ -162,7 +163,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
               AppLocalizations.of(context)!
                   .favoritesCountMessage(current, limit),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
@@ -180,165 +181,176 @@ class FavoritesScreenState extends State<FavoritesScreen>
     BuildContext context,
     YouTubeVideo video,
   ) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final onSurface = theme.colorScheme.onSurface;
-
     final favService = context.read<FavoritesService>();
     final isLocked = video.locked == true;
 
     final savedAt = video.savedAt != null
-        ? DateFormat.yMMMd(Localizations.localeOf(context).toString())
-            .format(video.savedAt!)
+        ? DateFormat.yMMMd(
+            Localizations.localeOf(context).toString(),
+          ).format(video.savedAt!)
         : "";
 
     final t = AppLocalizations.of(context)!;
 
-    return Material(
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 2,
+        vertical: 6,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          children: [
-            // サムネ
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: InkWell(
-                onTap: () => _pushPlayerById(context, video.id),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Ink.image(
-                      image: NetworkImage(video.thumbnailUrl),
-                      width: 88,
-                      height: 56,
-                      fit: BoxFit.cover,
-                    ),
-                    const PlayButtonOverlay(
-                      sizeOverride: 28,
-                      subtle: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // テキスト
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // サムネ
+          InkWell(
+            onTap: () {
+              context.read<WatchHistoryService>().add(video);
+              _pushPlayerById(context, video.id);
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Stack(
                 children: [
-                  Text(
-                    video.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
-                    ),
+                  Image.network(
+                    video.thumbnailUrl,
+                    width: 165,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      return Image.asset(
+                        'assets/images/no_image.png',
+                        width: 165,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      );
+                    },
                   ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          video.channelTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: onSurface.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        Text(
-                          savedAt,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: onSurface,
-                          ),
-                        ),
-                      ],
+                  const Positioned.fill(
+                    child: PlayButtonOverlay(
+                      sizeOverride: 30,
                     ),
                   ),
                 ],
               ),
             ),
+          ),
 
-            const SizedBox(width: 4),
+          const SizedBox(width: 10),
 
-            // 操作
-            isLocked
-                ? InkWell(
-                    borderRadius: BorderRadius.circular(99),
-                    onTap: () async {
-                      HapticFeedback.lightImpact();
-
-                      await showUnlockDialog(
-                        context,
-                        onConfirm: () async {
-                          await favService.toggleLock(video.id);
-                        },
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        size: 30,
-                        color: Colors.amber.shade700,
-                      ),
-                    ),
-                  )
-                : PopupMenuButton<_FavMenuAction>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (action) async {
-                      HapticFeedback.lightImpact();
-
-                      switch (action) {
-                        case _FavMenuAction.lock:
-                          await favService.toggleLock(video.id);
-                          break;
-
-                        case _FavMenuAction.delete:
-                          await FavoriteDeleteHelper.confirmOrDelete(
-                            context,
-                            video,
-                          );
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: _FavMenuAction.lock,
-                        child: ListTile(
-                          leading: const Icon(Icons.lock_outline),
-                          title: Text(t.favoriteLock),
+          // テキスト
+          Expanded(
+            child: SizedBox(
+              height: 100,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          video.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      PopupMenuItem(
-                        value: _FavMenuAction.delete,
-                        child: ListTile(
-                          leading: const Icon(Icons.delete_outline),
-                          title: Text(t.favoriteDelete),
-                        ),
+                      SizedBox(
+                        width: 20,
+                        child: isLocked
+                            ? Align(
+                                alignment: Alignment.center,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 22),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(99),
+                                    onTap: () async {
+                                      HapticFeedback.lightImpact();
+
+                                      await showUnlockDialog(
+                                        context,
+                                        onConfirm: () async {
+                                          await favService.toggleLock(video.id);
+                                        },
+                                      );
+                                    },
+                                    child: Icon(
+                                      Icons.lock_rounded,
+                                      size: 28,
+                                      color: Colors.amber.shade700,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : PopupMenuButton<_FavMenuAction>(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                iconSize: 24,
+                                icon: const Icon(Icons.more_vert),
+                                onSelected: (action) async {
+                                  HapticFeedback.lightImpact();
+
+                                  switch (action) {
+                                    case _FavMenuAction.lock:
+                                      await favService.toggleLock(video.id);
+                                      break;
+
+                                    case _FavMenuAction.delete:
+                                      await FavoriteDeleteHelper
+                                          .confirmOrDelete(
+                                        context,
+                                        video,
+                                      );
+                                      break;
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  PopupMenuItem(
+                                    value: _FavMenuAction.lock,
+                                    child: ListTile(
+                                      leading: const Icon(Icons.lock_outline),
+                                      title: Text(t.favoriteLock),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: _FavMenuAction.delete,
+                                    child: ListTile(
+                                      leading: const Icon(Icons.delete_outline),
+                                      title: Text(t.favoriteDelete),
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
-          ],
-        ),
+                  const Spacer(),
+                  Text(
+                    video.channelTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      // fontWeight: FontWeight.w700,
+                      // color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    savedAt,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      // color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -352,28 +364,50 @@ class FavoritesScreenState extends State<FavoritesScreen>
     final isTablet = media.size.shortestSide >= 600;
 
     if (!isLandscape) {
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: list.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, i) => _buildFavoriteTile(context, list[i]),
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildFavoriteTile(
+                  context,
+                  list[i],
+                ),
+              );
+            },
+            childCount: list.length,
+          ),
+        ),
       );
     }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: list.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        mainAxisExtent: 105,
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
       ),
-      itemBuilder: (context, i) => _buildFavoriteTile(context, list[i]),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            return _buildFavoriteTile(
+              context,
+              list[i],
+            );
+          },
+          childCount: list.length,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: 105,
+        ),
+      ),
     );
   }
 
@@ -403,14 +437,15 @@ class FavoritesScreenState extends State<FavoritesScreen>
           SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
           if (currentCount > 0)
             _buildCountHeader(context, currentCount, favoritesLimit),
-          SliverToBoxAdapter(
-            child: list.isEmpty
-                ? SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.75,
-                    child: _buildEmptyFavoritesUI(),
-                  )
-                : _buildFavoritesContent(list),
-          ),
+          if (list.isEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.75,
+                child: _buildEmptyFavoritesUI(),
+              ),
+            )
+          else
+            _buildFavoritesContent(list),
           SliverToBoxAdapter(
             child: SizedBox(
               height: UISpacing.bottomSpacer(
@@ -436,15 +471,18 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.3),
       builder: (_) {
         return AppDialog(
           title: t.favoriteUnlockTitle,
           message: t.favoriteUnlockMessage,
-          style: AppDialogStyle.info,
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(t.favoriteUnlockCancel),
+              child: Text(
+                AppLocalizations.of(context)!.favoriteUnlockCancel,
+              ),
             ),
             FilledButton(
               onPressed: () {

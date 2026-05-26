@@ -36,37 +36,22 @@ class FavoriteDeleteHelper {
     await showDialog(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.3),
       builder: (_) {
         return AppDialog(
           title: AppLocalizations.of(context)!.favoriteDeleteTitle,
           message: AppLocalizations.of(context)!.favoriteDeleteMessage(
             video.title ?? "",
           ),
-          style: AppDialogStyle.danger, // ← 削除なので危険色
           actions: [
             TextButton(
               onPressed: () => navigator.pop(),
               child: Text(
                 AppLocalizations.of(context)!.favoriteDeleteCancel,
-                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
             ),
             const SizedBox(width: 6),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
-                // 🔥 赤固定（danger）
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.bold, // ← ★ 強調
-                  fontSize: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
               onPressed: () async {
                 await fav.toggle(video.id, video);
                 navigator.pop();

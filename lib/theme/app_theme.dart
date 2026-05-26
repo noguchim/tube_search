@@ -17,7 +17,6 @@ final ThemeData appLightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
 
-  // ✅ ここはあなたの決定を最優先（上質な背景）
   scaffoldBackgroundColor: const Color(0xFFF2F2F6),
 
   // ✅ divider / outline は寒色系グレーで統一

@@ -58,19 +58,17 @@ Future<void> _showLockedFavoriteDialog(BuildContext context) async {
 
   await showDialog(
     context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.3),
     builder: (_) {
       return AppDialog(
         title: t.favoriteLockedTitle,
         message: t.favoriteLockedMessage,
-        style: AppDialogStyle.info,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               t.buttonOk,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
             ),
           ),
         ],
@@ -90,20 +88,18 @@ void _showFavoriteLimitDialog(
 
   showDialog(
     context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.3),
     builder: (_) {
       return AppDialog(
         title: t.favoriteLimitTitle,
         message:
             purchased ? t.favoriteLimitPurchased : t.favoriteLimitNotPurchased,
-        style: AppDialogStyle.info,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               t.favoriteLimitClose,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
             ),
           ),
           if (!purchased)

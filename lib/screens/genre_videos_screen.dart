@@ -23,9 +23,9 @@ import '../widgets/density_fab.dart';
 import '../widgets/empty_result_view.dart';
 import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
-import '../widgets/popular_big_section.dart';
-import '../widgets/popular_middle_section.dart';
-import '../widgets/popular_small_section.dart';
+import '../widgets/section_big.dart';
+import '../widgets/section_middle.dart';
+import '../widgets/section_small.dart';
 import '../widgets/top_bar_back.dart';
 
 class GenreVideosScreen extends StatefulWidget {
@@ -177,10 +177,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-                "${v.score?.toStringAsFixed(2)} "
-                "${v.viewCount} "
-                "$formattedDate "
-                "${_short(v.title)}",
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
           );
         }
         break;
@@ -196,10 +196,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-                "${v.score?.toStringAsFixed(2)} "
-                "${v.viewCount} "
-                "$formattedDate "
-                "${_short(v.title)}",
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
           );
         }
         break;
@@ -215,10 +215,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
           logger.i(
             "[$i] "
-                "${v.score?.toStringAsFixed(2)} "
-                "${v.viewCount} "
-                "$formattedDate "
-                "${_short(v.title)}",
+            "${v.score?.toStringAsFixed(2)} "
+            "${v.viewCount} "
+            "$formattedDate "
+            "${_short(v.title)}",
           );
         }
     }
@@ -255,13 +255,13 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     switch (density) {
       case CardDensity.big:
-        return PopularBigSection(videos: videos);
+        return SectionBig(videos: videos);
 
       case CardDensity.middle:
-        return PopularMiddleSection(videos: videos);
+        return SectionMiddle(videos: videos);
 
       case CardDensity.small:
-        return PopularSmallSection(videos: videos);
+        return SectionSmall(videos: videos);
     }
   }
 
@@ -282,8 +282,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final density = context.watch<DensityProvider>().density;
 
     final adsRemoved =
-    context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final bool shouldShowBanner = !adsRemoved;
+    final controller = context.read<ExpandedVideoController>();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -366,7 +367,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                         video: expanded.video!,
                         rank: expanded.rank!,
                         onClose: () {
-                          context.read<ExpandedVideoController>().close();
+                          controller.close();
                         },
                       ),
                     ),
@@ -439,13 +440,13 @@ class _BottomAdDivider extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: isDark
               ? [
-            Colors.white.withValues(alpha: 0.22),
-            Colors.white.withValues(alpha: 0.05),
-          ]
+                  Colors.white.withValues(alpha: 0.22),
+                  Colors.white.withValues(alpha: 0.05),
+                ]
               : [
-            Colors.black.withValues(alpha: 0.10),
-            Colors.black.withValues(alpha: 0.02),
-          ],
+                  Colors.black.withValues(alpha: 0.10),
+                  Colors.black.withValues(alpha: 0.02),
+                ],
         ),
       ),
     );

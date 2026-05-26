@@ -1,23 +1,35 @@
 // lib/main.dart
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
+import 'package:tube_search/providers/pickup_settings_provider.dart';
+import 'package:tube_search/providers/push_notification_provider.dart';
+import 'package:tube_search/providers/push_subscription_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
 import 'package:tube_search/providers/search_ui_provider.dart';
 import 'package:tube_search/providers/settings_provider.dart';
 import 'package:tube_search/screens/settings_drawer.dart';
 import 'package:tube_search/screens/topic_screen.dart';
+import 'package:tube_search/screens/video_detail_screen.dart';
+import 'package:tube_search/services/device_id_store.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/services/limit_service.dart';
+import 'package:tube_search/services/push_token_store.dart';
 import 'package:tube_search/services/watch_history_service.dart';
 import 'package:tube_search/services/youtube_api_service.dart';
 import 'package:tube_search/theme/app_theme.dart';
@@ -29,7 +41,9 @@ import 'package:tube_search/widgets/ad_banner.dart';
 import 'package:tube_search/widgets/consent_manager.dart';
 import 'package:tube_search/widgets/search_overlay.dart';
 import 'package:tube_search/widgets/top_bar.dart';
+import 'package:tube_search/widgets/trend_word_sheet.dart';
 
+import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/theme_provider.dart';
 import 'screens/favorites_screen.dart';
@@ -40,14 +54,6 @@ import 'services/favorites_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // AdMob初期化
-  // if (AdMobConfig.useTestAds) {
-  //   MobileAds.instance.updateRequestConfiguration(
-  //     RequestConfiguration(
-  //       testDeviceIds: ['D3402AA94C9B637E34B0D3E969158B2A'],
-  //     ),
-  //   );
-  // }
   MobileAds.instance.updateRequestConfiguration(
     RequestConfiguration(
       testDeviceIds: [],
@@ -64,6 +70,24 @@ void main() async {
 
   // ★ 保存済みテーマをロード（ここが最重要）
   await themeProvider.loadTheme();
+
+  // Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final messaging = FirebaseMessaging.instance;
+
+  // 通知許可（1回でOK）
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
   runApp(
     MultiProvider(
@@ -93,11 +117,23 @@ void main() async {
         ),
 
         ChangeNotifierProvider(
+          create: (_) => PushNotificationProvider()..load(),
+        ),
+
+        ChangeNotifierProvider(
           create: (_) => WatchHistoryService()..load(),
         ),
 
         ChangeNotifierProvider(
           create: (_) => SearchUIProvider(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => PushSubscriptionProvider(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => PickupSettingsProvider(),
         ),
 
         // ★ IapService + IapProvider
@@ -120,22 +156,33 @@ void main() async {
           },
         ),
       ],
-      child: const MyApp(),
+      child: MyApp(initialMessage: initialMessage),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final RemoteMessage? initialMessage;
+
+  const MyApp({super.key, this.initialMessage});
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
+  StreamSubscription<String>? _tokenRefreshSub;
+
+  int _notificationIdFromVideoId(String videoId) {
+    return videoId.hashCode & 0x7fffffff;
+  }
+
+  static const String _pickupUnreadPrefsKey = 'pickup_unread_keys';
+
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RegionProvider>().initFromLocale(context);
     });
@@ -144,10 +191,403 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initConsent();
     });
+
+    // FCM + ローカル通知初期化
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      // 先にローカル通知を初期化
+      await initLocalNotification();
+
+      if (!mounted) return;
+
+      final api = context.read<YouTubeApiService>();
+      await _initFcm(api);
+
+      // 完全終了 → 通知タップ起動
+      if (widget.initialMessage != null) {
+        Future.delayed(
+          const Duration(milliseconds: 500),
+          () async {
+            if (!mounted) return;
+            await handlePushNavigation(widget.initialMessage!);
+          },
+        );
+      }
+    });
+
+    // 通常タップ（OK）
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      logger.w("🔥 TAP message: ${message.data}");
+      handlePushNavigation(message);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tokenRefreshSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _initConsent() async {
     await ConsentManager.requestConsent();
+  }
+
+  Future<Uint8List> _downloadImageWithFallback(String? url) async {
+    try {
+      if (url == null || url.isEmpty) throw Exception("empty url");
+
+      final res = await http.get(Uri.parse(url));
+
+      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+        return res.bodyBytes;
+      }
+
+      throw Exception("download failed");
+    } catch (e) {
+      // 🔥 フォールバック
+      final byteData = await rootBundle.load('assets/images/no_image.png');
+
+      return byteData.buffer.asUint8List();
+    }
+  }
+
+  Future<void> _initFcm(YouTubeApiService api) async {
+    final messaging = FirebaseMessaging.instance;
+
+    final token = await messaging.getToken();
+    logger.i("🔥 TOKEN: $token");
+    final deviceId = await DeviceIdStore.getOrCreate();
+
+    if (token != null && token.isNotEmpty) {
+      final nav = rootNavigatorKey.currentState;
+
+      if (nav == null) {
+        logger.w("❌ navigator null");
+        return;
+      }
+
+      final regionCode = nav.context.read<RegionProvider>().regionCode;
+
+      await PushTokenStore.save(token);
+      await api.saveFcmToken(
+        token,
+        regionCode,
+        deviceId,
+      );
+
+      if (!mounted) return;
+
+      await _preloadPushSubscriptions(api, token);
+    }
+
+    FirebaseMessaging.onMessage.listen((message) {
+      logger.i("🔥 RAW message: ${message.data}");
+      logger.i("🔥 notification: ${message.notification?.title}");
+
+      final type = message.data['type']?.toString() ?? '';
+      final title = message.data['title'] ?? message.notification?.title;
+      final body = message.data['body'] ?? message.notification?.body;
+
+      if (title == null || body == null) return;
+
+      final image = message.data['image'];
+      final videoId = message.data['videoId']?.toString() ?? '';
+      final pickupKey = message.data['pickupKey']?.toString() ?? '';
+
+      showLocalNotification(
+        type,
+        title,
+        body,
+        image,
+        videoId,
+        pickupKey,
+      );
+    });
+
+    _tokenRefreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen(
+      (newToken) async {
+        try {
+          logger.i("🔥 TOKEN REFRESH: $newToken");
+
+          final nav = rootNavigatorKey.currentState;
+          if (nav == null) return;
+
+          final context = nav.context;
+          final api = context.read<YouTubeApiService>();
+          final regionCode = context.read<RegionProvider>().regionCode;
+
+          await PushTokenStore.save(newToken);
+
+          await api.saveFcmToken(
+            newToken,
+            regionCode,
+            deviceId,
+          );
+
+          final keys = await api.fetchPushSubscriptionKeys(
+            token: newToken,
+          );
+
+          if (!mounted) return;
+
+          context.read<PushSubscriptionProvider>().setEnabledKeys(keys);
+
+          logger.i("✅ Push subscriptions refreshed count=${keys.length}");
+        } catch (e, st) {
+          logger.e("❌ token refresh subscription preload error: $e",
+              stackTrace: st);
+        }
+      },
+    );
+  }
+
+  Future<void> _preloadPushSubscriptions(
+    YouTubeApiService api,
+    String token,
+  ) async {
+    try {
+      final keys = await api.fetchPushSubscriptionKeys(
+        token: token,
+      );
+
+      if (!mounted) return;
+
+      context.read<PushSubscriptionProvider>().setEnabledKeys(keys);
+
+      logger.i("✅ Push subscriptions preloaded count=${keys.length}");
+    } catch (e, st) {
+      logger.e("❌ Push subscriptions preload error: $e", stackTrace: st);
+    }
+  }
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  Future<void> initLocalNotification() async {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const settings = InitializationSettings(
+      android: androidInit,
+    );
+
+    const channel = AndroidNotificationChannel(
+      'default_channel',
+      'Default Notifications',
+      description: 'General notifications',
+      importance: Importance.high,
+    );
+
+    final androidPlugin =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.createNotificationChannel(channel);
+
+    // Android 13+ 対応
+    await androidPlugin?.requestNotificationsPermission();
+
+    await flutterLocalNotificationsPlugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+
+        if (payload != null && payload.isNotEmpty) {
+          handleLocalNotificationTap(payload);
+        }
+      },
+    );
+  }
+
+  void handleLocalNotificationTap(String payload) async {
+    final data = jsonDecode(payload);
+
+    final type = data['type']?.toString() ?? '';
+    final videoId = data['videoId']?.toString() ?? '';
+    final title = data['title']?.toString() ?? '';
+
+    final nav = rootNavigatorKey.currentState;
+    if (nav == null) {
+      logger.w("❌ navigator null");
+      return;
+    }
+
+    final context = nav.context;
+
+    if (type == 'pickup_new') {
+      final pickupKey = data['pickupKey']?.toString() ?? '';
+      final videoId = data['videoId']?.toString() ?? '';
+
+      nav.popUntil((route) => route.isFirst);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final nav = rootNavigatorKey.currentState;
+        if (nav == null) return;
+
+        nav.context.read<PickupSettingsProvider>().openFromPush(
+              pickupKey: pickupKey,
+              videoId: videoId,
+            );
+      });
+
+      return;
+    }
+
+    if (videoId.isEmpty) {
+      logger.w("❌ local push: videoId empty payload=$payload");
+      return;
+    }
+
+    final api = context.read<YouTubeApiService>();
+    final video = await api.fetchVideoById(videoId);
+    if (video == null) return;
+
+    nav.push(
+      MaterialPageRoute(
+        builder: (_) => VideoDetailScreen(
+          video: video,
+          title: title,
+        ),
+      ),
+    );
+  }
+
+  Future<void> showLocalNotification(
+    String type,
+    String title,
+    String body,
+    String? imageUrl,
+    String videoId,
+    String pickupKey,
+  ) async {
+    final imageBytes = await _downloadImageWithFallback(imageUrl);
+
+    final bigPictureStyle = BigPictureStyleInformation(
+      ByteArrayAndroidBitmap(imageBytes),
+      contentTitle: "<b>$title</b>",
+      summaryText: body,
+      htmlFormatContentTitle: true,
+      htmlFormatSummaryText: true,
+    );
+
+    final android = AndroidNotificationDetails(
+      'default_channel',
+      'Default Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      icon: '@mipmap/ic_launcher',
+      styleInformation: bigPictureStyle,
+    );
+
+    final details = NotificationDetails(android: android);
+
+    await flutterLocalNotificationsPlugin.show(
+      _notificationIdFromVideoId(videoId),
+      title,
+      body,
+      details,
+      payload: jsonEncode({
+        "type": type,
+        "videoId": videoId,
+        "pickupKey": pickupKey,
+        "title": title,
+        "body": body,
+      }),
+    );
+  }
+
+  bool _isPushingFromPush = false;
+
+  Future<void> handlePushNavigation(RemoteMessage message) async {
+    if (_isPushingFromPush) return;
+    _isPushingFromPush = true;
+
+    try {
+      final type = message.data['type']?.toString() ?? '';
+      final videoId = message.data['videoId']?.toString() ?? '';
+
+      logger.w("🚨 PUSH TAP type=$type videoId=$videoId");
+      logger.w("nav=${rootNavigatorKey.currentState}");
+
+      final nav = rootNavigatorKey.currentState;
+
+      if (nav == null) {
+        logger.w("❌ navigator null");
+        return;
+      }
+
+      final context = nav.context;
+
+      // =====================================================
+      // 新着通知：動画詳細へ直行せず、ホームのピックアップへ
+      // =====================================================
+      if (type == 'pickup_new') {
+        final pickupKey = message.data['pickupKey']?.toString() ?? '';
+        final videoId = message.data['videoId']?.toString() ?? '';
+
+        nav.popUntil((route) => route.isFirst);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final nav = rootNavigatorKey.currentState;
+          if (nav == null) return;
+
+          nav.context.read<PickupSettingsProvider>().openFromPush(
+                pickupKey: pickupKey,
+                videoId: videoId,
+              );
+        });
+
+        return;
+      }
+
+      logger.w("🚨 PUSH ROUTE: video detail");
+
+      // =====================================================
+      // 人気急上昇など：従来通り動画詳細へ
+      // =====================================================
+      if (videoId.isEmpty) {
+        logger.w("❌ push: videoId empty");
+        return;
+      }
+
+      final api = context.read<YouTubeApiService>();
+      final video = await api.fetchVideoById(videoId);
+
+      if (video == null) {
+        logger.w("❌ push: video not found");
+        return;
+      }
+
+      final title = message.data['title']?.toString() ?? '';
+
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => VideoDetailScreen(
+            video: video,
+            title: title,
+          ),
+        ),
+      );
+    } catch (e, st) {
+      logger.e("❌ push navigation error: $e", stackTrace: st);
+    } finally {
+      _isPushingFromPush = false;
+    }
+  }
+
+  Future<void> _addUnreadPickupKey(String pickupKey) async {
+    if (pickupKey.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getStringList(_pickupUnreadPrefsKey) ?? const [];
+
+    final next = current.toSet()..add(pickupKey);
+
+    await prefs.setStringList(
+      _pickupUnreadPrefsKey,
+      next.toList(),
+    );
   }
 
   @override
@@ -167,7 +607,7 @@ class _MyAppState extends State<MyApp> {
       ],
 
       debugShowCheckedModeBanner: false,
-      title: 'Tube Plus',
+      title: 'Tube+',
 
       // 🍀 Light / Dark テーマを適用
       theme: appLightTheme,
@@ -403,9 +843,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       onMenuTap: () {
                         _scaffoldKey.currentState?.openDrawer();
                       },
+                      onTrendTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => const TrendWordSheet(),
+                        );
+                      },
                       onSearchTap: () {
-                        print("SEARCH TAP");
-                        print(context.read<SearchUIProvider>().isOpen);
                         context.read<SearchUIProvider>().open();
                       },
                       onTabSelected: (index) {

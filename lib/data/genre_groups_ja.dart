@@ -19,13 +19,13 @@ const genreGroupsJa = <GenreGroup>[
   /// 🎵 G00：音楽（NEW）
   GenreGroup(
     groupId: "G00",
-    name: "音楽",
+    name: "Music",
     color: Color(0xFF1E88E5),
     icon: Icons.library_music,
     items: [
       GenreCategory(
         id: 10,
-        name: "トレンド",
+        name: "トレンド音楽",
         isOfficial: false,
         query: "音楽",
         color: Color(0xFFE53935),
@@ -76,7 +76,7 @@ const genreGroupsJa = <GenreGroup>[
           query: "ブイチューバー",
           color: Color(0xFF1E88E5)),
       GenreCategory(
-        id: 1103,
+        id: 31,
         name: "アニメ",
         isOfficial: false,
         query: "アニメ",
@@ -117,7 +117,7 @@ const genreGroupsJa = <GenreGroup>[
     icon: Icons.home_filled,
     items: [
       GenreCategory(
-          id: 1201,
+          id: 37,
           name: "ファミリー・キッズ",
           isOfficial: false,
           query: "ファミリー キッズ",
@@ -226,7 +226,7 @@ const genreGroupsJa = <GenreGroup>[
           color: Color(0xFF546E7A)),
       GenreCategory(
           id: 1501,
-          name: "DIY           ",
+          name: "DIY",
           isOfficial: false,
           query: "DIY 作り方",
           color: Color(0xFF8D6E63)),

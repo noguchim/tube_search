@@ -278,8 +278,8 @@ class VideoListTileSmall extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: onSurface.withValues(alpha: 0.70),
+                              fontSize: 13,
+                              color: onSurface,
                             ),
                           ),
                         ),

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../data/youtube_video.dart';
 import '../widgets/video_overlay_card.dart';
 
-class PopularMiddleSection extends StatelessWidget {
+class SectionMiddle extends StatelessWidget {
   final List<YouTubeVideo> videos;
 
-  const PopularMiddleSection({
+  const SectionMiddle({
     super.key,
     required this.videos,
   });

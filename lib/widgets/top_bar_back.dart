@@ -82,7 +82,11 @@ class TopBarBack extends StatelessWidget {
               width: 48,
               child: (showSort && onSortSelected != null)
                   ? PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      icon: const Icon(
+                        Icons.swap_vert,
+                        color: Colors.white,
+                      ),
+                      tooltip: "並び替え",
                       onSelected: onSortSelected,
                       itemBuilder: (context) => [
                         _buildItem(context, "score", "スコア順"),
@@ -90,7 +94,7 @@ class TopBarBack extends StatelessWidget {
                         _buildItem(context, "date", "新着順"),
                       ],
                     )
-                  : const SizedBox(), // ← ダミー
+                  : const SizedBox(),
             ),
           ],
         ),

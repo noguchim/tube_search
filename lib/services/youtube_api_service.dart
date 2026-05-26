@@ -1,10 +1,14 @@
 // lib/services/youtube_api_service.dart
 
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
 
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:tube_search/utils/app_logger.dart';
 
+import '../data/pickup_selectable_item.dart';
 import '../data/trending_keyword.dart';
 import '../data/youtube_video.dart';
 
@@ -32,10 +36,8 @@ class YouTubeApiService {
   // ------------------------------------------------------------
   // 🔧 GET JSON 共通処理
   // ------------------------------------------------------------
-  Future<dynamic> _getJson(Uri uri) async {
-    await _ensureToken(); // ← これを追加
-
-    logger.i("🌐 API Request: $uri");
+  Future<dynamic> _getJson(Uri uri, {int retryCount = 0}) async {
+    await _ensureToken();
 
     final res = await http.get(
       uri,
@@ -46,14 +48,15 @@ class YouTubeApiService {
     );
 
     if (res.statusCode == 401) {
-      // トークン失効時の自動リトライ（1回だけ）
-      logger.w("🔁 Token expired, retrying...");
+      if (retryCount >= 1) {
+        throw Exception("API unauthorized after retry");
+      }
+
       _jwtToken = null;
-      return _getJson(uri);
+      return _getJson(uri, retryCount: retryCount + 1);
     }
 
     if (res.statusCode != 200) {
-      logger.e("❌ API Error: ${res.statusCode} ${res.reasonPhrase}");
       throw Exception("API Error ${res.statusCode}");
     }
 
@@ -297,7 +300,7 @@ class YouTubeApiService {
 
     final uri = Uri.https(
       baseApi,
-      "/api/youtube_keyword_videos_v10.php",
+      "/api/youtube_keyword_videos_v11.php",
       params,
     );
 
@@ -390,12 +393,477 @@ class YouTubeApiService {
         );
       }).toList();
 
-      videos.sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+      videos.sort((a, b) {
+        final aTime = a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime = b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+        return bTime.compareTo(aTime);
+      });
 
       result[type] = videos;
     });
 
     return result;
+  }
+
+  Future<void> saveFcmToken(
+    String token,
+    String regionCode,
+    String deviceId, {
+    int retryCount = 0,
+  }) async {
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/save_fcm_token.php",
+    );
+
+    final info = await PackageInfo.fromPlatform();
+    final appVersion = info.version;
+    final locale = PlatformDispatcher.instance.locale;
+
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_jwtToken',
+        'User-Agent': 'NBFactoryApp/1.0',
+      },
+      body: {
+        'token': token,
+        'device_id': deviceId,
+        'platform': Platform.isIOS ? 'ios' : 'android',
+        'app_version': appVersion,
+        'locale': locale.languageCode,
+        'region': regionCode,
+      },
+    );
+
+    if (res.statusCode == 401) {
+      logger.w("⚠️ JWT expired");
+
+      if (retryCount >= 1) {
+        logger.e("❌ saveFcmToken retry failed");
+
+        throw Exception("JWT retry failed");
+      }
+
+      _jwtToken = null;
+
+      return saveFcmToken(
+        token,
+        regionCode,
+        deviceId,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    if (res.statusCode != 200) {
+      logger.e(
+        "❌ saveFcmToken error: "
+        "${res.statusCode} ${res.body}",
+      );
+
+      throw Exception("saveFcmToken failed");
+    }
+
+    logger.i("✅ FCM token saved");
+  }
+
+  Future<YouTubeVideo?> fetchVideoById(
+    String videoId, {
+    String regionCode = "JP",
+    int retryCount = 0,
+  }) async {
+    logger.i("🎯 fetchVideoById: $videoId");
+
+    if (videoId.trim().isEmpty) return null;
+
+    int? parseIntOrNull(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    }
+
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/get_video_by_id.php",
+      {
+        "videoId": videoId,
+        "region": regionCode,
+      },
+    );
+
+    final res = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_jwtToken',
+        'User-Agent': 'NBFactoryApp/1.0',
+      },
+    );
+
+    logger.i("🔥 RAW API RESPONSE:");
+    logger.i(res.body);
+
+    if (res.statusCode == 401) {
+      if (retryCount >= 1) {
+        logger.e("❌ fetchVideoById JWT retry failed");
+        return null;
+      }
+
+      _jwtToken = null;
+
+      return fetchVideoById(
+        videoId,
+        regionCode: regionCode,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    if (res.statusCode != 200) {
+      logger.e("❌ fetchVideoById error: ${res.statusCode} ${res.body}");
+      return null;
+    }
+
+    final v = jsonDecode(res.body);
+
+    if (v["error"] != null) {
+      logger.w("⚠️ fetchVideoById: not found ($videoId)");
+      return null;
+    }
+
+    try {
+      final publishedAtRaw = v["publishedAt"]?.toString();
+
+      return YouTubeVideo(
+        id: v["id"]?.toString() ?? "",
+        title: v["title"]?.toString() ?? "",
+        thumbnailUrl: v["thumbnailUrl"]?.toString() ?? "",
+        channelTitle: v["channelTitle"]?.toString() ?? "",
+        publishedAt: publishedAtRaw == null || publishedAtRaw.isEmpty
+            ? null
+            : DateTime.tryParse(publishedAtRaw)?.toLocal(),
+        viewCount: parseIntOrNull(v["viewCount"]),
+        durationSeconds: parseIntOrNull(v["durationSeconds"]),
+        score: null,
+      );
+    } catch (e) {
+      logger.e("❌ parse error fetchVideoById: $e");
+      return null;
+    }
+  }
+
+  Future<List<YouTubeVideo>> fetchRelatedVideos(
+    String videoId, {
+    int max = 4,
+  }) async {
+    final uri = Uri.https(
+      baseApi,
+      "/api/get_related_videos.php",
+      {"videoId": videoId},
+    );
+
+    final data = await _getJson(uri);
+
+    return (data as List).map((v) {
+      return YouTubeVideo(
+        id: v["video_id"] ?? "",
+        title: v["title"] ?? "",
+        thumbnailUrl: v["thumbnail_url"] ?? "",
+        channelTitle: v["channel_title"] ?? "",
+        publishedAt: DateTime.tryParse(v["published_at"] ?? "")?.toLocal(),
+        viewCount: int.tryParse("${v["view_count"]}"),
+        durationSeconds: int.tryParse("${v["duration_seconds"]}"),
+      );
+    }).toList();
+  }
+
+  Future<void> replacePushSubscriptions({
+    required String token,
+    required List<PickupSelectableItem> items,
+    int retryCount = 0,
+  }) async {
+    // if (items.isEmpty) {
+    //   throw Exception("replacePushSubscriptions items is empty");
+    // }
+
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/push_subscriptions_replace.php",
+    );
+
+    final payload = items.map((item) {
+      return {
+        'type': item.type.name,
+        'title': item.title,
+        'categoryId': item.categoryId,
+        'channelId': item.channelId,
+      };
+    }).toList();
+
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_jwtToken',
+        'User-Agent': 'NBFactoryApp/1.0',
+      },
+      body: {
+        'token': token,
+        'items': jsonEncode(payload),
+      },
+    );
+
+    if (res.statusCode == 401) {
+      logger.w("⚠️ JWT expired");
+
+      if (retryCount >= 1) {
+        logger.e("❌ replacePushSubscriptions retry failed");
+        throw Exception("replacePushSubscriptions JWT retry failed");
+      }
+
+      _jwtToken = null;
+
+      return replacePushSubscriptions(
+        token: token,
+        items: items,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    if (res.statusCode != 200) {
+      logger.e(
+        "❌ replacePushSubscriptions error: "
+        "${res.statusCode} ${res.body}",
+      );
+
+      throw Exception("replacePushSubscriptions failed");
+    }
+
+    logger.i(
+      "✅ push subscriptions replaced count=${items.length}",
+    );
+  }
+
+  Future<void> updatePushStatus({
+    required String token,
+    required bool enabled,
+    int retryCount = 0,
+  }) async {
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/push_status_update.php",
+    );
+
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_jwtToken',
+        'User-Agent': 'NBFactoryApp/1.0',
+      },
+      body: {
+        'token': token,
+        'status': enabled ? '1' : '0',
+      },
+    );
+
+    if (res.statusCode == 401) {
+      logger.w("⚠️ JWT expired");
+
+      if (retryCount >= 1) {
+        logger.e("❌ updatePushStatus retry failed");
+        throw Exception("updatePushStatus JWT retry failed");
+      }
+
+      _jwtToken = null;
+
+      return updatePushStatus(
+        token: token,
+        enabled: enabled,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    if (res.statusCode != 200) {
+      logger.e(
+        "❌ updatePushStatus error: "
+        "${res.statusCode} ${res.body}",
+      );
+
+      throw Exception("updatePushStatus failed");
+    }
+
+    logger.i("✅ push status updated [enabled=$enabled]");
+  }
+
+  Future<List<PickupSelectableItem>> fetchPickupChannels({
+    String regionCode = "JP",
+  }) async {
+    final uri = Uri.https(
+      baseApi,
+      "/api/get_channels_master.php",
+      {
+        "region": regionCode,
+      },
+    );
+
+    logger.i("[fetchPickupChannels] start uri=$uri");
+
+    final data = await _getJson(uri);
+
+    logger.i("[fetchPickupChannels] raw data=$data");
+
+    if (data is! List) {
+      logger.e("❌ Unexpected ChannelMaster API structure: $data");
+      throw Exception("Invalid ChannelMaster API data");
+    }
+
+    return data.map<PickupSelectableItem>((v) {
+      final json = Map<String, dynamic>.from(v as Map);
+
+      return PickupSelectableItem.fromChannel(
+        channelId: json["channel_id"]?.toString() ?? "",
+        channelTitle: json["channel_title"]?.toString() ?? "",
+        groupName: json["group_name"]?.toString(),
+        categoryId: int.tryParse("${json["category_id"] ?? ""}"),
+        region: json["region"]?.toString(),
+        priority: int.tryParse("${json["priority"] ?? 0}") ?? 0,
+      );
+    }).where((item) {
+      return item.channelId != null &&
+          item.channelId!.isNotEmpty &&
+          item.title.isNotEmpty;
+    }).toList();
+  }
+
+  Future<List<YouTubeVideo>> fetchPickupTargetVideos({
+    String? channelId,
+    int? categoryId,
+    int maxResults = 5,
+    String regionCode = "JP",
+    bool forceRefresh = false,
+  }) async {
+    final hasChannel = channelId != null && channelId.trim().isNotEmpty;
+    final hasCategory = categoryId != null && categoryId > 0;
+
+    if (!hasChannel && !hasCategory) {
+      return [];
+    }
+
+    if (maxResults <= 0 || maxResults > 5) {
+      maxResults = 5;
+    }
+
+    final normalizedChannelId = channelId?.trim() ?? "";
+    final key =
+        "pickup_target_${regionCode}_${normalizedChannelId}_${categoryId ?? 0}_$maxResults";
+
+    final now = DateTime.now();
+
+    if (!forceRefresh &&
+        _searchCache.containsKey(key) &&
+        _searchFetchedAt.containsKey(key) &&
+        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+      logger.i("💾 PickupTargetVideos: Using cache ($key)");
+      return _searchCache[key]!;
+    }
+
+    final params = <String, String>{
+      "region": regionCode,
+      "max": "$maxResults",
+    };
+
+    if (hasChannel) {
+      params["channel_id"] = normalizedChannelId;
+    } else {
+      params["category_id"] = "${categoryId!}";
+    }
+
+    logger.i(
+      "[fetchPickupTargetVideos] "
+      "channelId=$normalizedChannelId categoryId=${categoryId ?? 0} "
+      "region=$regionCode max=$maxResults",
+    );
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/pickup_target_videos.php",
+      params,
+    );
+
+    final data = await _getJson(uri);
+
+    if (data is! List) {
+      logger.e("❌ Unexpected PickupTargetVideos API structure");
+      throw Exception("Invalid PickupTargetVideos API data");
+    }
+
+    final list = data.map<YouTubeVideo>((v) {
+      return YouTubeVideo(
+        id: v["id"] ?? "",
+        title: v["title"] ?? "",
+        thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelTitle: v["channelTitle"] ?? "",
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
+        viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
+        score: (() {
+          final vScore = (v["score"] as num?)?.toDouble();
+          if (vScore == null) return null;
+          if (vScore.isNaN || vScore.isInfinite) return null;
+          return vScore;
+        })(),
+      );
+    }).toList();
+
+    list.sort((a, b) {
+      final aTime = a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+      return bTime.compareTo(aTime);
+    });
+
+    _searchCache[key] = list;
+    _searchFetchedAt[key] = now;
+
+    logger.i("✅ PickupTargetVideos count=${list.length}");
+
+    return list;
+  }
+
+  Future<Set<String>> fetchPushSubscriptionKeys({
+    required String token,
+  }) async {
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/push_subscriptions_get.php",
+      {
+        "token": token,
+      },
+    );
+
+    final data = await _getJson(uri);
+
+    if (data is! List) {
+      throw Exception("Invalid push subscriptions data");
+    }
+
+    return data.map<String>((e) {
+      final json = Map<String, dynamic>.from(e as Map);
+      final type = json["subscription_type"]?.toString() ?? "";
+      final value = json["subscription_value"]?.toString() ?? "";
+
+      return "$type:$value";
+    }).where((key) {
+      return !key.endsWith(":");
+    }).toSet();
   }
 
 // ------------------------------------------------------------

@@ -3,17 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:tube_search/utils/rank_badge.dart';
 
 import '../data/youtube_video.dart';
+import '../services/expanded_video_controller.dart';
+import 'new_video_badge.dart';
 
 class VideoGridTile extends StatelessWidget {
   final YouTubeVideo video;
   final int rank;
   final VoidCallback onTap;
+  final bool showNewBadge;
+  final VideoPresentationMode presentationMode;
 
   const VideoGridTile({
     super.key,
     required this.video,
     required this.rank,
     required this.onTap,
+    this.showNewBadge = false,
+    this.presentationMode = VideoPresentationMode.ranked,
   });
 
   @override
@@ -22,17 +28,14 @@ class VideoGridTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final thumbnail = video.thumbnailUrl;
-    final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
+    final showRankingInfo = presentationMode == VideoPresentationMode.ranked;
 
     return GestureDetector(
-      behavior: HitTestBehavior.opaque, // ← 隙間タップ防止
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Stack(
-        fit: StackFit.expand, // ← マスを完全に埋める
+        fit: StackFit.expand,
         children: [
-          // ===============================
-          // 🎞 サムネ
-          // ===============================
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: thumbnail.isNotEmpty
@@ -41,18 +44,13 @@ class VideoGridTile extends StatelessWidget {
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
-
-                    // 読み込み中
                     placeholder: (_, __) => Container(
                       color: isDark ? Colors.grey[900] : Colors.grey[200],
                     ),
-
-                    // エラー時（統一）
                     errorWidget: (_, __, ___) => Image.asset(
                       'assets/images/no_image.png',
                       fit: BoxFit.cover,
                     ),
-
                     fadeInDuration: const Duration(milliseconds: 200),
                   )
                 : Image.asset(
@@ -60,15 +58,14 @@ class VideoGridTile extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
           ),
-
-          // ===============================
-          // 🏷 Rankバッジ
-          // ===============================
-          Positioned(
-            top: 8,
-            left: 8,
-            child: rankBadge(context, rank),
-          ),
+          if (showNewBadge || showRankingInfo)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: showNewBadge
+                  ? const NewVideoBadge()
+                  : rankBadge(context, rank),
+            ),
         ],
       ),
     );

@@ -1,19 +1,24 @@
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/screens/policy_webview_screen.dart';
+import 'package:tube_search/screens/push_settings_screen.dart';
 import 'package:tube_search/screens/shop_screen.dart';
 import 'package:tube_search/screens/watch_history_screen.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import '../data/region_option.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/push_notification_provider.dart';
 import '../providers/region_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/push_token_store.dart';
+import '../services/youtube_api_service.dart';
 import '../utils/navigator_key.dart';
 
 String localizedPage(BuildContext context, String page) {
@@ -37,6 +42,7 @@ class SettingsDrawer extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final regionProvider = context.watch<RegionProvider>();
     final settingsProvider = context.watch<SettingsProvider>();
+    final pushProvider = context.watch<PushNotificationProvider>();
     final logic = SettingsLogic(context);
     final l = AppLocalizations.of(context)!;
 
@@ -182,6 +188,27 @@ class SettingsDrawer extends StatelessWidget {
                     logic.showDeleteConfirmDialog();
                   });
                 }),
+                item(
+                  context,
+                  icon: Icons.notifications_none_rounded,
+                  title: "プッシュ通知",
+                  // value: pushProvider.label,
+                  //     onTap: () {
+                  //   Navigator.pop(context);
+                  //   Future.delayed(const Duration(milliseconds: 200), () {
+                  //     logic.showPushNotificationDialog();
+                  //   });
+                  // }
+                  value: "",
+                  onTap: () {
+                    Navigator.of(context).pop(); // 先にドロワーを閉じる
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PushSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 item(
                   context,
                   icon: Icons.history,
@@ -433,6 +460,103 @@ class SettingsLogic {
             const SizedBox(height: 12),
           ],
         );
+      },
+    );
+  }
+
+  void showPushNotificationDialog() {
+    final context = rootNavigatorKey.currentContext!;
+    final theme = Theme.of(context);
+    final pushProvider = context.read<PushNotificationProvider>();
+    final api = context.read<YouTubeApiService>();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildPushNotificationOption(context,
+                label: "ON", selected: pushProvider.enabled, onTap: () async {
+              await pushProvider.update(true);
+              var token = await PushTokenStore.getToken();
+              token ??= await FirebaseMessaging.instance.getToken();
+
+              if (token != null && token.isNotEmpty) {
+                await PushTokenStore.save(token);
+
+                await api.updatePushStatus(
+                  token: token,
+                  enabled: true,
+                );
+              }
+
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            }),
+            _buildPushNotificationOption(context,
+                label: "OFF", selected: !pushProvider.enabled, onTap: () async {
+              await pushProvider.update(false);
+              var token = await PushTokenStore.getToken();
+              token ??= await FirebaseMessaging.instance.getToken();
+
+              if (token != null && token.isNotEmpty) {
+                await PushTokenStore.save(token);
+
+                await api.updatePushStatus(
+                  token: token,
+                  enabled: false,
+                );
+              }
+
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            }),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPushNotificationOption(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required Future<void> Function() onTap,
+  }) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+
+    return ListTile(
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: onSurface,
+        ),
+      ),
+      trailing:
+          selected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+      onTap: () async {
+        await onTap();
       },
     );
   }

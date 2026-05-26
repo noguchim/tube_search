@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/video_grid_tile.dart';
 import 'package:tube_search/widgets/video_list_tile.dart';
@@ -6,10 +6,10 @@ import 'package:tube_search/widgets/video_list_tile.dart';
 import '../data/youtube_video.dart';
 import '../services/expanded_video_controller.dart';
 
-class PopularBigSection extends StatelessWidget {
+class SectionBig extends StatelessWidget {
   final List<YouTubeVideo> videos;
 
-  const PopularBigSection({
+  const SectionBig({
     super.key,
     required this.videos,
   });
@@ -24,12 +24,6 @@ class PopularBigSection extends StatelessWidget {
     final bool isLandscape = media.orientation == Orientation.landscape;
     final bool isTablet = media.size.shortestSide >= 600;
 
-    final bool useHorizontalLayout = isLandscape;
-
-    if (videos.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     final topVideo = videos.first;
     final restVideos = videos.skip(1).toList();
 
@@ -37,10 +31,7 @@ class PopularBigSection extends StatelessWidget {
     final bool useWidthConstraint =
         !isTablet && media.orientation == Orientation.portrait;
 
-    final Widget content = useHorizontalLayout
-        // =====================================================
-        // 横向き（スマホ / iPad）
-        // =====================================================
+    final Widget content = isLandscape
         ? Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             child: Row(
@@ -53,20 +44,19 @@ class PopularBigSection extends StatelessWidget {
                     rank: 1,
                   ),
                 ),
-                SizedBox(width: isTablet ? 20 : 12),
-                Expanded(
-                  flex: isTablet ? 6 : 5,
-                  child: _BigGrid(
-                    videos: restVideos,
-                    isTablet: isTablet,
+                if (restVideos.isNotEmpty) ...[
+                  SizedBox(width: isTablet ? 20 : 12),
+                  Expanded(
+                    flex: isTablet ? 6 : 5,
+                    child: _BigGrid(
+                      videos: restVideos,
+                      isTablet: isTablet,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           )
-        // =====================================================
-        // 縦向き（スマホ / iPad）
-        // =====================================================
         : Column(
             children: [
               Padding(
@@ -110,7 +100,7 @@ class SliverWidthContainer extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(
-          maxWidth: 600, // スマホ縦専用
+          maxWidth: 600,
         ),
         child: child,
       ),
@@ -130,6 +120,7 @@ class _BigGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int crossAxisCount = isTablet ? 3 : 2;
+    final controller = context.read<ExpandedVideoController>();
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -151,7 +142,12 @@ class _BigGrid extends StatelessWidget {
           rank: rank,
           onTap: () {
             Feedback.forTap(context);
-            context.read<ExpandedVideoController>().open(video, rank);
+
+            controller.open(
+              video,
+              rank,
+              presentationMode: VideoPresentationMode.ranked,
+            );
           },
         );
       },

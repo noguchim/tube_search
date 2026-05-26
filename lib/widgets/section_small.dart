@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../data/youtube_video.dart';
 import '../widgets/video_list_small.dart';
 
-class PopularSmallSection extends StatelessWidget {
+class SectionSmall extends StatelessWidget {
   final List<YouTubeVideo> videos;
 
-  const PopularSmallSection({
+  const SectionSmall({
     super.key,
     required this.videos,
   });
