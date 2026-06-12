@@ -1,143 +1,212 @@
 {
-    "newPickupTitle": "ピックアップ",
-    "navPopular": "人気急上昇",
-    "navTopic": "トピック",
-    "navGenre": "ジャンル",
-    "navFavorites": "お気に入り",
-    "navSettings": "設定",
-    "popularTitle": "人気急上昇",
-    "infoTrendingUpdated": "YouTube急上昇ランキング（{region}・トレンド反映） {date} 更新",
-    "@infoTrendingUpdated": {
-        "placeholders": {
-          "region": { "type": "String" },
-          "date": { "type": "String" }
-        }
-    },
-    "noVideosFound": "動画が見つかりません",
-    "genreScreenTitle": "ジャンル別人気",
-    "genreSearchHeader": "検索して探す",
-
-    "genreNetworkError": "ネットワークに接続できません",
-    "genreBrowseHeader": "ジャンルから探す",
-
-    "favoritesTitle": "お気に入り",
-    "favoritesEmptyTitle": "お気に入りがありません",
-    "favoritesEmptyHint": "❤️アイコンタップでお気に入りに追加！",
-    "favoritesTapHere": "ここをタップ！",
-    "favoritesRegisteredSuffix": "登録",
-    "favoritesCountMessage": "お気に入り登録数：{current} / {limit} 件",
-    "@favoritesCountMessage": {
-      "placeholders": {
-        "current": {},
-        "limit": {}
-      }
-    },
-    "favoriteDeleteTitle": "お気に入りから削除しますか？",
-    "favoriteDeleteMessage": "「{title}」をお気に入りから削除します。",
-    "@favoriteDeleteMessage": {
-        "placeholders": {
-          "title": {}
-        }
-    },
-    "favoriteDeleteCancel": "キャンセル",
-    "favoriteDeleteConfirm": "削除",
-    "favoriteLimitTitle": "お気に入り上限",
-    "favoriteLimitPurchased": "お気に入りは最大50件まで追加できます。",
-    "favoriteLimitNotPurchased": "お気に入りの上限に達しました。\n上限拡張で、さらに多く登録できるようになります。",
-    "favoriteLimitClose": "閉じる",
-    "favoriteLimitUpgrade": "上限を拡張する",
-
-    "update": "更新",
-    "settingsTitle": "設定",
-    "settingsTheme": "テーマ",
-    "settingsThemeSystem": "デバイスのモードを使用",
-    "settingsThemeLight": "ライトモード",
-    "settingsThemeDark": "ダークモード",
-    "settingsThemeLabelSystem": "デバイス設定",
-    "settingsThemeLabelLight": "ライト",
-    "settingsThemeLabelDark": "ダーク",
-    "settingsFavoriteDeleteTitle": "お気に入り削除",
-    "settingsFavoriteDeleteOn": "する",
-    "settingsFavoriteDeleteOff": "しない",
-    "settingsShop": "ショップ",
-    "settingsShopSubtitle": "機能追加",
-    "settingsPolicies": "各種ポリシー",
-    "settingsPoliciesSubtitle": "プライバシー・利用規約",
-    "settingsPrivacyPolicy": "プライバシーポリシー",
-    "settingsTerms": "利用規約",
-    "aboutRankingCalculation": "集計方法について",
-    "networkErrorTitle": "ネットワークに接続できません",
-    "networkErrorDescription": "接続状態を確認してから再度お試しください。",
-    "networkErrorRetry": "再読み込み",
-
-    "shopTitleRemoveAds": "広告削除",
-    "shopDescRemoveAds": "広告を非表示にします",
-    "shopTitleLimit": "上限拡張",
-    "shopDescLimit": "人気一覧表示とお気に入り登録の上限大幅アップ",
-    "shopTitleAutoplay": "連続再生",
-    "shopDescAutoplay": "動画を自動で連続再生",
-    "shopPurchasedRemoveAds": "広告を削除しました",
-    "shopPurchasedLimit": "上限を拡張しました",
-    "shopPurchased": "購入済み",
-    "shopBuy": "{price}\n(購入する)",
-    "@shopBuy": {
-      "placeholders": {
-        "price": {}
-      }
-    },
-    "shopRestore": "購入を復元",
-    "shopLoadFailed": "商品情報を取得できませんでした",
-    "shopRestoreAlready": "すでに購入が反映されています",
-    "shopRestoreNothing": "復元できる購入はありませんでした",
-    "shopRestoreDone": "購入を復元しました",
-
-    "settingsRegion": "地域",
-    "settingsRegionSubtitle": "アプリで表示する国を選択",
-    "regionJapan": "日本",
-    "regionUnitedStates": "アメリカ",
-    "regionUnitedKingdom": "イギリス",
-    "regionGermany": "ドイツ",
-    "regionFrance": "フランス",
-    "regionIndia": "インド",
-
-    "repeatStatusOff": "OFF",
-    "repeatStatusAscending": "ON (昇順)",
-    "repeatStatusDescending": "ON (降順)",
-    "repeatStatusRandom": "ON (ランダム)",
-    "repeatDialogTitle": "連続再生の設定",
-    "repeatSettingsTitle": "連続再生の設定",
-    "repeatOptionOff": "OFF（連続再生しない）",
-    "repeatOptionAscending": "昇順で再生",
-    "repeatOptionDescending": "降順で再生",
-    "repeatOptionRandom": "ランダム再生",
-    "repeatDialogCancel": "キャンセル",
-    "repeatDialogSave": "保存",
-    "repeatDialogMessage": "連続再生の動作を選択してください。",
-
-    "favoriteLockedTitle": "ロック中の動画です",
-    "favoriteLockedMessage": "この動画はロックされています。\n削除するにはロックを解除してください。",
-    "favoriteUnlockTitle": "ロックを解除しますか？",
-    "favoriteUnlockMessage": "この動画のロックを解除すると、\nお気に入りから削除できるようになります。",
-    "favoriteUnlockConfirm": "解除する",
-    "favoriteUnlockCancel": "キャンセル",
-    "favoriteLock": "ロック",
-    "favoriteDelete": "削除",
-
-    "updateAvailableTitle": "新しいバージョンがあります",
-    "updateAvailableMessage": "最新版が公開されています。",
-    "updateLater": "あとで",
-    "updateNow": "更新",
-
-    "buttonOk": "OK",
-    "settingsAbout": "このアプリについて",
-    "settingsAboutSubtitle": "アプリ情報・バージョン",
-    "browserOpenFailed": "ブラウザを開けませんでした",
-    "showPartial": "一部表示",
-    "showAll": "全て表示",
-    "updateNoticeTitle": "アップデートのお知らせ",
-    "appUpdatedMessage": "アプリが最新版に更新されました",
-    "noVideosFound": "該当する動画が見つかりませんでした",
-    "recentSearches": "最近の検索",
-    "clear": "消去",
-    "trendWords": "トレンドワード"
+  "newPickupTitle": "ピックアップ",
+  "navPopular": "人気急上昇",
+  "navTopic": "トピック",
+  "navGenre": "ジャンル",
+  "navFavorites": "お気に入り",
+  "noVideosFound": "該当する動画が見つかりませんでした",
+  "genreSearchHeader": "検索して探す",
+  "genreNetworkError": "ネットワークに接続できません",
+  "favoritesTitle": "お気に入り",
+  "favoritesEmptyHint": "❤️アイコンタップでお気に入りに追加！",
+  "favoritesCountMessage": "お気に入り登録数：{current} / {limit} 件",
+  "@favoritesCountMessage": {
+    "placeholders": {
+      "current": {},
+      "limit": {}
+    }
+  },
+  "favoriteDeleteTitle": "お気に入りから削除しますか？",
+  "favoriteDeleteMessage": "「{title}」をお気に入りから削除します。",
+  "@favoriteDeleteMessage": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "favoriteDeleteCancel": "キャンセル",
+  "favoriteDeleteConfirm": "削除",
+  "favoriteLimitTitle": "お気に入り上限",
+  "favoriteLimitPurchased": "お気に入りは最大50件まで追加できます。",
+  "favoriteLimitNotPurchased": "お気に入りの上限に達しました。\n上限拡張で、さらに多く登録できるようになります。",
+  "favoriteLimitClose": "閉じる",
+  "favoriteLimitUpgrade": "上限を拡張する",
+  "update": "更新",
+  "settingsTheme": "テーマ",
+  "settingsThemeSystem": "デバイスのモードを使用",
+  "settingsThemeLight": "ライトモード",
+  "settingsThemeDark": "ダークモード",
+  "settingsThemeLabelSystem": "デバイス設定",
+  "settingsThemeLabelLight": "ライト",
+  "settingsThemeLabelDark": "ダーク",
+  "settingsFavoriteDeleteTitle": "お気に入り削除",
+  "settingsShop": "ショップ",
+  "settingsShopSubtitle": "機能追加",
+  "settingsPolicies": "各種ポリシー",
+  "settingsPrivacyPolicy": "プライバシーポリシー",
+  "settingsTerms": "利用規約",
+  "aboutRankingCalculation": "集計方法について",
+  "networkErrorTitle": "ネットワークに接続できません",
+  "networkErrorDescription": "接続状態を確認してから再度お試しください。",
+  "networkErrorRetry": "再読み込み",
+  "shopTitleRemoveAds": "広告削除",
+  "shopDescRemoveAds": "広告を非表示にします",
+  "shopTitleLimit": "上限拡張",
+  "shopDescLimit": "人気一覧表示とお気に入り登録の上限大幅アップ",
+  "shopTitleAutoplay": "連続再生",
+  "shopDescAutoplay": "動画を自動で連続再生",
+  "shopPurchasedRemoveAds": "広告を削除しました",
+  "shopPurchasedLimit": "上限を拡張しました",
+  "shopPurchased": "購入済み",
+  "shopBuy": "{price}\n(購入する)",
+  "@shopBuy": {
+    "placeholders": {
+      "price": {}
+    }
+  },
+  "shopRestore": "購入を復元",
+  "shopLoadFailed": "商品情報を取得できませんでした",
+  "shopRestoreAlready": "すでに購入が反映されています",
+  "shopRestoreNothing": "復元できる購入はありませんでした",
+  "shopRestoreDone": "購入を復元しました",
+  "settingsRegion": "地域",
+  "regionJapan": "日本",
+  "regionUnitedStates": "アメリカ",
+  "regionUnitedKingdom": "イギリス",
+  "favoriteLockedTitle": "ロック中の動画です",
+  "favoriteLockedMessage": "この動画はロックされています。\n削除するにはロックを解除してください。",
+  "favoriteUnlockTitle": "ロックを解除しますか？",
+  "favoriteUnlockMessage": "この動画のロックを解除すると、\nお気に入りから削除できるようになります。",
+  "favoriteUnlockConfirm": "解除する",
+  "favoriteUnlockCancel": "キャンセル",
+  "favoriteLock": "ロック",
+  "favoriteDelete": "削除",
+  "updateAvailableTitle": "新しいバージョンがあります",
+  "updateAvailableMessage": "最新版が公開されています。",
+  "updateLater": "あとで",
+  "updateNow": "更新",
+  "buttonOk": "OK",
+  "settingsAbout": "このアプリについて",
+  "browserOpenFailed": "ブラウザを開けませんでした",
+  "updateNoticeTitle": "アップデートのお知らせ",
+  "appUpdatedMessage": "アプリが最新版に更新されました",
+  "recentSearches": "最近の検索",
+  "clear": "消去",
+  "trendWords": "トレンドワード",
+  "commonGame": "ゲーム",
+  "commonOk": "OK",
+  "commonCancel": "キャンセル",
+  "commonDone": "完了",
+  "newBadge": "新着",
+  "relatedVideos": "関連動画",
+  "pickupRecommended": "おすすめ",
+  "pickupTrendMusic": "トレンド音楽",
+  "pushSettingsMenuTitle": "通知",
+  "pushSettingsTitle": "通知の設定",
+  "pushSettingsUpdateFailed": "通知設定を更新できませんでした",
+  "pushPickupSectionTitle": "ピックアップの通知",
+  "pushPickupDescription": "ピックアップ項目ごとに新着動画を通知します。",
+  "pushPickupInitialWarningPrefix": "ピックアップ項目が初期状態の場合は通知は行われません。通知を行う場合は",
+  "pushPickupEditLink": "ピックアップ編集",
+  "pushPickupInitialWarningSuffix": "でピックアップ項目の編集を行ってください。",
+  "pushTrendingSectionTitle": "人気動画の通知",
+  "pushTrendingSectionSubtitle": "急上昇動画を通知します。",
+  "pushTrendingTitle": "人気急上昇",
+  "pushItemNotSubscribable": "この項目は通知対象外です",
+  "pickupEditTitle": "ピックアップ編集",
+  "pickupEditDialogTitle": "ピックアップ変更",
+  "pickupEditDialogMessage": "下記の内容でピックアップを設定します。",
+  "pickupEditCurrentSelection": "現在設定中",
+  "pickupEditGenreTab": "ジャンル",
+  "pickupEditChannelTab": "チャンネル",
+  "pickupEditFavoriteTab": "お気に入り",
+  "pickupEditFavoriteEmptyTitle": "まだお気に入りがありません",
+  "pickupEditFavoriteEmptyMessage": "お気に入り登録すると、登録された動画のチャンネルがここに表示されます",
+  "pickupEditNewNotification": "新着通知",
+  "pickupEditSaveFailed": "設定の保存に失敗しました",
+  "pickupEditCategoryFallback": "カテゴリ {categoryId}",
+  "@pickupEditCategoryFallback": {
+    "placeholders": {
+      "categoryId": {}
+    }
+  },
+  "topicPickupEditTitle": "ピックアップの編集",
+  "topicPickupEditMessage": "ピックアップをお好みのジャンルやチャンネルに変更したい場合は、右下のボタンをタップ！",
+  "pickupEmptyNewVideos": "まだ新着動画がありません",
+  "watchHistoryTitle": "視聴履歴",
+  "watchHistoryEmpty": "視聴履歴がありません",
+  "videoPlayerOpenYoutubeTooltip": "YouTubeで開く",
+  "videoPlayerTitle": "YouTubeで再生します",
+  "videoPlayerDescription": "「開く」を押すと動画ページを表示します。",
+  "videoPlayerOpening": "開いています...",
+  "videoPlayerOpen": "開く",
+  "settingsConfirmDeleteEnabled": "確認する",
+  "settingsConfirmDeleteDisabled": "確認しない",
+  "topBarSortTooltip": "並び替え",
+  "sortByScore": "スコア順",
+  "sortByViews": "再生順",
+  "sortByNewest": "新着順",
+  "publishedSecondsAgo": "{count}秒前",
+  "@publishedSecondsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedMinutesAgo": "{count}分前",
+  "@publishedMinutesAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedHoursAgo": "{count}時間前",
+  "@publishedHoursAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedDaysAgo": "{count}日前",
+  "@publishedDaysAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedWeeksAgo": "{count}週間前",
+  "@publishedWeeksAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedMonthsAgo": "{count}ヶ月前",
+  "@publishedMonthsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedYearsAgo": "{count}年前",
+  "@publishedYearsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountTenThousand": "{count}万",
+  "@viewCountTenThousand": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountHundredMillion": "{count}億",
+  "@viewCountHundredMillion": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountFull": "{count}回視聴",
+  "@viewCountFull": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "animeCurrentSeasonLink": "今期アニメ一覧はこちら（外部リンク）",
+  "animeCurrentSeasonTitle": "今期アニメ一覧",
+  "animePastSeasonsLink": "過去のシーズン一覧",
+  "animeLinkPending": "リンク先は未設定です"
 }

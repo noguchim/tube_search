@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tube_search/screens/pickup_edit_screen.dart';
 
 import '../data/pickup_selectable_item.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/push_subscription_provider.dart';
 import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
@@ -21,71 +22,156 @@ class PushSettingsScreen extends StatefulWidget {
 class _PushSettingsScreenState extends State<PushSettingsScreen> {
   bool _trendPushEnabled = true;
   List<PickupSelectableItem> _pickupItems = [];
-  bool _pickupSwitchEnabled = false;
+  bool _didLoadPickupItems = false;
+  bool _hasCustomPickupItems = false;
   static const String _pickupSelectedPrefsKey = 'pickup_selected_items';
+  static const String _pickupPushDefaultsSignaturePrefsKey =
+      'pickup_push_defaults_signature';
   static const Color _notificationAccentColor = Color(0xFF3B82F6);
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didLoadPickupItems) return;
+    _didLoadPickupItems = true;
     _loadPickupPushItems();
   }
 
   Future<void> _loadPickupPushItems() async {
+    final l = AppLocalizations.of(context)!;
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_pickupSelectedPrefsKey);
 
     // まだピックアップ編集していない場合
     if (raw == null || raw.isEmpty) {
+      if (!mounted) return;
       setState(() {
-        _pickupSwitchEnabled = true;
-        _pickupItems = const [
-          PickupSelectableItem(
-            type: PickupTargetType.category,
-            key: 'category:all',
-            title: '全て',
-          ),
-          PickupSelectableItem(
-            type: PickupTargetType.category,
-            key: 'category:20',
-            title: 'ゲーム',
-            categoryId: 20,
-          ),
-          PickupSelectableItem(
-            type: PickupTargetType.category,
-            key: 'category:10',
-            title: 'トレンド音楽',
-            categoryId: 10,
-          ),
-        ];
+        _hasCustomPickupItems = false;
+        _pickupItems = _defaultPickupItems(l);
       });
       return;
     }
 
-    final decoded = jsonDecode(raw);
+    try {
+      final decoded = jsonDecode(raw);
 
-    final items = (decoded as List).map<PickupSelectableItem>((e) {
-      final json = Map<String, dynamic>.from(e as Map);
+      if (decoded is! List) return;
 
-      final type = json['type'] == PickupTargetType.channel.name
-          ? PickupTargetType.channel
-          : PickupTargetType.category;
+      final items = decoded.map<PickupSelectableItem>((e) {
+        final json = Map<String, dynamic>.from(e as Map);
 
-      return PickupSelectableItem(
-        type: type,
-        key: json['key']?.toString() ?? '',
-        title: json['title']?.toString() ?? '',
-        channelId: json['channelId']?.toString(),
-        categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
+        final type = json['type'] == PickupTargetType.channel.name
+            ? PickupTargetType.channel
+            : PickupTargetType.category;
+
+        final itemKey = json['key']?.toString() == 'category:all'
+            ? 'category:recommended'
+            : json['key']?.toString() ?? '';
+
+        return PickupSelectableItem(
+          type: type,
+          key: itemKey,
+          title: itemKey == 'category:recommended'
+              ? l.pickupRecommended
+              : json['title']?.toString() ?? '',
+          channelId: json['channelId']?.toString(),
+          categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
+        );
+      }).where((item) {
+        return item.key.isNotEmpty && item.title.isNotEmpty;
+      }).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _hasCustomPickupItems = items.isNotEmpty;
+        _pickupItems = items;
+      });
+
+      await _initializeCustomPickupPushDefaultsIfNeeded(
+        prefs: prefs,
+        items: items,
       );
-    }).where((item) {
-      return item.key.isNotEmpty && item.title.isNotEmpty;
-    }).toList();
+    } catch (_) {
+      if (!mounted) return;
 
-    setState(() {
-      _pickupSwitchEnabled = true;
-      _pickupItems = items;
-    });
+      setState(() {
+        _hasCustomPickupItems = false;
+        _pickupItems = _defaultPickupItems(l);
+      });
+    }
+  }
+
+  List<PickupSelectableItem> _defaultPickupItems(AppLocalizations l) {
+    return [
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:recommended',
+        title: l.pickupRecommended,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:20',
+        title: l.commonGame,
+        categoryId: 20,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:10',
+        title: l.pickupTrendMusic,
+        categoryId: 10,
+      ),
+    ];
+  }
+
+  String _pickupSignature(List<PickupSelectableItem> items) {
+    final keys = items.map((item) => item.key).toList()..sort();
+    return keys.join('|');
+  }
+
+  Future<void> _initializeCustomPickupPushDefaultsIfNeeded({
+    required SharedPreferences prefs,
+    required List<PickupSelectableItem> items,
+  }) async {
+    if (items.isEmpty) return;
+
+    final signature = _pickupSignature(items);
+    final initializedSignature =
+        prefs.getString(_pickupPushDefaultsSignaturePrefsKey);
+
+    if (initializedSignature == signature) return;
+
+    final enabledItems = items.where(_isPushSubscribable).toList();
+    if (enabledItems.isEmpty) return;
+
+    if (!mounted) return;
+
+    context.read<PushSubscriptionProvider>().setEnabledKeys(
+          enabledItems.map(_pushKeyOf),
+        );
+
+    await prefs.setString(_pickupPushDefaultsSignaturePrefsKey, signature);
+
+    final token = await PushTokenStore.getToken();
+    if (token == null || token.isEmpty) return;
+
+    if (!mounted) return;
+
+    final api = context.read<YouTubeApiService>();
+    try {
+      await api.replacePushSubscriptions(
+        token: token,
+        items: enabledItems,
+      );
+    } catch (_) {
+      // 表示初期化は維持し、個別スイッチ操作時の保存で再同期する。
+    }
   }
 
   Widget _buildSectionTitle(
@@ -214,14 +300,17 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
   }
 
   Future<void> _updateTrendPushEnabled(bool enabled) async {
+    final api = context.read<YouTubeApiService>();
+    final messenger = ScaffoldMessenger.of(context);
+    final updateFailedMessage =
+        AppLocalizations.of(context)!.pushSettingsUpdateFailed;
+
     try {
       final token = await PushTokenStore.getToken();
 
       if (token == null || token.isEmpty) {
         throw Exception("FCM token not found");
       }
-
-      final api = context.read<YouTubeApiService>();
 
       await api.updatePushStatus(
         token: token,
@@ -236,9 +325,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("通知設定を更新できませんでした"),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(updateFailedMessage),
         ),
       );
     }
@@ -250,6 +339,10 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
   ) async {
     if (!_isPushSubscribable(target)) return;
 
+    final api = context.read<YouTubeApiService>();
+    final messenger = ScaffoldMessenger.of(context);
+    final updateFailedMessage =
+        AppLocalizations.of(context)!.pushSettingsUpdateFailed;
     final pushProvider = context.read<PushSubscriptionProvider>();
 
     final nextKeys = Set<String>.from(pushProvider.enabledKeys);
@@ -274,8 +367,6 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
         throw Exception("FCM token not found");
       }
 
-      final api = context.read<YouTubeApiService>();
-
       await api.replacePushSubscriptions(
         token: token,
         items: enabledItems,
@@ -289,9 +380,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("通知設定を更新できませんでした"),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(updateFailedMessage),
         ),
       );
     }
@@ -309,6 +400,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
 
   Widget _buildPickupPushSectionTitle(BuildContext context) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
@@ -316,7 +408,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "ピックアップの通知",
+            l.pushPickupSectionTitle,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -332,15 +424,15 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               children: [
-                const TextSpan(
-                  text: "ピックアップ項目ごとに新着動画を通知します。",
+                TextSpan(
+                  text: l.pushPickupDescription,
                 ),
-                if (!_pickupSwitchEnabled) ...[
-                  const TextSpan(
-                    text: "ピックアップ項目が初期状態の場合は通知は行われません。通知を行う場合は",
+                if (!_hasCustomPickupItems) ...[
+                  TextSpan(
+                    text: l.pushPickupInitialWarningPrefix,
                   ),
                   TextSpan(
-                    text: "ピックアップ編集",
+                    text: l.pushPickupEditLink,
                     style: const TextStyle(
                       color: _notificationAccentColor,
                       fontWeight: FontWeight.w700,
@@ -362,8 +454,8 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                         }
                       },
                   ),
-                  const TextSpan(
-                    text: "でピックアップ項目の編集を行ってください。",
+                  TextSpan(
+                    text: l.pushPickupInitialWarningSuffix,
                   ),
                 ],
               ],
@@ -375,7 +467,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
   }
 
   bool _isPushSubscribable(PickupSelectableItem item) {
-    if (item.key == 'category:all') return false;
+    if (item.key == 'category:recommended' || item.key == 'category:all') {
+      return false;
+    }
 
     if (item.type == PickupTargetType.channel) {
       return item.channelId != null && item.channelId!.isNotEmpty;
@@ -388,6 +482,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final pushSubs = context.watch<PushSubscriptionProvider>();
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -418,10 +513,10 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                         ),
                       ),
                     ),
-                    const Center(
+                    Center(
                       child: Text(
-                        "プッシュ通知の設定",
-                        style: TextStyle(
+                        l.pushSettingsTitle,
+                        style: const TextStyle(
                           fontSize: 21,
                           fontWeight: FontWeight.w800,
                         ),
@@ -437,11 +532,11 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                 children: [
                   _buildSectionTitle(
                     context,
-                    "人気動画の通知",
-                    subtitle: "急上昇動画を通知します。",
+                    l.pushTrendingSectionTitle,
+                    subtitle: l.pushTrendingSectionSubtitle,
                   ),
                   _buildSwitchTile(
-                    title: "人気急上昇",
+                    title: l.pushTrendingTitle,
                     value: _trendPushEnabled,
                     onChanged: (value) {
                       _updateTrendPushEnabled(value);
@@ -459,7 +554,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                     return _buildSwitchTile(
                       title: item.title,
                       value: enabled,
-                      subtitle: canSubscribe ? null : "この項目は通知対象外です",
+                      subtitle: canSubscribe ? null : l.pushItemNotSubscribable,
                       dimDisabledTitle: canSubscribe,
                       onChanged: canSubscribe
                           ? (value) {

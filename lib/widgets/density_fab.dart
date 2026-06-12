@@ -23,6 +23,8 @@ class _DensityFabState extends State<DensityFab> {
     switch (d) {
       case CardDensity.big:
         return const Color(0xFFEF4444); // 赤
+      case CardDensity.side:
+        return const Color(0xFF8B5CF6); // 紫
       case CardDensity.middle:
         return const Color(0xFF10B981); // 緑
       case CardDensity.small:
@@ -108,6 +110,8 @@ class _DensityFabState extends State<DensityFab> {
     switch (d) {
       case CardDensity.big:
         return Icons.view_carousel_rounded;
+      case CardDensity.side:
+        return Icons.view_sidebar_rounded;
       case CardDensity.middle:
         return Icons.view_agenda_rounded;
       case CardDensity.small:

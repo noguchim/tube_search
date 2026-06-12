@@ -128,35 +128,11 @@ abstract class AppLocalizations {
   /// **'Favorites'**
   String get navFavorites;
 
-  /// No description provided for @navSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
-  String get navSettings;
-
-  /// No description provided for @popularTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Trending Now'**
-  String get popularTitle;
-
-  /// No description provided for @infoTrendingUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Trending on YouTube — {region} — updated {date}'**
-  String infoTrendingUpdated(String region, String date);
-
   /// No description provided for @noVideosFound.
   ///
   /// In en, this message translates to:
   /// **'No videos were found'**
   String get noVideosFound;
-
-  /// No description provided for @genreScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Popular by Genre'**
-  String get genreScreenTitle;
 
   /// No description provided for @genreSearchHeader.
   ///
@@ -170,41 +146,17 @@ abstract class AppLocalizations {
   /// **'Cannot connect to the network'**
   String get genreNetworkError;
 
-  /// No description provided for @genreBrowseHeader.
-  ///
-  /// In en, this message translates to:
-  /// **'Browse by category'**
-  String get genreBrowseHeader;
-
   /// No description provided for @favoritesTitle.
   ///
   /// In en, this message translates to:
   /// **'Favorites'**
   String get favoritesTitle;
 
-  /// No description provided for @favoritesEmptyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No favorites yet'**
-  String get favoritesEmptyTitle;
-
   /// No description provided for @favoritesEmptyHint.
   ///
   /// In en, this message translates to:
   /// **'Tap the heart icon to add favorites!'**
   String get favoritesEmptyHint;
-
-  /// No description provided for @favoritesTapHere.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap here!'**
-  String get favoritesTapHere;
-
-  /// No description provided for @favoritesRegisteredSuffix.
-  ///
-  /// In en, this message translates to:
-  /// **'saved'**
-  String get favoritesRegisteredSuffix;
 
   /// No description provided for @favoritesCountMessage.
   ///
@@ -272,12 +224,6 @@ abstract class AppLocalizations {
   /// **'updated'**
   String get update;
 
-  /// No description provided for @settingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
-  String get settingsTitle;
-
   /// No description provided for @settingsTheme.
   ///
   /// In en, this message translates to:
@@ -326,18 +272,6 @@ abstract class AppLocalizations {
   /// **'Confirm when removing favorites'**
   String get settingsFavoriteDeleteTitle;
 
-  /// No description provided for @settingsFavoriteDeleteOn.
-  ///
-  /// In en, this message translates to:
-  /// **'On'**
-  String get settingsFavoriteDeleteOn;
-
-  /// No description provided for @settingsFavoriteDeleteOff.
-  ///
-  /// In en, this message translates to:
-  /// **'Off'**
-  String get settingsFavoriteDeleteOff;
-
   /// No description provided for @settingsShop.
   ///
   /// In en, this message translates to:
@@ -355,12 +289,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Policies'**
   String get settingsPolicies;
-
-  /// No description provided for @settingsPoliciesSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Privacy policy & Terms'**
-  String get settingsPoliciesSubtitle;
 
   /// No description provided for @settingsPrivacyPolicy.
   ///
@@ -494,12 +422,6 @@ abstract class AppLocalizations {
   /// **'Region'**
   String get settingsRegion;
 
-  /// No description provided for @settingsRegionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose the country for video trends'**
-  String get settingsRegionSubtitle;
-
   /// No description provided for @regionJapan.
   ///
   /// In en, this message translates to:
@@ -517,102 +439,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'United Kingdom'**
   String get regionUnitedKingdom;
-
-  /// No description provided for @regionGermany.
-  ///
-  /// In en, this message translates to:
-  /// **'Germany'**
-  String get regionGermany;
-
-  /// No description provided for @regionFrance.
-  ///
-  /// In en, this message translates to:
-  /// **'France'**
-  String get regionFrance;
-
-  /// No description provided for @regionIndia.
-  ///
-  /// In en, this message translates to:
-  /// **'India'**
-  String get regionIndia;
-
-  /// No description provided for @repeatStatusOff.
-  ///
-  /// In en, this message translates to:
-  /// **'OFF'**
-  String get repeatStatusOff;
-
-  /// No description provided for @repeatStatusAscending.
-  ///
-  /// In en, this message translates to:
-  /// **'ON (Ascending)'**
-  String get repeatStatusAscending;
-
-  /// No description provided for @repeatStatusDescending.
-  ///
-  /// In en, this message translates to:
-  /// **'ON (Descending)'**
-  String get repeatStatusDescending;
-
-  /// No description provided for @repeatStatusRandom.
-  ///
-  /// In en, this message translates to:
-  /// **'ON (Random)'**
-  String get repeatStatusRandom;
-
-  /// No description provided for @repeatDialogTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Continuous play settings'**
-  String get repeatDialogTitle;
-
-  /// No description provided for @repeatSettingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Continuous play settings'**
-  String get repeatSettingsTitle;
-
-  /// No description provided for @repeatOptionOff.
-  ///
-  /// In en, this message translates to:
-  /// **'OFF (do not auto-play)'**
-  String get repeatOptionOff;
-
-  /// No description provided for @repeatOptionAscending.
-  ///
-  /// In en, this message translates to:
-  /// **'Play in ascending order'**
-  String get repeatOptionAscending;
-
-  /// No description provided for @repeatOptionDescending.
-  ///
-  /// In en, this message translates to:
-  /// **'Play in descending order'**
-  String get repeatOptionDescending;
-
-  /// No description provided for @repeatOptionRandom.
-  ///
-  /// In en, this message translates to:
-  /// **'Shuffle play'**
-  String get repeatOptionRandom;
-
-  /// No description provided for @repeatDialogCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get repeatDialogCancel;
-
-  /// No description provided for @repeatDialogSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get repeatDialogSave;
-
-  /// No description provided for @repeatDialogMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Select how continuous play should behave.'**
-  String get repeatDialogMessage;
 
   /// No description provided for @favoriteLockedTitle.
   ///
@@ -698,29 +524,11 @@ abstract class AppLocalizations {
   /// **'About this App'**
   String get settingsAbout;
 
-  /// No description provided for @settingsAboutSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'App information and version'**
-  String get settingsAboutSubtitle;
-
   /// No description provided for @browserOpenFailed.
   ///
   /// In en, this message translates to:
   /// **'Failed to open the browser'**
   String get browserOpenFailed;
-
-  /// No description provided for @showPartial.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Less'**
-  String get showPartial;
-
-  /// No description provided for @showAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Show All'**
-  String get showAll;
 
   /// No description provided for @updateNoticeTitle.
   ///
@@ -751,6 +559,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trending Words'**
   String get trendWords;
+
+  /// No description provided for @commonGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Games'**
+  String get commonGame;
+
+  /// No description provided for @commonOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get commonOk;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancel;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get commonDone;
+
+  /// No description provided for @newBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get newBadge;
+
+  /// No description provided for @relatedVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Related videos'**
+  String get relatedVideos;
+
+  /// No description provided for @pickupRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get pickupRecommended;
+
+  /// No description provided for @pickupTrendMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending music'**
+  String get pickupTrendMusic;
+
+  /// No description provided for @pushSettingsMenuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get pushSettingsMenuTitle;
+
+  /// No description provided for @pushSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification settings'**
+  String get pushSettingsTitle;
+
+  /// No description provided for @pushSettingsUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update notification settings'**
+  String get pushSettingsUpdateFailed;
+
+  /// No description provided for @pushPickupSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick-up notifications'**
+  String get pushPickupSectionTitle;
+
+  /// No description provided for @pushPickupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notifications for new videos for each pick-up item.'**
+  String get pushPickupDescription;
+
+  /// No description provided for @pushPickupInitialWarningPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are not sent while pick-ups are still at their default settings. To enable them, edit your items in '**
+  String get pushPickupInitialWarningPrefix;
+
+  /// No description provided for @pushPickupEditLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit pick-ups'**
+  String get pushPickupEditLink;
+
+  /// No description provided for @pushPickupInitialWarningSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'.'**
+  String get pushPickupInitialWarningSuffix;
+
+  /// No description provided for @pushTrendingSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending video notifications'**
+  String get pushTrendingSectionTitle;
+
+  /// No description provided for @pushTrendingSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified about trending videos.'**
+  String get pushTrendingSectionSubtitle;
+
+  /// No description provided for @pushTrendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending'**
+  String get pushTrendingTitle;
+
+  /// No description provided for @pushItemNotSubscribable.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are not available for this item'**
+  String get pushItemNotSubscribable;
+
+  /// No description provided for @pickupEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit pick-ups'**
+  String get pickupEditTitle;
+
+  /// No description provided for @pickupEditDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change pick-ups'**
+  String get pickupEditDialogTitle;
+
+  /// No description provided for @pickupEditDialogMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your pick-ups as shown below.'**
+  String get pickupEditDialogMessage;
+
+  /// No description provided for @pickupEditCurrentSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Current selection'**
+  String get pickupEditCurrentSelection;
+
+  /// No description provided for @pickupEditGenreTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get pickupEditGenreTab;
+
+  /// No description provided for @pickupEditChannelTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get pickupEditChannelTab;
+
+  /// No description provided for @pickupEditFavoriteTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get pickupEditFavoriteTab;
+
+  /// No description provided for @pickupEditFavoriteEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorites yet'**
+  String get pickupEditFavoriteEmptyTitle;
+
+  /// No description provided for @pickupEditFavoriteEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'When you add favorite videos, their channels will appear here.'**
+  String get pickupEditFavoriteEmptyMessage;
+
+  /// No description provided for @pickupEditNewNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'New video notifications'**
+  String get pickupEditNewNotification;
+
+  /// No description provided for @pickupEditSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save settings'**
+  String get pickupEditSaveFailed;
+
+  /// No description provided for @pickupEditCategoryFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Category {categoryId}'**
+  String pickupEditCategoryFallback(Object categoryId);
+
+  /// No description provided for @topicPickupEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit pick-ups'**
+  String get topicPickupEditTitle;
+
+  /// No description provided for @topicPickupEditMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'To customize pick-ups by genre or channel, tap the button at the bottom right.'**
+  String get topicPickupEditMessage;
+
+  /// No description provided for @pickupEmptyNewVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'No new videos yet'**
+  String get pickupEmptyNewVideos;
+
+  /// No description provided for @watchHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch history'**
+  String get watchHistoryTitle;
+
+  /// No description provided for @watchHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No watch history yet'**
+  String get watchHistoryEmpty;
+
+  /// No description provided for @videoPlayerOpenYoutubeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in YouTube'**
+  String get videoPlayerOpenYoutubeTooltip;
+
+  /// No description provided for @videoPlayerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing on YouTube'**
+  String get videoPlayerTitle;
+
+  /// No description provided for @videoPlayerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Open to view the video page.'**
+  String get videoPlayerDescription;
+
+  /// No description provided for @videoPlayerOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening...'**
+  String get videoPlayerOpening;
+
+  /// No description provided for @videoPlayerOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get videoPlayerOpen;
+
+  /// No description provided for @settingsConfirmDeleteEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get settingsConfirmDeleteEnabled;
+
+  /// No description provided for @settingsConfirmDeleteDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not confirm'**
+  String get settingsConfirmDeleteDisabled;
+
+  /// No description provided for @topBarSortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get topBarSortTooltip;
+
+  /// No description provided for @sortByScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get sortByScore;
+
+  /// No description provided for @sortByViews.
+  ///
+  /// In en, this message translates to:
+  /// **'Views'**
+  String get sortByViews;
+
+  /// No description provided for @sortByNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get sortByNewest;
+
+  /// No description provided for @publishedSecondsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}s ago'**
+  String publishedSecondsAgo(Object count);
+
+  /// No description provided for @publishedMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}m ago'**
+  String publishedMinutesAgo(Object count);
+
+  /// No description provided for @publishedHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}h ago'**
+  String publishedHoursAgo(Object count);
+
+  /// No description provided for @publishedDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}d ago'**
+  String publishedDaysAgo(Object count);
+
+  /// No description provided for @publishedWeeksAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}w ago'**
+  String publishedWeeksAgo(Object count);
+
+  /// No description provided for @publishedMonthsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}mo ago'**
+  String publishedMonthsAgo(Object count);
+
+  /// No description provided for @publishedYearsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}y ago'**
+  String publishedYearsAgo(Object count);
+
+  /// No description provided for @viewCountTenThousand.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}0K'**
+  String viewCountTenThousand(Object count);
+
+  /// No description provided for @viewCountHundredMillion.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}00M'**
+  String viewCountHundredMillion(Object count);
+
+  /// No description provided for @viewCountFull.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} views'**
+  String viewCountFull(Object count);
+
+  /// No description provided for @animeCurrentSeasonLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Current season anime list (external link)'**
+  String get animeCurrentSeasonLink;
+
+  /// No description provided for @animeCurrentSeasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Current season anime'**
+  String get animeCurrentSeasonTitle;
+
+  /// No description provided for @animePastSeasonsLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Past season lists'**
+  String get animePastSeasonsLink;
+
+  /// No description provided for @animeLinkPending.
+  ///
+  /// In en, this message translates to:
+  /// **'The link URL is not set yet'**
+  String get animeLinkPending;
 }
 
 class _AppLocalizationsDelegate

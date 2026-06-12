@@ -52,8 +52,9 @@ class FavoritesScreenState extends State<FavoritesScreen>
     WidgetsBinding.instance.addObserver(this);
 
     // 初回ロード
+    final favorites = context.read<FavoritesService>();
     Future.microtask(() {
-      context.read<FavoritesService>().loadFavorites();
+      favorites.loadFavorites();
     });
   }
 
@@ -361,7 +362,6 @@ class FavoritesScreenState extends State<FavoritesScreen>
   Widget _buildFavoritesContent(List<YouTubeVideo> list) {
     final media = MediaQuery.of(context);
     final isLandscape = media.orientation == Orientation.landscape;
-    final isTablet = media.size.shortestSide >= 600;
 
     if (!isLandscape) {
       return SliverPadding(

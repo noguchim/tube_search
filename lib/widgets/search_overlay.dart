@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../data/search_history_item.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
 import '../providers/search_ui_provider.dart';
 import '../screens/genre_videos_screen.dart';
@@ -160,6 +161,7 @@ class _SearchOverlayState extends State<SearchOverlay>
     // ✅ close前に必要なものを取得
     final navigator = Navigator.of(context, rootNavigator: true);
     final searchProvider = context.read<SearchUIProvider>();
+    final recommendationHistory = context.read<RecommendationHistoryProvider>();
 
     final searchMode = _detectSearchMode(kw);
 
@@ -176,6 +178,8 @@ class _SearchOverlayState extends State<SearchOverlay>
         ),
       );
     }
+
+    await recommendationHistory.recordSearchKeyword(kw);
 
     // ✅ ここでOverlayは破棄されてもOK
     widget.onClose();

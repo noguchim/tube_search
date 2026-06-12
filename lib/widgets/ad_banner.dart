@@ -68,22 +68,11 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> _waitForConsent() async {
-    int retry = 0;
-
-    while (ConsentManager.nonPersonalizedAds == null && retry < 10) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      retry++;
-    }
-  }
-
   Future<void> _loadBanner() async {
     if (_isLoading) return;
     _isLoading = true;
 
     try {
-      await _waitForConsent();
-
       final width = MediaQuery.of(context).size.width.toInt();
       final adaptive =
           await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);

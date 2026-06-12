@@ -24,6 +24,7 @@ class GenreCategory {
   final bool isOfficial;
   final String query;
   final Color? color;
+  final String? description;
 
   const GenreCategory({
     required this.id,
@@ -31,5 +32,6 @@ class GenreCategory {
     required this.isOfficial,
     required this.query,
     this.color,
+    this.description,
   });
 }

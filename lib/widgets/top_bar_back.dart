@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 class TopBarBack extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
@@ -23,6 +25,7 @@ class TopBarBack extends StatelessWidget {
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xAA000000) : const Color(0xFF282828);
 
@@ -86,12 +89,12 @@ class TopBarBack extends StatelessWidget {
                         Icons.swap_vert,
                         color: Colors.white,
                       ),
-                      tooltip: "並び替え",
+                      tooltip: l.topBarSortTooltip,
                       onSelected: onSortSelected,
                       itemBuilder: (context) => [
-                        _buildItem(context, "score", "スコア順"),
-                        _buildItem(context, "views", "再生順"),
-                        _buildItem(context, "date", "新着順"),
+                        _buildItem(context, "score", l.sortByScore),
+                        _buildItem(context, "views", l.sortByViews),
+                        _buildItem(context, "date", l.sortByNewest),
                       ],
                     )
                   : const SizedBox(),

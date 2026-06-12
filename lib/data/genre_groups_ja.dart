@@ -16,6 +16,23 @@ const baseCategoryIdsJa = {
 /// 🎉 🎉 🎉 ここから実データ（日本向け）
 /// ------------------------------------------------------------
 const genreGroupsJa = <GenreGroup>[
+  /// ✨ G_REC：おすすめ
+  GenreGroup(
+    groupId: "G_REC",
+    name: "おすすめ",
+    color: Color(0xFF3B82F6),
+    icon: Icons.auto_awesome,
+    items: [
+      GenreCategory(
+        id: -1,
+        name: "おすすめ",
+        isOfficial: false,
+        query: "",
+        color: Color(0xFF3B82F6),
+      ),
+    ],
+  ),
+
   /// 🎵 G00：音楽（NEW）
   GenreGroup(
     groupId: "G00",

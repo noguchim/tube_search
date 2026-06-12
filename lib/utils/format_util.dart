@@ -1,25 +1,28 @@
 import 'package:flutter/cupertino.dart';
 
-String formatPublishedAgo(DateTime? published) {
+import '../l10n/app_localizations.dart';
+
+String formatPublishedAgo(BuildContext context, DateTime? published) {
   if (published == null) return "";
+  final l = AppLocalizations.of(context)!;
 
   final now = DateTime.now();
   final diff = now.difference(published);
 
   if (diff.inSeconds < 60) {
-    return "${diff.inSeconds}秒前";
+    return l.publishedSecondsAgo(diff.inSeconds);
   } else if (diff.inMinutes < 60) {
-    return "${diff.inMinutes}分前";
+    return l.publishedMinutesAgo(diff.inMinutes);
   } else if (diff.inHours < 24) {
-    return "${diff.inHours}時間前";
-  } else if (diff.inDays < 7) {
-    return "${diff.inDays}日前";
+    return l.publishedHoursAgo(diff.inHours);
+  } else if (diff.inDays < 14) {
+    return l.publishedDaysAgo(diff.inDays);
   } else if (diff.inDays < 30) {
-    return "${(diff.inDays / 7).floor()}週間前";
+    return l.publishedWeeksAgo((diff.inDays / 7).floor());
   } else if (diff.inDays < 365) {
-    return "${(diff.inDays / 30).floor()}ヶ月前";
+    return l.publishedMonthsAgo((diff.inDays / 30).floor());
   } else {
-    return "${(diff.inDays / 365).floor()}年前";
+    return l.publishedYearsAgo((diff.inDays / 365).floor());
   }
 }
 

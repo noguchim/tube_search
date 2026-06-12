@@ -4,11 +4,13 @@ import 'package:tube_search/widgets/video_grid_tile.dart';
 import 'package:tube_search/widgets/video_list_tile.dart';
 
 import '../data/youtube_video.dart';
+import '../l10n/app_localizations.dart';
 import '../services/expanded_video_controller.dart';
 
 class SectionPlainVideos extends StatelessWidget {
   final List<YouTubeVideo> videos;
   final bool Function(YouTubeVideo video)? isNewVideo;
+  final ValueChanged<YouTubeVideo>? onVideoTap;
   final bool showRelatedTitle;
   final String relatedTitle;
 
@@ -16,11 +18,12 @@ class SectionPlainVideos extends StatelessWidget {
     super.key,
     required this.videos,
     this.isNewVideo,
+    this.onVideoTap,
     this.showRelatedTitle = false,
-    this.relatedTitle = "関連動画",
+    this.relatedTitle = "",
   });
 
-  Widget _buildRelatedTitle(BuildContext context) {
+  Widget _buildRelatedTitle(BuildContext context, String title) {
     final theme = Theme.of(context);
 
     return Padding(
@@ -32,7 +35,7 @@ class SectionPlainVideos extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  relatedTitle,
+                  title,
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -63,6 +66,7 @@ class SectionPlainVideos extends StatelessWidget {
     }
 
     final media = MediaQuery.of(context);
+    final l = AppLocalizations.of(context)!;
     final isTablet = media.size.shortestSide >= 600;
     final topVideo = videos.first;
     final restVideos = videos.skip(1).toList();
@@ -77,12 +81,16 @@ class SectionPlainVideos extends StatelessWidget {
             rank: 1,
             showNewBadge: _isNew(topVideo),
             presentationMode: VideoPresentationMode.plain,
+            onVideoTap: onVideoTap,
           ),
         ),
         if (shouldShowRelatedTitle)
           Padding(
             padding: const EdgeInsets.only(top: 50),
-            child: _buildRelatedTitle(context),
+            child: _buildRelatedTitle(
+              context,
+              relatedTitle.isEmpty ? l.relatedVideos : relatedTitle,
+            ),
           ),
         if (restVideos.isNotEmpty)
           Padding(
@@ -93,6 +101,7 @@ class SectionPlainVideos extends StatelessWidget {
               videos: restVideos,
               isTablet: isTablet,
               isNewVideo: isNewVideo,
+              onVideoTap: onVideoTap,
             ),
           ),
       ],
@@ -104,11 +113,13 @@ class _PlainGrid extends StatelessWidget {
   final List<YouTubeVideo> videos;
   final bool isTablet;
   final bool Function(YouTubeVideo video)? isNewVideo;
+  final ValueChanged<YouTubeVideo>? onVideoTap;
 
   const _PlainGrid({
     required this.videos,
     required this.isTablet,
     required this.isNewVideo,
+    required this.onVideoTap,
   });
 
   bool _isNew(YouTubeVideo video) {
@@ -141,6 +152,7 @@ class _PlainGrid extends StatelessWidget {
           showNewBadge: _isNew(video),
           presentationMode: VideoPresentationMode.plain,
           onTap: () {
+            onVideoTap?.call(video);
             Feedback.forTap(context);
 
             controller.open(

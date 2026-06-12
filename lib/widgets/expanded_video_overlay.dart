@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:tube_search/data/youtube_video.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
+import '../providers/recommendation_history_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/watch_history_service.dart';
@@ -108,6 +111,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
+    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -119,7 +123,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt);
+    final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
             ? formatDuration(video.durationSeconds!)
@@ -131,6 +135,9 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     );
     final timeAndDuration = '$timeAgo${separator(context)}$duration';
     final isFav = fav.isFavoriteSync(id);
+    final isWatched = history.isWatchedSync(id);
+    final titleColor =
+        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
     final borderRadius = BorderRadius.circular(16);
 
     final controller = context.watch<ExpandedVideoController>();
@@ -198,6 +205,16 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                 child: InkWell(
                   onTap: () {
                     context.read<WatchHistoryService>().add(video);
+                    unawaited(
+                      context
+                          .read<RecommendationHistoryProvider>()
+                          .recordVideoTap(
+                            videoId: video.id,
+                            title: video.title,
+                            channelId: video.channelId,
+                            channelTitle: video.channelTitle,
+                          ),
+                    );
                     pushPlayer();
                   },
                   borderRadius: borderRadius,
@@ -338,7 +355,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                           height: 1.35,
-                          color: onSurface,
+                          color: titleColor,
                         ),
                       ),
                     ),
@@ -399,6 +416,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                           left: -10,
                           bottom: -22, // 少し下に逃がす
                           child: FavoriteButtonOverlay(
+                            key: ValueKey('expanded_favorite_${video.id}'),
                             isFavorite: isFav,
                             showBackground: false,
                             scale: 1.25,

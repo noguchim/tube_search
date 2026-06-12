@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,9 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/base_genre_models.dart';
 import '../data/genre_provider.dart';
 import '../data/pickup_selectable_item.dart';
+import '../data/youtube_video.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/pickup_settings_provider.dart';
 import '../providers/push_subscription_provider.dart';
 import '../providers/region_provider.dart';
+import '../services/favorites_service.dart';
 import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
@@ -39,41 +43,45 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   static const int _maxSelectedCount = 3;
   static const int _minSelectedCount = 1;
   static const String _pickupSelectedPrefsKey = 'pickup_selected_items';
+  static const String _pickupPushDefaultsSignaturePrefsKey =
+      'pickup_push_defaults_signature';
   final Set<String> _expandedGenreGroups = {};
   final Set<String> _expandedChannelSections = {};
-  List<PickupSelectableItem> _initialSelected = [];
   bool _isSaving = false;
+  bool _didLoadSelectedItems = false;
 
-  List<PickupSelectableItem> _selected = [
-    const PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:all',
-      title: '全て',
-    ),
-    const PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:20',
-      title: 'ゲーム',
-      categoryId: 20,
-    ),
-    const PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:10',
-      title: 'トレンド音楽',
-      categoryId: 10,
-    ),
-  ];
+  List<PickupSelectableItem> _selected = [];
+
+  List<PickupSelectableItem> _defaultSelectedItems(AppLocalizations l) {
+    return [
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:recommended',
+        title: l.pickupRecommended,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:20',
+        title: l.commonGame,
+        categoryId: 20,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:10',
+        title: l.pickupTrendMusic,
+        categoryId: 10,
+      ),
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
 
     _tabController = TabController(
-      length: 2,
+      length: 3,
       vsync: this,
     );
-
-    _loadSelectedItems();
 
     _genreScrollController = ScrollController(
       initialScrollOffset: _savedGenreOffset,
@@ -96,15 +104,13 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     });
 
     _restoreScrollOffset(_genreScrollController, _savedGenreOffset);
-
-    _initialSelected = List<PickupSelectableItem>.from(_selected);
   }
 
-  Future<void> _loadSelectedItems() async {
+  Future<void> _loadSelectedItems(AppLocalizations l) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_pickupSelectedPrefsKey);
 
-    // 初回起動など未保存なら、初期値のまま
+    // 初回起動など未保存なら、didChangeDependenciesで入れた初期値のまま
     if (raw == null || raw.isEmpty) return;
 
     try {
@@ -121,10 +127,16 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                 ? PickupTargetType.channel
                 : PickupTargetType.category;
 
+            final itemKey = json['key']?.toString() == 'category:all'
+                ? 'category:recommended'
+                : json['key']?.toString() ?? '';
+
             return PickupSelectableItem(
               type: type,
-              key: json['key']?.toString() ?? '',
-              title: json['title']?.toString() ?? '',
+              key: itemKey,
+              title: itemKey == 'category:recommended'
+                  ? l.pickupRecommended
+                  : json['title']?.toString() ?? '',
               channelId: json['channelId']?.toString(),
               categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
               pushEnabled: json['pushEnabled'] == true,
@@ -140,23 +152,28 @@ class _PickupEditScreenState extends State<PickupEditScreen>
 
       setState(() {
         _selected = items;
-        _initialSelected = List<PickupSelectableItem>.from(items);
       });
-    } catch (_) {
+    } catch (e) {
+      logger.e("Pickup edit prefs load error: $e");
       // 壊れた保存値なら初期値のまま使う
     }
   }
 
-  Future<void> _saveSelectedItems() async {
+  Future<void> _saveSelectedItems({
+    required Set<String> checkedKeys,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
 
     final data = _selected.map((item) {
+      final pushKey = _pushKeyOf(item);
+
       return {
         'type': item.type.name,
         'key': item.key,
         'title': item.title,
         'channelId': item.channelId,
         'categoryId': item.categoryId,
+        'pushEnabled': pushKey.isNotEmpty && checkedKeys.contains(pushKey),
       };
     }).toList();
 
@@ -164,6 +181,16 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       _pickupSelectedPrefsKey,
       jsonEncode(data),
     );
+
+    await prefs.setString(
+      _pickupPushDefaultsSignaturePrefsKey,
+      _pickupSignature(_selected),
+    );
+  }
+
+  String _pickupSignature(List<PickupSelectableItem> items) {
+    final keys = items.map((item) => item.key).toList()..sort();
+    return keys.join('|');
   }
 
   @override
@@ -171,6 +198,14 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     super.didChangeDependencies();
 
     final region = context.read<RegionProvider>().regionCode;
+    final l = AppLocalizations.of(context)!;
+
+    if (!_didLoadSelectedItems) {
+      _didLoadSelectedItems = true;
+      _selected = _defaultSelectedItems(l);
+      _loadSelectedItems(l);
+      unawaited(context.read<FavoritesService>().loadFavorites());
+    }
 
     logger.i(
         "[PickupEdit] didChangeDependencies region=$region loaded=$_loadedRegion");
@@ -354,7 +389,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   List<PickupItemSection> _buildChannelSections(
     List<PickupSelectableItem> channels,
     Map<int, String> categoryNameById,
+    Map<int, int> categoryOrderById,
   ) {
+    final l = AppLocalizations.of(context)!;
     final grouped = <String, List<PickupSelectableItem>>{};
 
     for (final item in channels) {
@@ -368,10 +405,15 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     }
 
     for (final items in grouped.values) {
-      items.sort((a, b) => a.title.compareTo(b.title));
+      items.sort((a, b) {
+        final priority = b.priority.compareTo(a.priority);
+        if (priority != 0) return priority;
+
+        return a.title.compareTo(b.title);
+      });
     }
 
-    return grouped.entries.map((entry) {
+    final sections = grouped.entries.map((entry) {
       final first = entry.value.first;
 
       final groupName = first.subtitle?.trim();
@@ -379,20 +421,38 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       final title = groupName != null && groupName.isNotEmpty
           ? groupName
           : categoryNameById[first.categoryId] ??
-              'カテゴリ ${first.categoryId ?? "-"}';
+              l.pickupEditCategoryFallback('${first.categoryId ?? "-"}');
 
       return PickupItemSection(
         title: title,
         items: entry.value,
       );
     }).toList();
+
+    sections.sort((a, b) {
+      final aCategory = a.items.first.categoryId;
+      final bCategory = b.items.first.categoryId;
+      final aOrder = categoryOrderById[aCategory] ?? 9999;
+      final bOrder = categoryOrderById[bCategory] ?? 9999;
+      final category = aOrder.compareTo(bOrder);
+      if (category != 0) return category;
+
+      return a.title.compareTo(b.title);
+    });
+
+    return sections;
   }
 
   Widget _buildChannelSectionWrap(
     List<PickupSelectableItem> channels,
     Map<int, String> categoryNameById,
+    Map<int, int> categoryOrderById,
   ) {
-    final sections = _buildChannelSections(channels, categoryNameById);
+    final sections = _buildChannelSections(
+      channels,
+      categoryNameById,
+      categoryOrderById,
+    );
 
     return SingleChildScrollView(
       key: const PageStorageKey('pickup_channel_scroll'),
@@ -450,10 +510,99 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     );
   }
 
+  List<PickupSelectableItem> _buildFavoriteChannelItems(
+    List<YouTubeVideo> favorites,
+    String region,
+  ) {
+    final byChannelId = <String, PickupSelectableItem>{};
+
+    for (final video in favorites) {
+      final channelId = video.channelId?.trim();
+      final channelTitle = video.channelTitle.trim();
+
+      if (channelId == null || channelId.isEmpty || channelTitle.isEmpty) {
+        continue;
+      }
+
+      byChannelId.putIfAbsent(
+        channelId,
+        () => PickupSelectableItem.fromChannel(
+          channelId: channelId,
+          channelTitle: channelTitle,
+          region: region,
+        ),
+      );
+    }
+
+    return byChannelId.values.toList()
+      ..sort((a, b) => a.title.compareTo(b.title));
+  }
+
+  Widget _buildFavoriteChannelSectionWrap(
+    List<PickupSelectableItem> channels,
+  ) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    if (channels.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l.pickupEditFavoriteEmptyTitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                l.pickupEditFavoriteEmptyMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.58),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      key: const PageStorageKey('pickup_favorite_channel_scroll'),
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        14,
+        14,
+        32,
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: channels.map((item) {
+          return _buildChip(
+            item.title,
+            selected: _isSelected(item),
+            onTap: () => _toggle(item),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildGenreSectionWrap(
     List<GenreGroup> groups,
   ) {
-    const excludedCategoryIds = {12, 13};
+    const excludedCategoryIds = {-1, 12, 13};
 
     final visibleGroups = groups.map((group) {
       final items = group.items
@@ -466,10 +615,11 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       return entry.value.isNotEmpty;
     }).toList();
 
-    const allItem = PickupSelectableItem(
+    final l = AppLocalizations.of(context)!;
+    final allItem = PickupSelectableItem(
       type: PickupTargetType.category,
-      key: 'category:all',
-      title: '全て',
+      key: 'category:recommended',
+      title: l.pickupRecommended,
     );
 
     return SingleChildScrollView(
@@ -606,10 +756,6 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     );
   }
 
-  bool _isNewlyAdded(PickupSelectableItem item) {
-    return !_initialSelected.any((e) => e.key == item.key);
-  }
-
   String _pushKeyOf(PickupSelectableItem item) {
     if (item.type == PickupTargetType.channel) {
       return "channel:${item.channelId ?? ''}";
@@ -619,7 +765,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   }
 
   bool _isPushSubscribable(PickupSelectableItem item) {
-    if (item.key == 'category:all') return false;
+    if (item.key == 'category:recommended' || item.key == 'category:all') {
+      return false;
+    }
 
     if (item.type == PickupTargetType.channel) {
       return item.channelId != null && item.channelId!.isNotEmpty;
@@ -629,18 +777,14 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   }
 
   Future<void> _showPickupConfirmDialog() async {
-    final pushProvider = context.read<PushSubscriptionProvider>();
+    final l = AppLocalizations.of(context)!;
 
     final checkedKeys = <String>{};
 
     for (final item in _selected) {
       if (!_isPushSubscribable(item)) continue;
 
-      final key = _pushKeyOf(item);
-
-      if (pushProvider.isEnabled(key) || _isNewlyAdded(item)) {
-        checkedKeys.add(key);
-      }
+      checkedKeys.add(_pushKeyOf(item));
     }
 
     await showDialog<void>(
@@ -651,8 +795,8 @@ class _PickupEditScreenState extends State<PickupEditScreen>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AppDialog(
-              title: "ピックアップ変更",
-              message: "下記の内容でピックアップを設定します。",
+              title: l.pickupEditDialogTitle,
+              message: l.pickupEditDialogMessage,
               actionsAlignment: AppDialogActionsAlignment.end,
               actions: [
                 TextButton(
@@ -661,9 +805,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                       : () {
                           Navigator.pop(dialogContext);
                         },
-                  child: const Text(
-                    "キャンセル",
-                    style: TextStyle(
+                  child: Text(
+                    l.commonCancel,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -686,7 +830,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                             color: Colors.white,
                           ),
                         )
-                      : const Text("OK"),
+                      : Text(l.commonOk),
                 ),
               ],
               child: Column(
@@ -720,52 +864,67 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                               ),
                             ),
                           ),
-                          Transform.scale(
-                            scale: 1.25,
-                            child: Checkbox(
-                              value: checked,
-                              onChanged: subscribable
-                                  ? (value) {
-                                      Feedback.forTap(context);
-                                      setDialogState(() {
-                                        if (value == true) {
-                                          checkedKeys.add(key);
-                                        } else {
-                                          checkedKeys.remove(key);
-                                        }
-                                      });
-                                    }
-                                  : null,
-                              activeColor: const Color(0xFF22C55E),
-                              checkColor: Colors.white,
-                              side: WidgetStateBorderSide.resolveWith((states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return const BorderSide(
-                                    color: Colors.transparent,
-                                    width: 0,
-                                  );
-                                }
+                          SizedBox(
+                            width: 156,
+                            child: subscribable
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Transform.scale(
+                                        scale: 1.25,
+                                        child: Checkbox(
+                                          value: checked,
+                                          onChanged: (value) {
+                                            Feedback.forTap(context);
+                                            setDialogState(() {
+                                              if (value == true) {
+                                                checkedKeys.add(key);
+                                              } else {
+                                                checkedKeys.remove(key);
+                                              }
+                                            });
+                                          },
+                                          activeColor: const Color(0xFF22C55E),
+                                          checkColor: Colors.white,
+                                          side:
+                                              WidgetStateBorderSide.resolveWith(
+                                                  (states) {
+                                            if (states.contains(
+                                                WidgetState.selected)) {
+                                              return const BorderSide(
+                                                color: Colors.transparent,
+                                                width: 0,
+                                              );
+                                            }
 
-                                if (states.contains(WidgetState.disabled)) {
-                                  return BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.35),
-                                    width: 2,
-                                  );
-                                }
-
-                                return const BorderSide(
-                                  color: Colors.white,
-                                  width: 2,
-                                );
-                              }),
-                            ),
-                          ),
-                          const Text(
-                            "新着通知",
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                            return const BorderSide(
+                                              color: Colors.white,
+                                              width: 2,
+                                            );
+                                          }),
+                                        ),
+                                      ),
+                                      Text(
+                                        l.pickupEditNewNotification,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Center(
+                                    child: Text(
+                                      '---',
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.5,
+                                        color: Colors.white
+                                            .withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -793,9 +952,14 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     final api = context.read<YouTubeApiService>();
     final pushProvider = context.read<PushSubscriptionProvider>();
     final pickupSettings = context.read<PickupSettingsProvider>();
+    final dialogNavigator = Navigator.of(dialogContext);
+    final pageNavigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final saveFailedMessage =
+        AppLocalizations.of(context)!.pickupEditSaveFailed;
 
     try {
-      await _saveSelectedItems();
+      await _saveSelectedItems(checkedKeys: checkedKeys);
 
       final token = await PushTokenStore.getToken();
 
@@ -810,20 +974,20 @@ class _PickupEditScreenState extends State<PickupEditScreen>
           token: token,
           items: nextPushItems,
         );
-
-        if (!context.mounted) return;
-
-        pushProvider.setEnabledKeys(
-          nextPushItems.map(_pushKeyOf),
-        );
       }
+
+      if (!context.mounted) return;
+
+      pushProvider.setEnabledKeys(
+        nextPushItems.map(_pushKeyOf),
+      );
 
       if (!context.mounted) return;
 
       pickupSettings.notifyChanged();
 
-      Navigator.pop(dialogContext);
-      Navigator.pop(context, true);
+      dialogNavigator.pop();
+      pageNavigator.pop(true);
     } catch (e) {
       if (!context.mounted) return;
 
@@ -831,9 +995,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("設定の保存に失敗しました"),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(saveFailedMessage),
         ),
       );
     }
@@ -844,11 +1008,23 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     final theme = Theme.of(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final region = context.watch<RegionProvider>().regionCode;
+    final l = AppLocalizations.of(context)!;
     final groups = _getGenreGroups(region);
+    final favoriteChannels = _buildFavoriteChannelItems(
+      context.watch<FavoritesService>().items,
+      region,
+    );
     final categoryNameById = {
       for (final group in groups)
         for (final category in group.items) category.id: category.name,
     };
+    final categoryOrderById = <int, int>{};
+    var categoryOrder = 0;
+    for (final group in groups) {
+      for (final category in group.items) {
+        categoryOrderById[category.id] = categoryOrder++;
+      }
+    }
 
     return Scaffold(
       // backgroundColor: theme.scaffoldBackgroundColor,
@@ -884,10 +1060,10 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                         ),
                       ),
                     ),
-                    const Center(
+                    Center(
                       child: Text(
-                        "ピックアップ編集",
-                        style: TextStyle(
+                        l.pickupEditTitle,
+                        style: const TextStyle(
                           fontSize: 21,
                           fontWeight: FontWeight.w800,
                         ),
@@ -931,7 +1107,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "現在設定中",
+                      l.pickupEditCurrentSelection,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -980,16 +1156,17 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                   unselectedLabelColor:
                       theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   labelStyle: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
                   unselectedLabelStyle: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
-                  tabs: const [
-                    Tab(text: "ジャンルから設定"),
-                    Tab(text: "チャンネルから設定"),
+                  tabs: [
+                    Tab(text: l.pickupEditGenreTab),
+                    Tab(text: l.pickupEditChannelTab),
+                    Tab(text: l.pickupEditFavoriteTab),
                   ],
                 ),
               ),
@@ -1007,7 +1184,12 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                   _buildGenreSectionWrap(groups),
                   _channelsLoading
                       ? const Center(child: CircularProgressIndicator())
-                      : _buildChannelSectionWrap(_channels, categoryNameById),
+                      : _buildChannelSectionWrap(
+                          _channels,
+                          categoryNameById,
+                          categoryOrderById,
+                        ),
+                  _buildFavoriteChannelSectionWrap(favoriteChannels),
                 ],
               ),
             ),
@@ -1042,7 +1224,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                           ),
                         ),
                         child: Text(
-                          "キャンセル",
+                          l.commonCancel,
                           style: TextStyle(
                             fontSize: 15,
                             color: theme.colorScheme.onSurface,
@@ -1076,9 +1258,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                "完了",
-                                style: TextStyle(
+                            : Text(
+                                l.commonDone,
+                                style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                 ),

@@ -1,9 +1,12 @@
 // lib/screens/genre_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/base_genre_models.dart';
 import '../data/genre_provider.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
@@ -108,6 +111,10 @@ class GenreScreenState extends State<GenreScreen>
   // 🔥 グループセクション
   // ----------------------------------------------------
   Widget _buildGroupSection(GenreGroup group) {
+    if (group.groupId == "G_REC" && group.items.isNotEmpty) {
+      return _buildRecommendedSection(group, group.items.first);
+    }
+
     final theme = Theme.of(context);
     final media = MediaQuery.of(context);
     final bool isTablet = media.size.shortestSide >= 600;
@@ -184,6 +191,145 @@ class GenreScreenState extends State<GenreScreen>
     );
   }
 
+  Widget _buildRecommendedSection(GenreGroup group, GenreCategory cat) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accentColor = cat.color ?? group.color;
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+    final isTablet = media.size.shortestSide >= 600;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxCardWidth =
+            (isLandscape || isTablet) ? 360.0 : constraints.maxWidth;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxCardWidth,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                  boxShadow: [
+                    if (isDark)
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        blurRadius: 0,
+                        offset: const Offset(0, 1),
+                      )
+                    else
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _openGenreCategory(group, cat),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 12,
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(26, 14, 14, 14),
+                          child: Row(
+                            children: [
+                              Icon(
+                                group.icon,
+                                color: accentColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  group.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                color:
+                                    isDark ? Colors.white54 : Colors.grey[500],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openGenreCategory(GenreGroup group, GenreCategory cat) {
+    final categoryId = cat.id.toString();
+    final categoryTitle = cat.name;
+    final keyword = cat.query;
+
+    if (cat.id > 0) {
+      unawaited(
+        context.read<RecommendationHistoryProvider>().recordGenreTap(
+              categoryId: categoryId,
+              title: categoryTitle,
+            ),
+      );
+    }
+
+    logger.i("[_buildCategoryTile to GenreVideosScreen]categoryId=$categoryId "
+        "categoryTitle=$categoryTitle keyword=$keyword searchMode=or");
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GenreVideosScreen(
+          categoryId: categoryId,
+          categoryTitle: categoryTitle,
+          keyword: keyword,
+          searchMode: "or",
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategoryTile(
     BuildContext context,
     GenreGroup group,
@@ -224,24 +370,7 @@ class GenreScreenState extends State<GenreScreen>
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
-            final categoryId = cat.id.toString();
-            final categoryTitle = cat.name;
-            final keyword = cat.query;
-
-            logger.i(
-                "[_buildCategoryTile to GenreVideosScreen]categoryId=$categoryId "
-                "categoryTitle=$categoryTitle keyword=$keyword searchMode=or");
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => GenreVideosScreen(
-                  categoryId: categoryId,
-                  categoryTitle: categoryTitle,
-                  keyword: keyword,
-                  searchMode: "or",
-                ),
-              ),
-            );
+            _openGenreCategory(group, cat);
           },
           child: Stack(
             children: [

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/watch_history_item.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
@@ -73,6 +74,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     final bool adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
@@ -89,10 +91,10 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
           // 背面（スクロール or 空状態）
           // =============================
           items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    "視聴履歴がありません",
-                    style: TextStyle(
+                    l.watchHistoryEmpty,
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
                     ),
@@ -167,7 +169,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
               curve: Curves.easeOutCubic,
               offset: _showTopBar ? Offset.zero : const Offset(0, -1.1),
               child: TopBarBack(
-                title: "視聴履歴",
+                title: l.watchHistoryTitle,
                 showSort: false,
                 onBack: () => Navigator.of(context).pop(),
               ),
@@ -249,6 +251,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                     top: -4,
                     right: -2,
                     child: FavoriteButtonOverlay(
+                      key: ValueKey('history_favorite_${video.id}'),
                       isFavorite: isFav,
                       showBackground: true,
                       scale: 0.9,
@@ -270,7 +273,9 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                     video.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17),
+                    style: const TextStyle(
+                      fontSize: 17,
+                    ),
                   ),
                   const SizedBox(height: 10),
 

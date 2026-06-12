@@ -121,7 +121,12 @@ class VideoDetailScreenState extends State<VideoDetailScreen> {
                       height: 55 + MediaQuery.of(context).padding.top,
                     ),
                   ),
-                  SectionPlainVideos(videos: videos),
+                  SliverToBoxAdapter(
+                    child: SectionPlainVideos(
+                      videos: videos,
+                      showRelatedTitle: true,
+                    ),
+                  ),
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: UISpacing.bottomSpacer(

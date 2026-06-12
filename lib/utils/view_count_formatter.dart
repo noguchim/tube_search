@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
+import '../l10n/app_localizations.dart';
+
 enum ViewCountFormat {
   compact, // 1.2万 / 1.2M
   full, // 1.2万回視聴 / 1.2M views
@@ -14,6 +16,7 @@ String formatViewCount(
   if (number == null) return '0';
 
   final locale = Localizations.localeOf(context).languageCode;
+  final l = AppLocalizations.of(context)!;
   final isJP = locale == 'ja';
 
   // =========================
@@ -28,13 +31,13 @@ String formatViewCount(
       final man = number / 10000;
       final formatted =
           man < 10 ? man.toStringAsFixed(1) : man.toStringAsFixed(0);
-      text = '$formatted万';
+      text = l.viewCountTenThousand(formatted);
     } else {
       final oku = number / 100000000;
-      text = '${oku.toStringAsFixed(1)}億';
+      text = l.viewCountHundredMillion(oku.toStringAsFixed(1));
     }
 
-    return format == ViewCountFormat.full ? '${text}回視聴' : text;
+    return format == ViewCountFormat.full ? l.viewCountFull(text) : text;
   }
 
   // =========================

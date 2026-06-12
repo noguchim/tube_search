@@ -164,17 +164,6 @@ class _TopBarState extends State<TopBar> {
             ),
           ),
 
-          // 上ハイライト
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 1,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-
           // =========================
           // 🔥 下のハイライト
           // =========================

@@ -28,11 +28,11 @@ class TimestampPrinter extends LogPrinter {
   @override
   List<String> log(LogEvent event) {
     final now = DateTime.now();
-    final ts = "${now.year}-${_2(now.month)}-${_2(now.day)} "
-        "${_2(now.hour)}:${_2(now.minute)}:${_2(now.second)}.${now.millisecond}";
+    final ts = "${now.year}-${_twoDigits(now.month)}-${_twoDigits(now.day)} "
+        "${_twoDigits(now.hour)}:${_twoDigits(now.minute)}:${_twoDigits(now.second)}.${now.millisecond}";
 
     return _inner.log(event).map((l) => "[$ts] $l").toList();
   }
 }
 
-String _2(int n) => n.toString().padLeft(2, '0');
+String _twoDigits(int n) => n.toString().padLeft(2, '0');

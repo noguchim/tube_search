@@ -11,7 +11,9 @@ import '../data/pickup_selectable_item.dart';
 import '../data/youtube_video.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/pickup_settings_provider.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
+import '../providers/search_ui_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/youtube_api_service.dart';
@@ -19,7 +21,7 @@ import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/expanded_video_overlay.dart';
-import '../widgets/section_plain_videos.dart';
+import '../widgets/section_side.dart';
 import '../widgets/top_bar.dart';
 
 class TopicScreen extends StatefulWidget {
@@ -76,8 +78,8 @@ class TopicScreenState extends State<TopicScreen>
       barrierColor: Colors.black.withValues(alpha: 0.3),
       builder: (_) {
         return AppDialog(
-          title: "ピックアップの編集",
-          message: "ピックアップをお好みのジャンルやチャンネルに変更したい場合は、右下のボタンをタップ！",
+          title: AppLocalizations.of(context)!.topicPickupEditTitle,
+          message: AppLocalizations.of(context)!.topicPickupEditMessage,
           actionsAlignment: AppDialogActionsAlignment.center,
           actions: [
             FilledButton(
@@ -128,7 +130,7 @@ class TopicScreenState extends State<TopicScreen>
   }
 
   Widget _buildEditFab() {
-    const Color baseColor = Color(0xFF7C3AED);
+    const Color baseColor = Color(0xFFFF7A00);
 
     return Material(
       color: Colors.transparent,
@@ -250,13 +252,14 @@ class TopicScreenState extends State<TopicScreen>
     final pickupRevision = context.watch<PickupSettingsProvider>().revision;
     final expanded = context.watch<ExpandedVideoController>();
     final expandedController = context.read<ExpandedVideoController>();
+    final searchIsOpen = context.watch<SearchUIProvider>().isOpen;
 
     context.watch<FavoritesService>();
 
     return Scaffold(
       backgroundColor:
           isDark ? theme.scaffoldBackgroundColor : const Color(0xFFFFFFFF),
-      floatingActionButton: expanded.video == null
+      floatingActionButton: expanded.video == null && !searchIsOpen
           ? Padding(
               padding: const EdgeInsets.only(bottom: 45),
               child: _buildEditFab(),
@@ -342,32 +345,44 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   final Map<String, DateTime> _latestPickupAt = {};
   Map<String, DateTime> _seenPickupAt = {};
 
-  List<PickupSelectableItem> _pickupItems = const [
-    PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:all',
-      title: '全て',
-    ),
-    PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:20',
-      title: 'ゲーム',
-      categoryId: 20,
-    ),
-    PickupSelectableItem(
-      type: PickupTargetType.category,
-      key: 'category:10',
-      title: 'トレンド音楽',
-      categoryId: 10,
-    ),
-  ];
+  List<PickupSelectableItem> _pickupItems = [];
+  bool _didInitPickup = false;
+
+  List<PickupSelectableItem> _defaultPickupItems(AppLocalizations l) {
+    return [
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:recommended',
+        title: l.pickupRecommended,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:20',
+        title: l.commonGame,
+        categoryId: 20,
+      ),
+      PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: 'category:10',
+        title: l.pickupTrendMusic,
+        categoryId: 10,
+      ),
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
 
     _pickupTimestamp = _buildNowLabel();
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didInitPickup) return;
+    _didInitPickup = true;
     _initPickup();
   }
 
@@ -466,8 +481,6 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     final api = context.read<YouTubeApiService>();
     final now = DateTime.now();
 
-    Map<String, List<YouTubeVideo>>? pickupAllData;
-
     try {
       for (final item in _pickupItems) {
         final type = _pickupTypeOf(item);
@@ -475,13 +488,12 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
         List<YouTubeVideo> list;
 
-        if (type == "all" || type == "game" || type == "music") {
-          pickupAllData ??= await api.fetchPickupAll(
-            regionCode: region,
+        if (type == 'recommended') {
+          list = await _fetchRecommendedVideos(
+            api: api,
+            region: region,
             forceRefresh: forceRefresh,
           );
-
-          list = pickupAllData[type] ?? [];
         } else {
           list = await api.fetchPickupTargetVideos(
             channelId: item.channelId,
@@ -528,10 +540,18 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   }
 
   Future<void> _loadPickupItems() async {
+    final l = AppLocalizations.of(context)!;
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_pickupSelectedPrefsKey);
 
-    if (raw == null || raw.isEmpty) return;
+    if (raw == null || raw.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _pickupItems = _defaultPickupItems(l);
+        _selectedIndex = 0;
+      });
+      return;
+    }
 
     try {
       final decoded = jsonDecode(raw);
@@ -547,10 +567,16 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                 ? PickupTargetType.channel
                 : PickupTargetType.category;
 
+            final itemKey = json['key']?.toString() == 'category:all'
+                ? 'category:recommended'
+                : json['key']?.toString() ?? '';
+
             return PickupSelectableItem(
               type: type,
-              key: json['key']?.toString() ?? '',
-              title: json['title']?.toString() ?? '',
+              key: itemKey,
+              title: itemKey == 'category:recommended'
+                  ? l.pickupRecommended
+                  : json['title']?.toString() ?? '',
               channelId: json['channelId']?.toString(),
               categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
               pushEnabled: json['pushEnabled'] == true,
@@ -574,7 +600,9 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   }
 
   String _pickupTypeOf(PickupSelectableItem item) {
-    if (item.key == 'category:all') return 'all';
+    if (item.key == 'category:recommended' || item.key == 'category:all') {
+      return 'recommended';
+    }
     if (item.categoryId == 20) return 'game';
     if (item.categoryId == 10) return 'music';
 
@@ -588,7 +616,39 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
       return 'category:${item.categoryId}';
     }
 
-    return 'all';
+    return 'recommended';
+  }
+
+  Future<List<YouTubeVideo>> _fetchRecommendedVideos({
+    required YouTubeApiService api,
+    required String region,
+    required bool forceRefresh,
+  }) async {
+    final history = context.read<RecommendationHistoryProvider>();
+    await history.load();
+
+    final signals = await history.topSignalsForRecommendation(limit: 5);
+
+    if (signals.isEmpty) {
+      final allData = await api.fetchPickupAll(
+        regionCode: region,
+        forceRefresh: forceRefresh,
+      );
+      return (allData['recommended'] ?? allData['all'] ?? const [])
+          .take(5)
+          .toList(growable: false);
+    }
+
+    final excludeTargets = await history.pickupExcludeTargets();
+
+    return api.fetchRecommendedVideos(
+      signals: signals,
+      excludeChannelIds: excludeTargets.channelIds,
+      excludeCategoryIds: excludeTargets.categoryIds,
+      maxResults: 5,
+      regionCode: region,
+      forceRefresh: forceRefresh,
+    );
   }
 
   @override
@@ -710,24 +770,15 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     try {
       List<YouTubeVideo> list;
 
-      // =========================
-      // 🔥 既存ピックアップAPI
-      // all / game / music は従来通り
-      // =========================
-      if (type == "all" || type == "game" || type == "music") {
-        final allData = await api.fetchPickupAll(
-          regionCode: region,
+      if (type == 'recommended') {
+        list = await _fetchRecommendedVideos(
+          api: api,
+          region: region,
           forceRefresh: forceRefresh,
         );
-
-        list = allData[type] ?? [];
-      }
-
-      // =========================
-      // 🔍 カテゴリ・チャンネル選択分
-      // 専用APIで最大5件取得
-      // =========================
-      else {
+      } else {
+        // デフォルトカテゴリを含むカテゴリ・チャンネル選択分は
+        // 通知抽出元と揃えるため、専用APIから取得する。
         list = await api.fetchPickupTargetVideos(
           channelId: item.channelId,
           categoryId: item.categoryId,
@@ -736,6 +787,13 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           forceRefresh: forceRefresh,
         );
       }
+
+      list = await _includePendingPushVideoIfNeeded(
+        api: api,
+        region: region,
+        type: type,
+        list: list,
+      );
 
       if (!mounted) return;
 
@@ -763,6 +821,41 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
         isLoading = false;
       });
     }
+  }
+
+  Future<List<YouTubeVideo>> _includePendingPushVideoIfNeeded({
+    required YouTubeApiService api,
+    required String region,
+    required String type,
+    required List<YouTubeVideo> list,
+  }) async {
+    final pickupSettings = context.read<PickupSettingsProvider>();
+
+    if (pickupSettings.pendingPickupKey != type) {
+      return list;
+    }
+
+    final pendingVideoId = pickupSettings.pendingVideoId;
+    if (pendingVideoId == null || pendingVideoId.isEmpty) {
+      return list;
+    }
+
+    if (list.any((video) => video.id == pendingVideoId)) {
+      return list;
+    }
+
+    final video = await api.fetchVideoById(
+      pendingVideoId,
+      regionCode: region,
+    );
+    if (video == null) {
+      return list;
+    }
+
+    return [
+      video,
+      ...list.where((item) => item.id != pendingVideoId),
+    ].take(5).toList(growable: false);
   }
 
   @override
@@ -891,6 +984,13 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
               ? (isDark ? Colors.black : Colors.white)
               : (isDark ? Colors.white : Colors.black);
 
+          final border = isDark && !isSelected
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  width: 1,
+                )
+              : null;
+
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -901,6 +1001,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                   decoration: BoxDecoration(
                     color: bgColor,
                     borderRadius: BorderRadius.circular(6),
+                    border: border,
                   ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(6),
@@ -1022,6 +1123,20 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     return publishedAt.isAfter(seen);
   }
 
+  void _handlePickupVideoTap(YouTubeVideo video) {
+    if (!_isNewVideoForCurrentPickup(video)) return;
+    if (_pickupItems.isEmpty) return;
+
+    final type = _pickupTypeOf(_pickupItems[_selectedIndex]);
+
+    unawaited(_markPickupRead(type));
+
+    final pickupSettings = context.read<PickupSettingsProvider>();
+    if (pickupSettings.pendingPickupKey == type) {
+      pickupSettings.clearPendingPush();
+    }
+  }
+
   Widget _buildContent() {
     return _buildInner();
   }
@@ -1041,9 +1156,13 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
       );
     }
 
-    return SectionPlainVideos(
+    return SectionSide(
       videos: videos,
       isNewVideo: _isNewVideoForCurrentPickup,
+      onVideoTap: _handlePickupVideoTap,
+      asSliver: false,
+      showPopularityScore: false,
+      showRankBadge: false,
     );
   }
 
@@ -1055,7 +1174,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           Icon(Icons.hourglass_empty, size: 32, color: Colors.grey[400]),
           const SizedBox(height: 8),
           Text(
-            "まだ新着動画がありません",
+            AppLocalizations.of(context)!.pickupEmptyNewVideos,
             style: TextStyle(fontSize: 13, color: Colors.grey[600]),
           ),
         ],
@@ -1073,7 +1192,7 @@ class _UnreadBadge extends StatelessWidget {
       width: 12.5,
       height: 12.5,
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444),
+        color: const Color(0xFF3B82F6),
         shape: BoxShape.circle,
         border: Border.all(
           color: Colors.white,

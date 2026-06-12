@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tube_search/widgets/play_button_overlay.dart';
 
 import '../data/youtube_video.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
@@ -28,12 +32,13 @@ class VideoListTopic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
+    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final Color cardColor =
-        isDark ? Color(0xFF282828) : theme.colorScheme.surface;
+        isDark ? const Color(0xFF282828) : theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
     final BorderRadius borderRadius = BorderRadius.circular(12);
@@ -62,7 +67,7 @@ class VideoListTopic extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt?.toLocal());
+    final timeAgo = formatPublishedAgo(context, video.publishedAt?.toLocal());
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -71,6 +76,9 @@ class VideoListTopic extends StatelessWidget {
     final viewAndTime = '$viewText${separator(context)}$timeAgo';
 
     final isFav = fav.isFavoriteSync(id);
+    final isWatched = history.isWatchedSync(id);
+    final titleColor =
+        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
 
     bool isPushing = false;
 
@@ -125,6 +133,16 @@ class VideoListTopic extends StatelessWidget {
                       return InkWell(
                         onTap: () {
                           context.read<WatchHistoryService>().add(video);
+                          unawaited(
+                            context
+                                .read<RecommendationHistoryProvider>()
+                                .recordVideoTap(
+                                  videoId: video.id,
+                                  title: video.title,
+                                  channelId: video.channelId,
+                                  channelTitle: video.channelTitle,
+                                ),
+                          );
                           pushPlayer();
                         },
                         onTapDown: (_) => setState(() => isPressed = true),
@@ -209,6 +227,9 @@ class VideoListTopic extends StatelessWidget {
                                         video: video,
                                       ),
                                       child: FavoriteButtonOverlay(
+                                        key: ValueKey(
+                                          'topic_favorite_${video.id}',
+                                        ),
                                         isFavorite: isFav,
                                         showBackground: true,
                                         scale: 0.9,
@@ -245,7 +266,7 @@ class VideoListTopic extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: onSurface,
+                          color: titleColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -296,18 +317,18 @@ class _NewVideoBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.fiber_manual_record,
             size: 8,
             color: Colors.white,
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
-            "新着",
-            style: TextStyle(
+            AppLocalizations.of(context)!.newBadge,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
               height: 1.0,

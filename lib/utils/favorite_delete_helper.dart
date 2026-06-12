@@ -30,7 +30,6 @@ class FavoriteDeleteHelper {
     // ❹ showDialog の前に mounted 確認
     if (!context.mounted) return;
 
-    final theme = Theme.of(context);
     final navigator = Navigator.of(context);
 
     await showDialog(
@@ -41,7 +40,7 @@ class FavoriteDeleteHelper {
         return AppDialog(
           title: AppLocalizations.of(context)!.favoriteDeleteTitle,
           message: AppLocalizations.of(context)!.favoriteDeleteMessage(
-            video.title ?? "",
+            video.title,
           ),
           actions: [
             TextButton(

@@ -20,6 +20,7 @@ class WatchHistoryService extends ChangeNotifier {
           id: v["id"] ?? "",
           title: v["title"] ?? "",
           thumbnailUrl: v["thumbnailUrl"] ?? "",
+          channelId: v["channelId"]?.toString(),
           channelTitle: v["channelTitle"] ?? "",
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
           viewCount: v["viewCount"],
@@ -65,6 +66,10 @@ class WatchHistoryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool isWatchedSync(String id) {
+    return _cache.any((v) => v["id"] == id);
+  }
+
   // ------------------------------------------------------------
   // SAVE
   // ------------------------------------------------------------
@@ -87,6 +92,7 @@ class WatchHistoryService extends ChangeNotifier {
       "id": video.id,
       "title": video.title,
       "thumbnailUrl": video.thumbnailUrl,
+      "channelId": video.channelId,
       "channelTitle": video.channelTitle,
       "publishedAt": video.publishedAt?.toIso8601String(),
       "viewCount": video.viewCount,

@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,6 +19,7 @@ import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/pickup_settings_provider.dart';
 import 'package:tube_search/providers/push_notification_provider.dart';
 import 'package:tube_search/providers/push_subscription_provider.dart';
+import 'package:tube_search/providers/recommendation_history_provider.dart';
 import 'package:tube_search/providers/region_provider.dart';
 import 'package:tube_search/providers/search_ui_provider.dart';
 import 'package:tube_search/providers/settings_provider.dart';
@@ -87,6 +89,12 @@ void main() async {
     sound: true,
   );
 
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
   final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
   runApp(
@@ -136,6 +144,10 @@ void main() async {
           create: (_) => PickupSettingsProvider(),
         ),
 
+        ChangeNotifierProvider(
+          create: (_) => RecommendationHistoryProvider()..load(),
+        ),
+
         // ★ IapService + IapProvider
         ChangeNotifierProvider(
           create: (_) {
@@ -176,8 +188,6 @@ class _MyAppState extends State<MyApp> {
   int _notificationIdFromVideoId(String videoId) {
     return videoId.hashCode & 0x7fffffff;
   }
-
-  static const String _pickupUnreadPrefsKey = 'pickup_unread_keys';
 
   @override
   void initState() {
@@ -254,10 +264,15 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initFcm(YouTubeApiService api) async {
     final messaging = FirebaseMessaging.instance;
+    final regionProvider = context.read<RegionProvider>();
+    final pushSubscriptions = context.read<PushSubscriptionProvider>();
+    final regionCode = regionProvider.regionCode;
 
-    final token = await messaging.getToken();
+    final token = await _getFcmToken(messaging);
     logger.i("🔥 TOKEN: $token");
     final deviceId = await DeviceIdStore.getOrCreate();
+    final storedToken = await PushTokenStore.getToken();
+    final isFreshLocalInstall = storedToken == null || storedToken.isEmpty;
 
     if (token != null && token.isNotEmpty) {
       final nav = rootNavigatorKey.currentState;
@@ -266,8 +281,6 @@ class _MyAppState extends State<MyApp> {
         logger.w("❌ navigator null");
         return;
       }
-
-      final regionCode = nav.context.read<RegionProvider>().regionCode;
 
       await PushTokenStore.save(token);
       await api.saveFcmToken(
@@ -278,7 +291,20 @@ class _MyAppState extends State<MyApp> {
 
       if (!mounted) return;
 
-      await _preloadPushSubscriptions(api, token);
+      if (isFreshLocalInstall) {
+        await api.replacePushSubscriptions(
+          token: token,
+          items: const [],
+          resetSentLogs: true,
+        );
+
+        if (!mounted) return;
+
+        pushSubscriptions.setEnabledKeys(const []);
+        logger.i("✅ Push subscriptions reset for fresh install");
+      } else {
+        await _preloadPushSubscriptions(api, token);
+      }
     }
 
     FirebaseMessaging.onMessage.listen((message) {
@@ -295,6 +321,8 @@ class _MyAppState extends State<MyApp> {
       final videoId = message.data['videoId']?.toString() ?? '';
       final pickupKey = message.data['pickupKey']?.toString() ?? '';
 
+      if (Platform.isIOS) return;
+
       showLocalNotification(
         type,
         title,
@@ -310,12 +338,7 @@ class _MyAppState extends State<MyApp> {
         try {
           logger.i("🔥 TOKEN REFRESH: $newToken");
 
-          final nav = rootNavigatorKey.currentState;
-          if (nav == null) return;
-
-          final context = nav.context;
-          final api = context.read<YouTubeApiService>();
-          final regionCode = context.read<RegionProvider>().regionCode;
+          final regionCode = regionProvider.regionCode;
 
           await PushTokenStore.save(newToken);
 
@@ -331,7 +354,7 @@ class _MyAppState extends State<MyApp> {
 
           if (!mounted) return;
 
-          context.read<PushSubscriptionProvider>().setEnabledKeys(keys);
+          pushSubscriptions.setEnabledKeys(keys);
 
           logger.i("✅ Push subscriptions refreshed count=${keys.length}");
         } catch (e, st) {
@@ -340,6 +363,35 @@ class _MyAppState extends State<MyApp> {
         }
       },
     );
+  }
+
+  Future<String?> _getFcmToken(FirebaseMessaging messaging) async {
+    if (Platform.isIOS) {
+      String? apnsToken;
+
+      for (var attempt = 0; attempt < 10; attempt++) {
+        apnsToken = await messaging.getAPNSToken();
+        logger.i("🍎 APNs TOKEN: $apnsToken");
+
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          break;
+        }
+
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      if (apnsToken == null || apnsToken.isEmpty) {
+        logger.w("❌ APNs token not ready");
+        return null;
+      }
+    }
+
+    try {
+      return await messaging.getToken();
+    } catch (e, st) {
+      logger.e("❌ FCM token error: $e", stackTrace: st);
+      return null;
+    }
   }
 
   Future<void> _preloadPushSubscriptions(
@@ -366,9 +418,11 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> initLocalNotification() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings();
 
     const settings = InitializationSettings(
       android: androidInit,
+      iOS: iosInit,
     );
 
     const channel = AndroidNotificationChannel(
@@ -574,20 +628,6 @@ class _MyAppState extends State<MyApp> {
     } finally {
       _isPushingFromPush = false;
     }
-  }
-
-  Future<void> _addUnreadPickupKey(String pickupKey) async {
-    if (pickupKey.isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getStringList(_pickupUnreadPrefsKey) ?? const [];
-
-    final next = current.toSet()..add(pickupKey);
-
-    await prefs.setStringList(
-      _pickupUnreadPrefsKey,
-      next.toList(),
-    );
   }
 
   @override
@@ -798,6 +838,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final iap = context.watch<IapProvider>();
     final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
     final search = context.watch<SearchUIProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
@@ -807,6 +848,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         return Scaffold(
           key: _scaffoldKey,
           drawer: const SettingsDrawer(),
+          drawerScrimColor: isDark
+              ? Colors.black.withValues(alpha: 0.54)
+              : Colors.black.withValues(alpha: 0.12),
           extendBody: true,
           body: Stack(
             children: [

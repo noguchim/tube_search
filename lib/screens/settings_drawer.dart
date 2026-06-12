@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -40,9 +41,7 @@ class SettingsDrawer extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final themeProvider = context.watch<ThemeProvider>();
-    final regionProvider = context.watch<RegionProvider>();
     final settingsProvider = context.watch<SettingsProvider>();
-    final pushProvider = context.watch<PushNotificationProvider>();
     final logic = SettingsLogic(context);
     final l = AppLocalizations.of(context)!;
 
@@ -50,7 +49,28 @@ class SettingsDrawer extends StatelessWidget {
     // 🔥 ヘッダカラー
     // =========================
     final headerColor =
-        isDark ? const Color(0xAA000000) : const Color(0xFF282828);
+        isDark ? const Color(0xAA000000) : Colors.black.withValues(alpha: 0.78);
+    final drawerDecoration = BoxDecoration(
+      color: isDark ? const Color(0xAA000000) : null,
+      gradient: isDark
+          ? null
+          : LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white.withValues(alpha: 0.78),
+                Colors.white.withValues(alpha: 0.68),
+              ],
+            ),
+      border: Border(
+        right: BorderSide(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : Colors.white.withValues(alpha: 0.55),
+          width: 0.7,
+        ),
+      ),
+    );
 
     // =========================
     // 🔥 Divider
@@ -126,172 +146,179 @@ class SettingsDrawer extends StatelessWidget {
     // }
 
     return Drawer(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: Column(
-        children: [
-          // =========================
-          // 🔥 ヘッダ
-          // =========================
-          Container(
-            width: double.infinity,
-            height: 100,
-            padding: const EdgeInsets.only(left: 0, right: 12, bottom: 4),
-            alignment: Alignment.bottomLeft,
-            color: headerColor,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+      backgroundColor: Colors.transparent,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: isDark ? 6 : 14,
+            sigmaY: isDark ? 6 : 14,
+          ),
+          child: Container(
+            decoration: drawerDecoration,
+            child: Column(
               children: [
-                // 🍔 ハンバーガー（閉じる）
-                IconButton(
-                  icon: const Icon(Icons.menu),
-                  iconSize: 26,
-                  color: Colors.white,
-                  onPressed: () {
-                    Navigator.pop(context); // ← ドロワー閉じる
-                  },
+                // =========================
+                // 🔥 ヘッダ
+                // =========================
+                Container(
+                  width: double.infinity,
+                  height: 100,
+                  padding: const EdgeInsets.only(left: 0, right: 12, bottom: 4),
+                  alignment: Alignment.bottomLeft,
+                  color: headerColor,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 🍔 ハンバーガー（閉じる）
+                      IconButton(
+                        icon: const Icon(Icons.menu),
+                        iconSize: 26,
+                        color: Colors.white,
+                        onPressed: () {
+                          Navigator.pop(context); // ← ドロワー閉じる
+                        },
+                      ),
+
+                      // 🟩 ロゴ
+                      Image.asset(
+                        'assets/images/logo.png',
+                        height: 22,
+                        fit: BoxFit.contain,
+                      ),
+                    ],
+                  ),
                 ),
 
-                // 🟩 ロゴ
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 22,
-                  fit: BoxFit.contain,
+                // =========================
+                // 🔥 本体
+                // =========================
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(top: 10),
+                    children: [
+                      item(context,
+                          icon: Icons.brightness_6_outlined,
+                          title: l.settingsTheme,
+                          value: logic.themeLabel(themeProvider.themeMode),
+                          onTap: () {
+                        Navigator.pop(context); // Drawer閉じる
+
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          logic.showThemeDialog(themeProvider);
+                        });
+                      }),
+                      item(context,
+                          icon: Icons.favorite_border,
+                          title: l.settingsFavoriteDeleteTitle,
+                          value: settingsProvider.skipDeleteConfirm
+                              ? l.settingsConfirmDeleteDisabled
+                              : l.settingsConfirmDeleteEnabled, onTap: () {
+                        Navigator.pop(context);
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          logic.showDeleteConfirmDialog();
+                        });
+                      }),
+                      item(
+                        context,
+                        icon: Icons.notifications_none_rounded,
+                        title: l.pushSettingsMenuTitle,
+                        value: "",
+                        onTap: () {
+                          Navigator.of(context).pop(); // 先にドロワーを閉じる
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PushSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      item(
+                        context,
+                        icon: Icons.history,
+                        title: l.watchHistoryTitle,
+                        value: "",
+                        onTap: () {
+                          Navigator.of(context).pop(); // 先にドロワーを閉じる
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const WatchHistoryScreen(),
+                            ),
+                          );
+                        },
+                      ),
+
+                      // for Phase2
+                      // divider(),
+                      //
+                      // item(
+                      //   context,
+                      //   icon: Icons.public,
+                      //   title: l.settingsRegion,
+                      //   value: countryName(),
+                      //   onTap: () => logic.showRegionDialog(context),
+                      // ),
+
+                      divider(),
+
+                      item(
+                        context,
+                        icon: Icons.storefront,
+                        title: l.settingsShop,
+                        value: l.settingsShopSubtitle,
+                        onTap: () {
+                          Navigator.of(context).pop(); // 先にドロワーを閉じる
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ShopScreen()),
+                          );
+                        },
+                      ),
+
+                      divider(),
+
+                      item(
+                        context,
+                        icon: Icons.trending_up,
+                        title: l.aboutRankingCalculation,
+                        value: "",
+                        onTap: () {
+                          Navigator.of(context).pop(); // 先にドロワーを閉じる
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PolicyWebViewScreen(
+                                url: localizedPage(context, "popularity"),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      item(context,
+                          icon: Icons.policy,
+                          title: l.settingsPolicies,
+                          value: "", onTap: () {
+                        Navigator.pop(context);
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          logic.showPolicyDialog();
+                        });
+                      }),
+                      item(context,
+                          icon: Icons.info_outline,
+                          title: l.settingsAbout,
+                          value: "", onTap: () {
+                        Navigator.pop(context);
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          logic.showAboutDialog();
+                        });
+                      }),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-
-          // =========================
-          // 🔥 本体
-          // =========================
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(top: 10),
-              children: [
-                item(context,
-                    icon: Icons.brightness_6_outlined,
-                    title: l.settingsTheme,
-                    value: logic.themeLabel(themeProvider.themeMode),
-                    onTap: () {
-                  Navigator.pop(context); // Drawer閉じる
-
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    logic.showThemeDialog(themeProvider);
-                  });
-                }),
-                item(context,
-                    icon: Icons.favorite_border,
-                    title: l.settingsFavoriteDeleteTitle,
-                    value: settingsProvider.label, onTap: () {
-                  Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    logic.showDeleteConfirmDialog();
-                  });
-                }),
-                item(
-                  context,
-                  icon: Icons.notifications_none_rounded,
-                  title: "プッシュ通知",
-                  // value: pushProvider.label,
-                  //     onTap: () {
-                  //   Navigator.pop(context);
-                  //   Future.delayed(const Duration(milliseconds: 200), () {
-                  //     logic.showPushNotificationDialog();
-                  //   });
-                  // }
-                  value: "",
-                  onTap: () {
-                    Navigator.of(context).pop(); // 先にドロワーを閉じる
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PushSettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                item(
-                  context,
-                  icon: Icons.history,
-                  title: "視聴履歴",
-                  value: "",
-                  onTap: () {
-                    Navigator.of(context).pop(); // 先にドロワーを閉じる
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const WatchHistoryScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                // for Phase2
-                // divider(),
-                //
-                // item(
-                //   context,
-                //   icon: Icons.public,
-                //   title: l.settingsRegion,
-                //   value: countryName(),
-                //   onTap: () => logic.showRegionDialog(context),
-                // ),
-
-                divider(),
-
-                item(
-                  context,
-                  icon: Icons.storefront,
-                  title: l.settingsShop,
-                  value: l.settingsShopSubtitle,
-                  onTap: () {
-                    Navigator.of(context).pop(); // 先にドロワーを閉じる
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ShopScreen()),
-                    );
-                  },
-                ),
-
-                divider(),
-
-                item(
-                  context,
-                  icon: Icons.trending_up,
-                  title: l.aboutRankingCalculation,
-                  value: "",
-                  onTap: () {
-                    Navigator.of(context).pop(); // 先にドロワーを閉じる
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PolicyWebViewScreen(
-                          url: localizedPage(context, "popularity"),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                item(context,
-                    icon: Icons.policy,
-                    title: l.settingsPolicies,
-                    value: "", onTap: () {
-                  Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    logic.showPolicyDialog();
-                  });
-                }),
-                item(context,
-                    icon: Icons.info_outline,
-                    title: l.settingsAbout,
-                    value: "", onTap: () {
-                  Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    logic.showAboutDialog();
-                  });
-                }),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -319,10 +346,13 @@ class SettingsLogic {
   }
 
   Future<String> deleteLabel() async {
+    final l = AppLocalizations.of(context)!;
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getBool("skip_delete_confirm") ?? false;
 
-    return value ? "確認しない" : "確認する";
+    return value
+        ? l.settingsConfirmDeleteDisabled
+        : l.settingsConfirmDeleteEnabled;
   }
 
   // -------------------------------------------------------------------
@@ -418,6 +448,7 @@ class SettingsLogic {
     final context = rootNavigatorKey.currentContext!;
     final theme = Theme.of(context);
     final settingsProvider = context.read<SettingsProvider>();
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -441,7 +472,7 @@ class SettingsLogic {
             const SizedBox(height: 16),
             _buildDeleteOption(
               context,
-              label: "確認する",
+              label: l.settingsConfirmDeleteEnabled,
               selected: !settingsProvider.skipDeleteConfirm,
               onTap: () {
                 settingsProvider.update(false);
@@ -450,7 +481,7 @@ class SettingsLogic {
             ),
             _buildDeleteOption(
               context,
-              label: "確認しない",
+              label: l.settingsConfirmDeleteDisabled,
               selected: settingsProvider.skipDeleteConfirm,
               onTap: () {
                 settingsProvider.update(true);
@@ -728,28 +759,6 @@ class SettingsLogic {
                       },
                     ),
                   ),
-                  // ListTile(
-                  //   leading: const Icon(Icons.trending_up),
-                  //   title: Text(
-                  //     l.aboutRankingCalculation,
-                  //     style: const TextStyle(
-                  //       fontSize: 15,
-                  //       fontWeight: FontWeight.w600,
-                  //     ),
-                  //   ),
-                  //   trailing: const Icon(Icons.chevron_right),
-                  //   onTap: () {
-                  //     Navigator.pop(context);
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(
-                  //         builder: (_) => PolicyWebViewScreen(
-                  //           url: localizedPage(context, "popularity"),
-                  //         ),
-                  //       ),
-                  //     );
-                  //   },
-                  // ),
                   ListTile(
                     leading: const Icon(Icons.language),
                     title: const Text("NB FACTORY"),

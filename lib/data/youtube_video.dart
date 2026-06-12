@@ -5,6 +5,7 @@ class YouTubeVideo {
   final String id;
   final String title;
   final String thumbnailUrl;
+  final String? channelId;
   final String channelTitle;
   final DateTime? publishedAt;
   final int? viewCount;
@@ -20,6 +21,7 @@ class YouTubeVideo {
     required this.id,
     required this.title,
     required this.thumbnailUrl,
+    this.channelId,
     required this.channelTitle,
     this.publishedAt,
     this.viewCount,

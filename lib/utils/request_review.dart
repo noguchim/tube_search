@@ -23,8 +23,8 @@ Future<bool> shouldAskForReviewThisMonth({
 }) async {
   final now = DateTime.now();
 
-  // 月ゲート（5月・12月）
-  if (now.month != 5 && now.month != 12) return false;
+  // 月ゲート（6月・12月）
+  if (now.month != 6 && now.month != 12) return false;
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -54,7 +54,7 @@ Future<int> incrementUsageCount() async {
 }
 
 Future<void> maybeAskForReview() async {
-  final usageCount = await incrementUsageCount();
+  await incrementUsageCount();
 
   final canShow = await shouldAskForReviewThisMonth(
     minUsageCount: 3, // ← ここで調整（3〜7がおすすめ）

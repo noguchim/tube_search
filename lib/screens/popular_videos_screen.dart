@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/density_provider.dart';
 import '../providers/iap_provider.dart';
 import '../providers/region_provider.dart';
+import '../providers/search_ui_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
@@ -18,6 +19,7 @@ import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
 import '../widgets/section_big.dart';
 import '../widgets/section_middle.dart';
+import '../widgets/section_side.dart';
 import '../widgets/section_small.dart';
 import '../widgets/top_bar.dart';
 
@@ -37,8 +39,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     with AutomaticKeepAliveClientMixin<PopularVideosScreen> {
   @override
   bool get wantKeepAlive => true;
-  String _currentRegion = "JP";
-  late Future<List<YouTubeVideo>> _futureVideos;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
   int _lastLimit = 20;
@@ -95,7 +95,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     _regionProvider = context.read<RegionProvider>();
 
     _lastLimit = LimitService.videoListLimit(_iapProvider);
-    _currentRegion = _regionProvider.regionCode;
 
     _iapProvider.addListener(_onIapChanged);
     _regionProvider.addListener(_onRegionChanged);
@@ -195,45 +194,17 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     return videos.take(limit).toList();
   }
 
-  void _setFutureVideos(Future<List<YouTubeVideo>> future) {
-    setState(() {
-      _futureVideos = future;
-    });
-  }
-
   void _onIapChanged() {
     final limit = LimitService.videoListLimit(_iapProvider);
 
-    final api = context.read<YouTubeApiService>();
-    final region = _regionProvider.regionCode;
+    if (limit == _lastLimit) return;
 
-    final cached = api.getCachedPopular(
-      regionCode: region,
-      max: limit,
-    );
-
-    if (cached.isNotEmpty) {
-      _setFutureVideos(Future.value(cached));
-    } else {
-      _setFutureVideos(_fetchVideos(forceRefresh: true));
-    }
+    _lastLimit = limit;
+    _loadVideos(forceRefresh: true);
   }
 
   void _onRegionChanged() {
-    final region = _regionProvider.regionCode;
-
-    final api = context.read<YouTubeApiService>();
-
-    final cached = api.getCachedPopular(
-      regionCode: region,
-      max: _lastLimit,
-    );
-
-    if (cached.isNotEmpty) {
-      _setFutureVideos(Future.value(cached));
-    } else {
-      _setFutureVideos(_fetchVideos(forceRefresh: true));
-    }
+    _loadVideos(forceRefresh: true);
   }
 
   Widget _densityControl(List<YouTubeVideo> videos) {
@@ -242,6 +213,9 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     switch (density) {
       case CardDensity.big:
         return SectionBig(videos: videos);
+
+      case CardDensity.side:
+        return SectionSide(videos: videos);
 
       case CardDensity.middle:
         return SectionMiddle(videos: videos);
@@ -260,6 +234,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     final density = context.watch<DensityProvider>().density;
     final expanded = context.watch<ExpandedVideoController>();
+    final searchIsOpen = context.watch<SearchUIProvider>().isOpen;
 
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
@@ -356,13 +331,15 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45),
-        child: DensityFab(
-          density: density,
-          onToggle: () => context.read<DensityProvider>().toggle(),
-        ),
-      ),
+      floatingActionButton: expanded.video == null && !searchIsOpen
+          ? Padding(
+              padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45),
+              child: DensityFab(
+                density: density,
+                onToggle: () => context.read<DensityProvider>().toggle(),
+              ),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Stack(
         children: [

@@ -69,6 +69,8 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Future<void> _loadPrices() async {
     logger.i("SHOP: loadPrices start");
+    final iap = context.read<IapProvider>().service;
+
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -87,14 +89,13 @@ class _ShopScreenState extends State<ShopScreen> {
 
     // ② 価格取得
     try {
-      final iap = context.read<IapProvider>().service;
+      final pRemove = await iap
+          .loadProduct(IapProducts.removeAds.id)
+          .timeout(const Duration(seconds: 10));
 
-      logger.i("SHOP: query removeAds");
-      final pRemove = await iap.loadProduct(IapProducts.removeAds.id);
-      logger.i("SHOP: removeAds result = $pRemove");
-      logger.i("SHOP: query limitUpgrade");
-      final pLimit = await iap.loadProduct(IapProducts.limitUpgrade.id);
-      logger.i("SHOP: limitUpgrade result = $pLimit");
+      final pLimit = await iap
+          .loadProduct(IapProducts.limitUpgrade.id)
+          .timeout(const Duration(seconds: 10));
 
       if (!mounted) return;
 
@@ -138,12 +139,12 @@ class _ShopScreenState extends State<ShopScreen> {
 
     // ✅ 復元中は「個別購入メッセージ」を出さない（復元ボタン側で1回だけ出す）
     if (_suppressIapSnack) {
-      logger.i("復元中ルート → return");
+      logger.i("restore route -> return");
       _lastRemoveAds = remove;
       _lastLimit = limit;
       return;
     } else {
-      logger.i("通常MSGルート → 各MSG");
+      logger.i("normal message route -> item messages");
     }
 
     if (!_lastRemoveAds && remove) {
@@ -185,6 +186,7 @@ class _ShopScreenState extends State<ShopScreen> {
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final limitUpgradePurchased =
         context.watch<IapProvider>().isPurchased(IapProducts.limitUpgrade.id);
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: Stack(
@@ -269,10 +271,8 @@ class _ShopScreenState extends State<ShopScreen> {
                           // ===== 広告削除 =====
                           ShopListCard(
                             icon: Icons.ads_click,
-                            title: AppLocalizations.of(context)!
-                                .shopTitleRemoveAds,
-                            description:
-                                AppLocalizations.of(context)!.shopDescRemoveAds,
+                            title: l.shopTitleRemoveAds,
+                            description: l.shopDescRemoveAds,
                             enabled: !removeAdsPurchased,
                             purchased: removeAdsPurchased,
                             iconColor: Theme.of(context).colorScheme.primary,
@@ -295,8 +295,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                         messenger.showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                              AppLocalizations.of(context)!
-                                                  .shopLoadFailed,
+                                              l.shopLoadFailed,
                                             ),
                                           ),
                                         );
@@ -316,9 +315,8 @@ class _ShopScreenState extends State<ShopScreen> {
                           // ===== 上限拡張 =====
                           ShopListCard(
                             icon: Icons.upgrade,
-                            title: AppLocalizations.of(context)!.shopTitleLimit,
-                            description:
-                                AppLocalizations.of(context)!.shopDescLimit,
+                            title: l.shopTitleLimit,
+                            description: l.shopDescLimit,
                             enabled: !limitUpgradePurchased,
                             purchased: limitUpgradePurchased,
                             iconColor: const Color(0xFF9B59B6),
@@ -341,8 +339,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                         messenger.showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                              AppLocalizations.of(context)!
-                                                  .shopLoadFailed,
+                                              l.shopLoadFailed,
                                             ),
                                           ),
                                         );
@@ -409,7 +406,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                   final alreadyOwned =
                                       afterRemove || afterLimit;
 
-                                  logger.i("購入を復元タップ後のIAP状態："
+                                  logger.i("IAP state after restore tap: "
                                       "beforeRemove1^$beforeRemove "
                                       "beforeLimit=$beforeLimit "
                                       "afterRemove=$afterRemove "
@@ -419,14 +416,11 @@ class _ShopScreenState extends State<ShopScreen> {
                                   // ✅ SnackBarはこの1回だけ
                                   final String msg;
                                   if (restoredNow) {
-                                    msg = AppLocalizations.of(context)!
-                                        .shopRestoreDone;
+                                    msg = l.shopRestoreDone;
                                   } else if (alreadyOwned) {
-                                    msg = AppLocalizations.of(context)!
-                                        .shopRestoreAlready;
+                                    msg = l.shopRestoreAlready;
                                   } else {
-                                    msg = AppLocalizations.of(context)!
-                                        .shopRestoreNothing;
+                                    msg = l.shopRestoreNothing;
                                   }
 
                                   messenger

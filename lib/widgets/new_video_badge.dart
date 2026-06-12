@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 class NewVideoBadge extends StatelessWidget {
   const NewVideoBadge({super.key});
 
@@ -25,18 +27,18 @@ class NewVideoBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.fiber_manual_record,
             size: 8,
             color: Colors.white,
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
-            "新着",
-            style: TextStyle(
+            AppLocalizations.of(context)!.newBadge,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
               height: 1.0,

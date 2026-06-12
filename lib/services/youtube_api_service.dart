@@ -11,6 +11,7 @@ import 'package:tube_search/utils/app_logger.dart';
 import '../data/pickup_selectable_item.dart';
 import '../data/trending_keyword.dart';
 import '../data/youtube_video.dart';
+import '../providers/recommendation_history_provider.dart';
 
 class YouTubeApiService {
   YouTubeApiService();
@@ -32,6 +33,16 @@ class YouTubeApiService {
 
   final Map<String, Map<String, dynamic>> _contentCache = {};
   final Map<String, DateTime> _contentCacheTime = {};
+
+  String? _stringValue(
+    Map<dynamic, dynamic> json,
+    String camelKey,
+    String snakeKey,
+  ) {
+    final value = json[camelKey] ?? json[snakeKey];
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
 
   // ------------------------------------------------------------
   // 🔧 GET JSON 共通処理
@@ -209,6 +220,7 @@ class YouTubeApiService {
         id: v["id"] ?? "",
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
@@ -316,6 +328,7 @@ class YouTubeApiService {
         id: v["id"] ?? "",
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
@@ -375,11 +388,13 @@ class YouTubeApiService {
     final result = <String, List<YouTubeVideo>>{};
 
     items.forEach((type, list) {
+      final normalizedType = type == "all" ? "recommended" : type;
       final videos = (list as List).map<YouTubeVideo>((v) {
         return YouTubeVideo(
           id: v["id"] ?? "",
           title: v["title"] ?? "",
           thumbnailUrl: v["thumbnailUrl"] ?? "",
+          channelId: _stringValue(v, "channelId", "channel_id"),
           channelTitle: v["channelTitle"] ?? "",
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
           viewCount: v["viewCount"] as int?,
@@ -400,10 +415,127 @@ class YouTubeApiService {
         return bTime.compareTo(aTime);
       });
 
-      result[type] = videos;
+      result[normalizedType] = videos;
+
+      if (normalizedType == "recommended") {
+        result["all"] = videos;
+      }
     });
 
     return result;
+  }
+
+  Future<List<YouTubeVideo>> fetchRecommendedVideos({
+    List<RecommendationSignal> signals = const [],
+    Set<String> excludeChannelIds = const {},
+    Set<String> excludeCategoryIds = const {},
+    int maxResults = 5,
+    String regionCode = "JP",
+    bool forceRefresh = false,
+  }) async {
+    maxResults = maxResults.clamp(1, 50);
+
+    final signalKey = signals
+        .take(8)
+        .map((signal) => '${signal.identity}:${signal.count}')
+        .join('|');
+    final excludeChannelKey = (excludeChannelIds.toList()..sort()).join(',');
+    final excludeCategoryKey = (excludeCategoryIds.toList()..sort()).join(',');
+    final key =
+        "recommended_${regionCode}_${maxResults}_${signalKey}_exclude_${excludeChannelKey}_$excludeCategoryKey";
+    final now = DateTime.now();
+
+    if (!forceRefresh &&
+        _searchCache.containsKey(key) &&
+        _searchFetchedAt.containsKey(key) &&
+        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+      logger.i("💾 RecommendedVideos: Using cache ($key)");
+      return _searchCache[key]!;
+    }
+
+    final signalPayload = signals.take(8).map((signal) {
+      return {
+        "type": signal.type,
+        "value": signal.value,
+        "label": signal.label,
+        "count": signal.count,
+        "lastUsedAt": signal.lastUsedAt.toIso8601String(),
+      };
+    }).toList();
+
+    final params = <String, String>{
+      "region": regionCode,
+      "max": "$maxResults",
+    };
+
+    if (signalPayload.isNotEmpty) {
+      params["signals"] = jsonEncode(signalPayload);
+    }
+    if (excludeChannelIds.isNotEmpty) {
+      params["exclude_channel_ids"] = excludeChannelIds.join(',');
+    }
+    if (excludeCategoryIds.isNotEmpty) {
+      params["exclude_category_ids"] = excludeCategoryIds.join(',');
+    }
+
+    logger.i(
+      "[fetchRecommendedVideos] "
+      "signals=${signalPayload.length} region=$regionCode max=$maxResults "
+      "excludeChannels=${excludeChannelIds.length} "
+      "excludeCategories=${excludeCategoryIds.length}",
+    );
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/youtube_recommended_videos.php",
+      params,
+    );
+
+    final data = await _getJson(uri);
+    final items = data is Map<String, dynamic> ? data["items"] : data;
+
+    if (items is! List) {
+      logger.e("❌ Unexpected RecommendedVideos API structure");
+      throw Exception("Invalid RecommendedVideos API data");
+    }
+
+    final list = items.map<YouTubeVideo>((v) {
+      return YouTubeVideo(
+        id: v["id"] ?? "",
+        title: v["title"] ?? "",
+        thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
+        channelTitle: v["channelTitle"] ?? "",
+        publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
+        viewCount: v["viewCount"] as int?,
+        durationSeconds: v["durationSeconds"] as int?,
+        score: (() {
+          final vScore = (v["score"] as num?)?.toDouble();
+          if (vScore == null) return null;
+          if (vScore.isNaN || vScore.isInfinite) return null;
+          return vScore;
+        })(),
+      );
+    }).toList();
+
+    list.sort((a, b) {
+      final aScore = a.score ?? 0;
+      final bScore = b.score ?? 0;
+
+      if (aScore != bScore) {
+        return bScore.compareTo(aScore);
+      }
+
+      final aTime = a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+      return bTime.compareTo(aTime);
+    });
+
+    _searchCache[key] = list;
+    _searchFetchedAt[key] = now;
+
+    return list;
   }
 
   Future<void> saveFcmToken(
@@ -541,6 +673,7 @@ class YouTubeApiService {
         id: v["id"]?.toString() ?? "",
         title: v["title"]?.toString() ?? "",
         thumbnailUrl: v["thumbnailUrl"]?.toString() ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
         channelTitle: v["channelTitle"]?.toString() ?? "",
         publishedAt: publishedAtRaw == null || publishedAtRaw.isEmpty
             ? null
@@ -572,6 +705,7 @@ class YouTubeApiService {
         id: v["video_id"] ?? "",
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnail_url"] ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
         channelTitle: v["channel_title"] ?? "",
         publishedAt: DateTime.tryParse(v["published_at"] ?? "")?.toLocal(),
         viewCount: int.tryParse("${v["view_count"]}"),
@@ -583,6 +717,7 @@ class YouTubeApiService {
   Future<void> replacePushSubscriptions({
     required String token,
     required List<PickupSelectableItem> items,
+    bool resetSentLogs = false,
     int retryCount = 0,
   }) async {
     // if (items.isEmpty) {
@@ -614,6 +749,7 @@ class YouTubeApiService {
       body: {
         'token': token,
         'items': jsonEncode(payload),
+        if (resetSentLogs) 'reset_sent_logs': '1',
       },
     );
 
@@ -808,6 +944,7 @@ class YouTubeApiService {
         id: v["id"] ?? "",
         title: v["title"] ?? "",
         thumbnailUrl: v["thumbnailUrl"] ?? "",
+        channelId: _stringValue(v, "channelId", "channel_id"),
         channelTitle: v["channelTitle"] ?? "",
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../widgets/network_error_view.dart';
@@ -32,7 +33,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _isOpening = false;
 
   /// ⭐ キュー管理（現在位置）
-  int _currentIndex = 0;
+  final int _currentIndex = 0;
 
   Timer? _hideTimer;
 
@@ -124,6 +125,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -142,7 +144,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               Icons.open_in_browser,
               color: isDark ? Colors.white : Colors.black87,
             ),
-            tooltip: "YouTubeで開く",
+            tooltip: l.videoPlayerOpenYoutubeTooltip,
             onPressed: () => _openCurrentVideo(auto: false),
           ),
         ],
@@ -163,12 +165,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                         size: 44, color: theme.hintColor),
                     const SizedBox(height: 10),
                     Text(
-                      "YouTubeで再生します",
+                      l.videoPlayerTitle,
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "「開く」を押すと動画ページを表示します。",
+                      l.videoPlayerDescription,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.hintColor),
                       textAlign: TextAlign.center,
@@ -179,7 +181,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           ? null
                           : () => _openCurrentVideo(auto: false),
                       icon: const Icon(Icons.open_in_browser),
-                      label: Text(_isOpening ? "開いています..." : "開く"),
+                      label: Text(
+                        _isOpening ? l.videoPlayerOpening : l.videoPlayerOpen,
+                      ),
                     ),
                   ],
                 ),

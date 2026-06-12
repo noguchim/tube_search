@@ -90,6 +90,8 @@ Future<void> checkLatestVersion(BuildContext context) async {
     return;
   }
 
+  if (!context.mounted) return;
+
   showUpdateAvailable(
     context,
     latestVersion: latest,
@@ -119,8 +121,9 @@ void showUpdateAvailable(
         actions: [
           TextButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               await _saveDismissedVersion(latestVersion);
-              Navigator.pop(context);
+              navigator.pop();
             },
             child: Text(
               l.updateLater,

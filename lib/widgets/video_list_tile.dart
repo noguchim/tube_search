@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/watch_history_service.dart';
@@ -23,6 +26,7 @@ class VideoListTile extends StatelessWidget {
   final int rank;
   final bool showNewBadge;
   final VideoPresentationMode presentationMode;
+  final ValueChanged<YouTubeVideo>? onVideoTap;
 
   const VideoListTile({
     super.key,
@@ -30,40 +34,56 @@ class VideoListTile extends StatelessWidget {
     required this.rank,
     this.showNewBadge = false,
     this.presentationMode = VideoPresentationMode.ranked,
+    this.onVideoTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
+    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color cardColor = theme.colorScheme.surface;
+    final Color cardColor =
+        isDark ? const Color(0xFF202020) : theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
     final BorderRadius borderRadius = BorderRadius.circular(12);
 
     final BorderSide borderSide = BorderSide(
       color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
+          ? Colors.white.withValues(alpha: 0.18)
           : Colors.black.withValues(alpha: 0.05),
       width: 1,
     );
 
-    final List<BoxShadow> shadows = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.55),
-        blurRadius: 16,
-        offset: const Offset(0, 10),
-      ),
-    ];
+    final List<BoxShadow> shadows = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.03),
+              blurRadius: 1,
+              offset: const Offset(0, 1),
+            ),
+          ]
+        : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 16,
+              offset: const Offset(0, 10),
+            ),
+          ];
 
     final id = video.id;
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt);
+    final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
             ? formatDuration(video.durationSeconds!)
@@ -77,6 +97,9 @@ class VideoListTile extends StatelessWidget {
     final timeAndDuration = '$timeAgo${separator(context)}$duration';
 
     final isFav = fav.isFavoriteSync(id);
+    final isWatched = history.isWatchedSync(id);
+    final titleColor =
+        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
 
     final showRankingInfo = presentationMode == VideoPresentationMode.ranked;
 
@@ -111,7 +134,7 @@ class VideoListTile extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withValues(alpha: 0.02),
+                      Colors.white.withValues(alpha: 0.045),
                       Colors.transparent,
                     ],
                   )
@@ -132,7 +155,18 @@ class VideoListTile extends StatelessWidget {
                     builder: (context, setState) {
                       return InkWell(
                         onTap: () {
+                          onVideoTap?.call(video);
                           context.read<WatchHistoryService>().add(video);
+                          unawaited(
+                            context
+                                .read<RecommendationHistoryProvider>()
+                                .recordVideoTap(
+                                  videoId: video.id,
+                                  title: video.title,
+                                  channelId: video.channelId,
+                                  channelTitle: video.channelTitle,
+                                ),
+                          );
                           pushPlayer();
                         },
                         onTapDown: (_) => setState(() => isPressed = true),
@@ -245,7 +279,7 @@ class VideoListTile extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
-                          color: onSurface,
+                          color: titleColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -278,6 +312,9 @@ class VideoListTile extends StatelessWidget {
                                   height: 44,
                                   child: Center(
                                     child: FavoriteButtonOverlay(
+                                      key: ValueKey(
+                                        'tile_favorite_${video.id}',
+                                      ),
                                       isFavorite: isFav,
                                       showBackground: false,
                                       scale: 1.2,

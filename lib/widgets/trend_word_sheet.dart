@@ -216,37 +216,78 @@ class _TrendWordSheetState extends State<TrendWordSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+    final validKeywords = _trending
+        .map((item) => item.keyword.trim())
+        .where((keyword) => keyword.isNotEmpty)
+        .toList();
+    final estimatedChipUnits = validKeywords.fold<int>(0, (sum, keyword) {
+      final textLength = keyword.runes.length + 1;
+      return sum + (textLength / 8).ceil().clamp(1, 4);
+    });
+    final estimatedRowsByLength = (estimatedChipUnits / 3).ceil();
+    final estimatedRowsByCount = (validKeywords.length / 2.4).ceil();
+    final estimatedRowsBase = estimatedRowsByLength > estimatedRowsByCount
+        ? estimatedRowsByLength
+        : estimatedRowsByCount;
+    final estimatedRows = _trendingLoaded ? estimatedRowsBase.clamp(2, 6) : 4;
+    final desiredHeight = 216 + (estimatedRows * 44) + bottomPadding;
+    final heightFactor = (desiredHeight / screenHeight).clamp(0.58, 0.69);
 
     return FractionallySizedBox(
-      heightFactor: 0.55,
+      heightFactor: heightFactor,
       alignment: Alignment.bottomCenter,
       child: SafeArea(
         top: false,
         child: _buildSheetGlass(
           context: context,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               16,
               10,
               16,
-              28 + MediaQuery.of(context).viewPadding.bottom,
+              18,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                SizedBox(
+                  height: 34,
+                  child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: -10,
+                        right: -4,
+                        child: IconButton(
+                          tooltip: MaterialLocalizations.of(context)
+                              .closeButtonTooltip,
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 28,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 2),
                 Center(
                   child: _buildTitle(theme),
                 ),
@@ -254,7 +295,9 @@ class _TrendWordSheetState extends State<TrendWordSheet> {
                 Expanded(
                   child: _trendingLoaded
                       ? SingleChildScrollView(
-                          padding: const EdgeInsets.only(bottom: 18),
+                          padding: EdgeInsets.only(
+                            bottom: 42 + bottomPadding,
+                          ),
                           child: Align(
                             alignment: Alignment.topCenter,
                             child: Wrap(
@@ -272,13 +315,14 @@ class _TrendWordSheetState extends State<TrendWordSheet> {
                                 final isTop3 = index < 3;
 
                                 return Material(
-                                  elevation: isTop3 ? 3 : 1.5,
-                                  shadowColor:
-                                      Colors.black.withValues(alpha: 0.15),
+                                  elevation: isTop3 ? 7 : 4,
+                                  shadowColor: Colors.black.withValues(
+                                    alpha: isTop3 ? 0.36 : 0.28,
+                                  ),
                                   borderRadius: BorderRadius.circular(22),
                                   color: Colors.transparent,
                                   child: ActionChip(
-                                    pressElevation: 0,
+                                    pressElevation: 2,
                                     label: Text(
                                       "#$keyword",
                                       style: TextStyle(

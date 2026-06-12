@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
@@ -36,11 +39,7 @@ class VideoOverlayCard extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt);
-    final duration =
-        (video.durationSeconds != null && video.durationSeconds! > 0)
-            ? formatDuration(video.durationSeconds!)
-            : "--:--";
+    final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -50,6 +49,9 @@ class VideoOverlayCard extends StatelessWidget {
     final infoSeparator = '$viewText${separator(context)}$timeAgo';
 
     final isFav = fav.isFavoriteSync(id);
+    final isWatched = context.watch<WatchHistoryService>().isWatchedSync(id);
+    final overlayTitleColor =
+        isWatched ? Colors.white.withValues(alpha: 0.46) : Colors.white;
 
     bool isPushing = false;
 
@@ -65,8 +67,6 @@ class VideoOverlayCard extends StatelessWidget {
       }
     }
 
-    final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: ClipRRect(
@@ -80,6 +80,16 @@ class VideoOverlayCard extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   context.read<WatchHistoryService>().add(video);
+                  unawaited(
+                    context
+                        .read<RecommendationHistoryProvider>()
+                        .recordVideoTap(
+                          videoId: video.id,
+                          title: video.title,
+                          channelId: video.channelId,
+                          channelTitle: video.channelTitle,
+                        ),
+                  );
                   pushPlayer();
                 },
                 onTapDown: (_) => setState(() => isPressed = true),
@@ -140,6 +150,7 @@ class VideoOverlayCard extends StatelessWidget {
                           title: title,
                           channel: channel,
                           viewAndTime: infoSeparator,
+                          titleColor: overlayTitleColor,
                         ),
                       ),
 
@@ -172,6 +183,7 @@ class VideoOverlayCard extends StatelessWidget {
                         top: 0,
                         right: 4,
                         child: FavoriteButtonOverlay(
+                          key: ValueKey('overlay_favorite_${video.id}'),
                           isFavorite: isFav,
                           scale: 1.0,
                           onTap: () => handleFavoriteTap(
@@ -198,6 +210,7 @@ class VideoOverlayCard extends StatelessWidget {
     required String title,
     required String channel,
     required String viewAndTime,
+    required Color titleColor,
   }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 2, 10, 6),
@@ -223,10 +236,9 @@ class VideoOverlayCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Colors.white,
               fontSize: 13,
               fontWeight: FontWeight.bold,
-            ),
+            ).copyWith(color: titleColor),
           ),
           const SizedBox(height: 4),
           Text(

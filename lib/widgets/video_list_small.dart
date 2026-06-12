@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:tube_search/widgets/play_button_overlay.dart';
 import 'package:tube_search/widgets/popularity_chip.dart';
 
 import '../data/youtube_video.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/watch_history_service.dart';
 import '../utils/app_logger.dart';
@@ -29,6 +32,7 @@ class VideoListTileSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
+    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -68,13 +72,16 @@ class VideoListTileSmall extends StatelessWidget {
     final title = video.title;
     final thumbnail = video.thumbnailUrl;
     final channel = video.channelTitle;
-    final timeAgo = formatPublishedAgo(video.publishedAt);
+    final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
       format: ViewCountFormat.full,
     );
     final isFav = fav.isFavoriteSync(id);
+    final isWatched = history.isWatchedSync(id);
+    final titleColor =
+        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
 
     const double thumbW = 136;
     const double thumbH = 76;
@@ -96,7 +103,6 @@ class VideoListTileSmall extends StatelessWidget {
     }
 
     final BorderRadius thumbRadius = BorderRadius.circular(6);
-    final bool thumbOk = thumbnail.isNotEmpty && thumbnail.startsWith('http');
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -147,6 +153,16 @@ class VideoListTileSmall extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         context.read<WatchHistoryService>().add(video);
+                        unawaited(
+                          context
+                              .read<RecommendationHistoryProvider>()
+                              .recordVideoTap(
+                                videoId: video.id,
+                                title: video.title,
+                                channelId: video.channelId,
+                                channelTitle: video.channelTitle,
+                              ),
+                        );
                         pushPlayer();
                       },
                       borderRadius: thumbRadius,
@@ -264,7 +280,7 @@ class VideoListTileSmall extends StatelessWidget {
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             height: 1.12,
-                            color: onSurface,
+                            color: titleColor,
                           ),
                         ),
 
@@ -306,6 +322,9 @@ class VideoListTileSmall extends StatelessWidget {
                                     height: 44,
                                     child: Center(
                                       child: FavoriteButtonOverlay(
+                                        key: ValueKey(
+                                          'small_favorite_${video.id}',
+                                        ),
                                         isFavorite: isFav,
                                         showBackground: false,
                                         scale: 1.1,

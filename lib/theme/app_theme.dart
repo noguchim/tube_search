@@ -38,8 +38,6 @@ final ThemeData appLightTheme = ThemeData(
     secondary: Color(0xFFFF8C66),
     surface: Color(0xFFFFFFFF),
     onSurface: Color(0xFF111111),
-    background: Color(0xFFF2F2F6),
-    onBackground: Color(0xFF111111),
     onPrimary: Colors.white,
   ),
 

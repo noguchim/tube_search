@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/youtube_video.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/density_provider.dart';
 import '../providers/iap_provider.dart';
+import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
@@ -18,6 +20,7 @@ import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
 import '../utils/ui_spacing.dart';
+import 'anime_webview_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/density_fab.dart';
 import '../widgets/empty_result_view.dart';
@@ -25,6 +28,7 @@ import '../widgets/expanded_video_overlay.dart';
 import '../widgets/network_error_view.dart';
 import '../widgets/section_big.dart';
 import '../widgets/section_middle.dart';
+import '../widgets/section_side.dart';
 import '../widgets/section_small.dart';
 import '../widgets/top_bar_back.dart';
 
@@ -54,7 +58,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
   int _lastLimit = 20;
 
-  bool _isSearching = false;
+  final bool _isSearching = false;
   bool _showTopBar = true;
   String _sort = "score";
 
@@ -119,6 +123,35 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         "[_loadVideos]query=$kw mode=$mode max=$limit region=$region categoryId=$cat");
 
     List<YouTubeVideo> list = [];
+
+    if (widget.categoryId == "-1") {
+      final history = context.read<RecommendationHistoryProvider>();
+      await history.load();
+
+      final signals = await history.topSignalsForRecommendation(limit: 8);
+
+      if (signals.isEmpty) {
+        final allData = await api.fetchPickupAll(
+          regionCode: region,
+          forceRefresh: forceRefresh,
+        );
+        list = allData['recommended'] ?? allData['all'] ?? [];
+        return _applySort(list.take(limit).toList());
+      }
+
+      final excludeTargets = await history.pickupExcludeTargets();
+
+      list = await api.fetchRecommendedVideos(
+        signals: signals,
+        excludeChannelIds: excludeTargets.channelIds,
+        excludeCategoryIds: excludeTargets.categoryIds,
+        maxResults: limit,
+        regionCode: region,
+        forceRefresh: forceRefresh,
+      );
+
+      return _applySort(list.take(limit).toList());
+    }
 
     // 通常検索
     if (kw != null && kw.isNotEmpty) {
@@ -231,6 +264,114 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     return "${s.substring(0, max)}...";
   }
 
+  bool _shouldShowAnimeLinks(String regionCode) {
+    final region = regionCode.toUpperCase();
+    return widget.categoryId == "31" && (region == "JP" || region == "EN");
+  }
+
+  String _animeCurrentSeasonUrl(String regionCode, {DateTime? now}) {
+    final baseDate = now ?? DateTime.now();
+    final year = baseDate.year;
+    final season = switch (baseDate.month) {
+      >= 1 && <= 3 => "winter",
+      >= 4 && <= 6 => "spring",
+      >= 7 && <= 9 => "summer",
+      _ => "autumn",
+    };
+
+    if (regionCode.toUpperCase() == "EN") {
+      final liveChartSeason = season == "autumn" ? "fall" : season;
+      return "https://www.livechart.me/$liveChartSeason-$year/tv";
+    }
+
+    return "https://anime.nicovideo.jp/period/$year-$season.html?from=nanime_period_list";
+  }
+
+  String _animePastSeasonsUrl(String regionCode) {
+    if (regionCode.toUpperCase() == "EN") {
+      return "https://www.livechart.me/charts";
+    }
+
+    return "https://anime.nicovideo.jp/period/";
+  }
+
+  void _openAnimeLink({
+    required String url,
+    required String title,
+  }) {
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.animeLinkPending),
+        ),
+      );
+      return;
+    }
+
+    logger.i("[Anime link] $url");
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AnimeWebViewScreen(
+          url: url,
+          title: title,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimeLinksContainer(String regionCode) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF202020) : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.16)
+                : Colors.black.withValues(alpha: 0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _AnimeLinkRow(
+              label: l.animeCurrentSeasonLink,
+              onTap: () => _openAnimeLink(
+                url: _animeCurrentSeasonUrl(regionCode),
+                title: l.animeCurrentSeasonTitle,
+              ),
+            ),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+            ),
+            _AnimeLinkRow(
+              label: l.animePastSeasonsLink,
+              onTap: () => _openAnimeLink(
+                url: _animePastSeasonsUrl(regionCode),
+                title: l.animePastSeasonsLink,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ---------------------------------------------------------
   // 🔥 Pull-to-refresh（setState は同期のみ）
   // ---------------------------------------------------------
@@ -256,6 +397,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     switch (density) {
       case CardDensity.big:
         return SectionBig(videos: videos);
+
+      case CardDensity.side:
+        return SectionSide(videos: videos);
 
       case CardDensity.middle:
         return SectionMiddle(videos: videos);
@@ -285,16 +429,20 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
     final bool shouldShowBanner = !adsRemoved;
     final controller = context.read<ExpandedVideoController>();
+    final regionCode = context.watch<RegionProvider>().regionCode;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
-        child: DensityFab(
-          density: density,
-          onToggle: () => context.read<DensityProvider>().toggle(),
-        ),
-      ),
+      floatingActionButton: expanded.video == null
+          ? Padding(
+              padding:
+                  EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
+              child: DensityFab(
+                density: density,
+                onToggle: () => context.read<DensityProvider>().toggle(),
+              ),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Stack(
         children: [
@@ -346,6 +494,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             height: 55 + MediaQuery.of(context).padding.top,
                           ),
                         ),
+                        if (_shouldShowAnimeLinks(regionCode))
+                          SliverToBoxAdapter(
+                            child: _buildAnimeLinksContainer(regionCode),
+                          ),
                         _densityControl(videos),
                         SliverToBoxAdapter(
                           child: SizedBox(
@@ -447,6 +599,53 @@ class _BottomAdDivider extends StatelessWidget {
                   Colors.black.withValues(alpha: 0.10),
                   Colors.black.withValues(alpha: 0.02),
                 ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimeLinkRow extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _AnimeLinkRow({
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+              ),
+            ],
+          ),
         ),
       ),
     );

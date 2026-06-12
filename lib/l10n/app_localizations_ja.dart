@@ -24,21 +24,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navFavorites => 'お気に入り';
 
   @override
-  String get navSettings => '設定';
-
-  @override
-  String get popularTitle => '人気急上昇';
-
-  @override
-  String infoTrendingUpdated(String region, String date) {
-    return 'YouTube急上昇ランキング（$region・トレンド反映） $date 更新';
-  }
-
-  @override
   String get noVideosFound => '該当する動画が見つかりませんでした';
-
-  @override
-  String get genreScreenTitle => 'ジャンル別人気';
 
   @override
   String get genreSearchHeader => '検索して探す';
@@ -47,22 +33,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get genreNetworkError => 'ネットワークに接続できません';
 
   @override
-  String get genreBrowseHeader => 'ジャンルから探す';
-
-  @override
   String get favoritesTitle => 'お気に入り';
 
   @override
-  String get favoritesEmptyTitle => 'お気に入りがありません';
-
-  @override
   String get favoritesEmptyHint => '❤️アイコンタップでお気に入りに追加！';
-
-  @override
-  String get favoritesTapHere => 'ここをタップ！';
-
-  @override
-  String get favoritesRegisteredSuffix => '登録';
 
   @override
   String favoritesCountMessage(Object current, Object limit) {
@@ -103,9 +77,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get update => '更新';
 
   @override
-  String get settingsTitle => '設定';
-
-  @override
   String get settingsTheme => 'テーマ';
 
   @override
@@ -130,12 +101,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsFavoriteDeleteTitle => 'お気に入り削除';
 
   @override
-  String get settingsFavoriteDeleteOn => 'する';
-
-  @override
-  String get settingsFavoriteDeleteOff => 'しない';
-
-  @override
   String get settingsShop => 'ショップ';
 
   @override
@@ -143,9 +108,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsPolicies => '各種ポリシー';
-
-  @override
-  String get settingsPoliciesSubtitle => 'プライバシー・利用規約';
 
   @override
   String get settingsPrivacyPolicy => 'プライバシーポリシー';
@@ -216,9 +178,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsRegion => '地域';
 
   @override
-  String get settingsRegionSubtitle => 'アプリで表示する国を選択';
-
-  @override
   String get regionJapan => '日本';
 
   @override
@@ -226,54 +185,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get regionUnitedKingdom => 'イギリス';
-
-  @override
-  String get regionGermany => 'ドイツ';
-
-  @override
-  String get regionFrance => 'フランス';
-
-  @override
-  String get regionIndia => 'インド';
-
-  @override
-  String get repeatStatusOff => 'OFF';
-
-  @override
-  String get repeatStatusAscending => 'ON (昇順)';
-
-  @override
-  String get repeatStatusDescending => 'ON (降順)';
-
-  @override
-  String get repeatStatusRandom => 'ON (ランダム)';
-
-  @override
-  String get repeatDialogTitle => '連続再生の設定';
-
-  @override
-  String get repeatSettingsTitle => '連続再生の設定';
-
-  @override
-  String get repeatOptionOff => 'OFF（連続再生しない）';
-
-  @override
-  String get repeatOptionAscending => '昇順で再生';
-
-  @override
-  String get repeatOptionDescending => '降順で再生';
-
-  @override
-  String get repeatOptionRandom => 'ランダム再生';
-
-  @override
-  String get repeatDialogCancel => 'キャンセル';
-
-  @override
-  String get repeatDialogSave => '保存';
-
-  @override
-  String get repeatDialogMessage => '連続再生の動作を選択してください。';
 
   @override
   String get favoriteLockedTitle => 'ロック中の動画です';
@@ -318,16 +229,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAbout => 'このアプリについて';
 
   @override
-  String get settingsAboutSubtitle => 'アプリ情報・バージョン';
-
-  @override
   String get browserOpenFailed => 'ブラウザを開けませんでした';
-
-  @override
-  String get showPartial => '一部表示';
-
-  @override
-  String get showAll => '全て表示';
 
   @override
   String get updateNoticeTitle => 'アップデートのお知らせ';
@@ -343,4 +245,215 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get trendWords => 'トレンドワード';
+
+  @override
+  String get commonGame => 'ゲーム';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonCancel => 'キャンセル';
+
+  @override
+  String get commonDone => '完了';
+
+  @override
+  String get newBadge => '新着';
+
+  @override
+  String get relatedVideos => '関連動画';
+
+  @override
+  String get pickupRecommended => 'おすすめ';
+
+  @override
+  String get pickupTrendMusic => 'トレンド音楽';
+
+  @override
+  String get pushSettingsMenuTitle => '通知';
+
+  @override
+  String get pushSettingsTitle => '通知の設定';
+
+  @override
+  String get pushSettingsUpdateFailed => '通知設定を更新できませんでした';
+
+  @override
+  String get pushPickupSectionTitle => 'ピックアップの通知';
+
+  @override
+  String get pushPickupDescription => 'ピックアップ項目ごとに新着動画を通知します。';
+
+  @override
+  String get pushPickupInitialWarningPrefix =>
+      'ピックアップ項目が初期状態の場合は通知は行われません。通知を行う場合は';
+
+  @override
+  String get pushPickupEditLink => 'ピックアップ編集';
+
+  @override
+  String get pushPickupInitialWarningSuffix => 'でピックアップ項目の編集を行ってください。';
+
+  @override
+  String get pushTrendingSectionTitle => '人気動画の通知';
+
+  @override
+  String get pushTrendingSectionSubtitle => '急上昇動画を通知します。';
+
+  @override
+  String get pushTrendingTitle => '人気急上昇';
+
+  @override
+  String get pushItemNotSubscribable => 'この項目は通知対象外です';
+
+  @override
+  String get pickupEditTitle => 'ピックアップ編集';
+
+  @override
+  String get pickupEditDialogTitle => 'ピックアップ変更';
+
+  @override
+  String get pickupEditDialogMessage => '下記の内容でピックアップを設定します。';
+
+  @override
+  String get pickupEditCurrentSelection => '現在設定中';
+
+  @override
+  String get pickupEditGenreTab => 'ジャンル';
+
+  @override
+  String get pickupEditChannelTab => 'チャンネル';
+
+  @override
+  String get pickupEditFavoriteTab => 'お気に入り';
+
+  @override
+  String get pickupEditFavoriteEmptyTitle => 'まだお気に入りがありません';
+
+  @override
+  String get pickupEditFavoriteEmptyMessage =>
+      'お気に入り登録すると、登録された動画のチャンネルがここに表示されます';
+
+  @override
+  String get pickupEditNewNotification => '新着通知';
+
+  @override
+  String get pickupEditSaveFailed => '設定の保存に失敗しました';
+
+  @override
+  String pickupEditCategoryFallback(Object categoryId) {
+    return 'カテゴリ $categoryId';
+  }
+
+  @override
+  String get topicPickupEditTitle => 'ピックアップの編集';
+
+  @override
+  String get topicPickupEditMessage =>
+      'ピックアップをお好みのジャンルやチャンネルに変更したい場合は、右下のボタンをタップ！';
+
+  @override
+  String get pickupEmptyNewVideos => 'まだ新着動画がありません';
+
+  @override
+  String get watchHistoryTitle => '視聴履歴';
+
+  @override
+  String get watchHistoryEmpty => '視聴履歴がありません';
+
+  @override
+  String get videoPlayerOpenYoutubeTooltip => 'YouTubeで開く';
+
+  @override
+  String get videoPlayerTitle => 'YouTubeで再生します';
+
+  @override
+  String get videoPlayerDescription => '「開く」を押すと動画ページを表示します。';
+
+  @override
+  String get videoPlayerOpening => '開いています...';
+
+  @override
+  String get videoPlayerOpen => '開く';
+
+  @override
+  String get settingsConfirmDeleteEnabled => '確認する';
+
+  @override
+  String get settingsConfirmDeleteDisabled => '確認しない';
+
+  @override
+  String get topBarSortTooltip => '並び替え';
+
+  @override
+  String get sortByScore => 'スコア順';
+
+  @override
+  String get sortByViews => '再生順';
+
+  @override
+  String get sortByNewest => '新着順';
+
+  @override
+  String publishedSecondsAgo(Object count) {
+    return '$count秒前';
+  }
+
+  @override
+  String publishedMinutesAgo(Object count) {
+    return '$count分前';
+  }
+
+  @override
+  String publishedHoursAgo(Object count) {
+    return '$count時間前';
+  }
+
+  @override
+  String publishedDaysAgo(Object count) {
+    return '$count日前';
+  }
+
+  @override
+  String publishedWeeksAgo(Object count) {
+    return '$count週間前';
+  }
+
+  @override
+  String publishedMonthsAgo(Object count) {
+    return '$countヶ月前';
+  }
+
+  @override
+  String publishedYearsAgo(Object count) {
+    return '$count年前';
+  }
+
+  @override
+  String viewCountTenThousand(Object count) {
+    return '$count万';
+  }
+
+  @override
+  String viewCountHundredMillion(Object count) {
+    return '$count億';
+  }
+
+  @override
+  String viewCountFull(Object count) {
+    return '$count回視聴';
+  }
+
+  @override
+  String get animeCurrentSeasonLink => '今期アニメ一覧はこちら（外部リンク）';
+
+  @override
+  String get animeCurrentSeasonTitle => '今期アニメ一覧';
+
+  @override
+  String get animePastSeasonsLink => '過去のシーズン一覧';
+
+  @override
+  String get animeLinkPending => 'リンク先は未設定です';
 }

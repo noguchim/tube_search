@@ -24,21 +24,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navFavorites => 'Favorites';
 
   @override
-  String get navSettings => 'Settings';
-
-  @override
-  String get popularTitle => 'Trending Now';
-
-  @override
-  String infoTrendingUpdated(String region, String date) {
-    return 'Trending on YouTube — $region — updated $date';
-  }
-
-  @override
   String get noVideosFound => 'No videos were found';
-
-  @override
-  String get genreScreenTitle => 'Popular by Genre';
 
   @override
   String get genreSearchHeader => 'Search videos';
@@ -47,22 +33,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get genreNetworkError => 'Cannot connect to the network';
 
   @override
-  String get genreBrowseHeader => 'Browse by category';
-
-  @override
   String get favoritesTitle => 'Favorites';
 
   @override
-  String get favoritesEmptyTitle => 'No favorites yet';
-
-  @override
   String get favoritesEmptyHint => 'Tap the heart icon to add favorites!';
-
-  @override
-  String get favoritesTapHere => 'Tap here!';
-
-  @override
-  String get favoritesRegisteredSuffix => 'saved';
 
   @override
   String favoritesCountMessage(Object current, Object limit) {
@@ -103,9 +77,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get update => 'updated';
 
   @override
-  String get settingsTitle => 'Settings';
-
-  @override
   String get settingsTheme => 'Theme';
 
   @override
@@ -130,12 +101,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsFavoriteDeleteTitle => 'Confirm when removing favorites';
 
   @override
-  String get settingsFavoriteDeleteOn => 'On';
-
-  @override
-  String get settingsFavoriteDeleteOff => 'Off';
-
-  @override
   String get settingsShop => 'Shop';
 
   @override
@@ -143,9 +108,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPolicies => 'Policies';
-
-  @override
-  String get settingsPoliciesSubtitle => 'Privacy policy & Terms';
 
   @override
   String get settingsPrivacyPolicy => 'Privacy policy';
@@ -218,9 +180,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRegion => 'Region';
 
   @override
-  String get settingsRegionSubtitle => 'Choose the country for video trends';
-
-  @override
   String get regionJapan => 'Japan';
 
   @override
@@ -228,54 +187,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get regionUnitedKingdom => 'United Kingdom';
-
-  @override
-  String get regionGermany => 'Germany';
-
-  @override
-  String get regionFrance => 'France';
-
-  @override
-  String get regionIndia => 'India';
-
-  @override
-  String get repeatStatusOff => 'OFF';
-
-  @override
-  String get repeatStatusAscending => 'ON (Ascending)';
-
-  @override
-  String get repeatStatusDescending => 'ON (Descending)';
-
-  @override
-  String get repeatStatusRandom => 'ON (Random)';
-
-  @override
-  String get repeatDialogTitle => 'Continuous play settings';
-
-  @override
-  String get repeatSettingsTitle => 'Continuous play settings';
-
-  @override
-  String get repeatOptionOff => 'OFF (do not auto-play)';
-
-  @override
-  String get repeatOptionAscending => 'Play in ascending order';
-
-  @override
-  String get repeatOptionDescending => 'Play in descending order';
-
-  @override
-  String get repeatOptionRandom => 'Shuffle play';
-
-  @override
-  String get repeatDialogCancel => 'Cancel';
-
-  @override
-  String get repeatDialogSave => 'Save';
-
-  @override
-  String get repeatDialogMessage => 'Select how continuous play should behave.';
 
   @override
   String get favoriteLockedTitle => 'This video is locked';
@@ -322,16 +233,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAbout => 'About this App';
 
   @override
-  String get settingsAboutSubtitle => 'App information and version';
-
-  @override
   String get browserOpenFailed => 'Failed to open the browser';
-
-  @override
-  String get showPartial => 'Show Less';
-
-  @override
-  String get showAll => 'Show All';
 
   @override
   String get updateNoticeTitle => 'Update Notice';
@@ -348,4 +250,220 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trendWords => 'Trending Words';
+
+  @override
+  String get commonGame => 'Games';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonDone => 'Done';
+
+  @override
+  String get newBadge => 'New';
+
+  @override
+  String get relatedVideos => 'Related videos';
+
+  @override
+  String get pickupRecommended => 'Recommended';
+
+  @override
+  String get pickupTrendMusic => 'Trending music';
+
+  @override
+  String get pushSettingsMenuTitle => 'Notifications';
+
+  @override
+  String get pushSettingsTitle => 'Notification settings';
+
+  @override
+  String get pushSettingsUpdateFailed =>
+      'Could not update notification settings';
+
+  @override
+  String get pushPickupSectionTitle => 'Pick-up notifications';
+
+  @override
+  String get pushPickupDescription =>
+      'Get notifications for new videos for each pick-up item.';
+
+  @override
+  String get pushPickupInitialWarningPrefix =>
+      'Notifications are not sent while pick-ups are still at their default settings. To enable them, edit your items in ';
+
+  @override
+  String get pushPickupEditLink => 'Edit pick-ups';
+
+  @override
+  String get pushPickupInitialWarningSuffix => '.';
+
+  @override
+  String get pushTrendingSectionTitle => 'Trending video notifications';
+
+  @override
+  String get pushTrendingSectionSubtitle =>
+      'Get notified about trending videos.';
+
+  @override
+  String get pushTrendingTitle => 'Trending';
+
+  @override
+  String get pushItemNotSubscribable =>
+      'Notifications are not available for this item';
+
+  @override
+  String get pickupEditTitle => 'Edit pick-ups';
+
+  @override
+  String get pickupEditDialogTitle => 'Change pick-ups';
+
+  @override
+  String get pickupEditDialogMessage => 'Set your pick-ups as shown below.';
+
+  @override
+  String get pickupEditCurrentSelection => 'Current selection';
+
+  @override
+  String get pickupEditGenreTab => 'Genres';
+
+  @override
+  String get pickupEditChannelTab => 'Channels';
+
+  @override
+  String get pickupEditFavoriteTab => 'Favorites';
+
+  @override
+  String get pickupEditFavoriteEmptyTitle => 'No favorites yet';
+
+  @override
+  String get pickupEditFavoriteEmptyMessage =>
+      'When you add favorite videos, their channels will appear here.';
+
+  @override
+  String get pickupEditNewNotification => 'New video notifications';
+
+  @override
+  String get pickupEditSaveFailed => 'Failed to save settings';
+
+  @override
+  String pickupEditCategoryFallback(Object categoryId) {
+    return 'Category $categoryId';
+  }
+
+  @override
+  String get topicPickupEditTitle => 'Edit pick-ups';
+
+  @override
+  String get topicPickupEditMessage =>
+      'To customize pick-ups by genre or channel, tap the button at the bottom right.';
+
+  @override
+  String get pickupEmptyNewVideos => 'No new videos yet';
+
+  @override
+  String get watchHistoryTitle => 'Watch history';
+
+  @override
+  String get watchHistoryEmpty => 'No watch history yet';
+
+  @override
+  String get videoPlayerOpenYoutubeTooltip => 'Open in YouTube';
+
+  @override
+  String get videoPlayerTitle => 'Playing on YouTube';
+
+  @override
+  String get videoPlayerDescription => 'Tap Open to view the video page.';
+
+  @override
+  String get videoPlayerOpening => 'Opening...';
+
+  @override
+  String get videoPlayerOpen => 'Open';
+
+  @override
+  String get settingsConfirmDeleteEnabled => 'Confirm';
+
+  @override
+  String get settingsConfirmDeleteDisabled => 'Do not confirm';
+
+  @override
+  String get topBarSortTooltip => 'Sort';
+
+  @override
+  String get sortByScore => 'Score';
+
+  @override
+  String get sortByViews => 'Views';
+
+  @override
+  String get sortByNewest => 'Newest';
+
+  @override
+  String publishedSecondsAgo(Object count) {
+    return '${count}s ago';
+  }
+
+  @override
+  String publishedMinutesAgo(Object count) {
+    return '${count}m ago';
+  }
+
+  @override
+  String publishedHoursAgo(Object count) {
+    return '${count}h ago';
+  }
+
+  @override
+  String publishedDaysAgo(Object count) {
+    return '${count}d ago';
+  }
+
+  @override
+  String publishedWeeksAgo(Object count) {
+    return '${count}w ago';
+  }
+
+  @override
+  String publishedMonthsAgo(Object count) {
+    return '${count}mo ago';
+  }
+
+  @override
+  String publishedYearsAgo(Object count) {
+    return '${count}y ago';
+  }
+
+  @override
+  String viewCountTenThousand(Object count) {
+    return '${count}0K';
+  }
+
+  @override
+  String viewCountHundredMillion(Object count) {
+    return '${count}00M';
+  }
+
+  @override
+  String viewCountFull(Object count) {
+    return '$count views';
+  }
+
+  @override
+  String get animeCurrentSeasonLink =>
+      'Current season anime list (external link)';
+
+  @override
+  String get animeCurrentSeasonTitle => 'Current season anime';
+
+  @override
+  String get animePastSeasonsLink => 'Past season lists';
+
+  @override
+  String get animeLinkPending => 'The link URL is not set yet';
 }

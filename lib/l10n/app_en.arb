@@ -1,140 +1,212 @@
 {
-    "newPickupTitle": "Picks",
-    "navPopular": "Trending",
-    "navTopic": "Topic",
-    "navGenre": "Genres",
-    "navFavorites": "Favorites",
-    "navSettings": "Settings",
-    "popularTitle": "Trending Now",
-    "infoTrendingUpdated": "Trending on YouTube — {region} — updated {date}",
-    "@infoTrendingUpdated": {
-        "placeholders": {
-          "region": { "type": "String" },
-          "date": { "type": "String" }
-        }
-    },
-    "noVideosFound": "No videos found",
-    "genreScreenTitle": "Popular by Genre",
-    "genreSearchHeader": "Search videos",
-
-    "genreNetworkError": "Cannot connect to the network",
-    "genreBrowseHeader": "Browse by category",
-    "favoritesTitle": "Favorites",
-    "favoritesEmptyTitle": "No favorites yet",
-    "favoritesEmptyHint": "Tap the heart icon to add favorites!",
-    "favoritesTapHere": "Tap here!",
-    "favoritesRegisteredSuffix": "saved",
-    "favoritesCountMessage": "Favorites: {current} / {limit}",
-    "@favoritesCountMessage": {
-      "placeholders": {
-        "current": {},
-        "limit": {}
-      }
-    },
-    "favoriteDeleteTitle": "Remove from favorites?",
-    "favoriteDeleteMessage": "Remove \"{title}\" from your favorites?",
-    "@favoriteDeleteMessage": {
-        "placeholders": {
-          "title": {}
-        }
-    },
-    "favoriteDeleteCancel": "Cancel",
-    "favoriteDeleteConfirm": "Remove",
-    "favoriteLimitTitle": "Favorites limit",
-    "favoriteLimitPurchased": "You can save up to 50 favorites.",
-    "favoriteLimitNotPurchased": "You’ve reached the favorites limit.\nUpgrading lets you save more favorites.",
-    "favoriteLimitClose": "Close",
-    "favoriteLimitUpgrade": "Limit upgrade",
-
-    "update": "updated",
-    "settingsTitle": "Settings",
-    "settingsTheme": "Theme",
-    "settingsThemeSystem": "Use device setting",
-    "settingsThemeLight": "Light mode",
-    "settingsThemeDark": "Dark mode",
-    "settingsThemeLabelSystem": "Device default",
-    "settingsThemeLabelLight": "Light",
-    "settingsThemeLabelDark": "Dark",
-    "settingsFavoriteDeleteTitle": "Confirm when removing favorites",
-    "settingsFavoriteDeleteOn": "On",
-    "settingsFavoriteDeleteOff": "Off",
-    "settingsShop": "Shop",
-    "settingsShopSubtitle": "More features",
-    "settingsPolicies": "Policies",
-    "settingsPoliciesSubtitle": "Privacy policy & Terms",
-    "settingsPrivacyPolicy": "Privacy policy",
-    "aboutRankingCalculation": "How Rankings Are Calculated",
-    "settingsTerms": "Terms of service",
-    "networkErrorTitle": "Cannot connect to the network",
-    "networkErrorDescription": "Please check your connection and try again.",
-    "networkErrorRetry": "Retry",
-    "shopTitleRemoveAds": "Remove ads",
-    "shopDescRemoveAds": "Hide all advertisements",
-    "shopTitleLimit": "Limit upgrade",
-    "shopDescLimit": "Greatly increases the limit for trending videos and favorites",
-    "shopTitleAutoplay": "Auto play",
-    "shopDescAutoplay": "Automatically play videos one after another",
-    "shopPurchasedRemoveAds": "Ads have been removed",
-    "shopPurchasedLimit": "Limits have been upgraded",
-    "shopPurchased": "Purchased",
-    "shopBuy": "{price}\n(Buy)",
-    "@shopBuy": {
-      "placeholders": {
-        "price": {}
-      }
-    },
-    "shopRestore": "Restore purchases",
-    "shopLoadFailed": "Failed to load product information",
-    "shopRestoreAlready": "Your purchases are already restored",
-    "shopRestoreNothing": "No purchases to restore",
-    "shopRestoreDone": "Purchases restored",
-    "settingsRegion": "Region",
-    "settingsRegionSubtitle": "Choose the country for video trends",
-    "regionJapan": "Japan",
-    "regionUnitedStates": "United States",
-    "regionUnitedKingdom": "United Kingdom",
-    "regionGermany": "Germany",
-    "regionFrance": "France",
-    "regionIndia": "India",
-
-    "repeatStatusOff": "OFF",
-    "repeatStatusAscending": "ON (Ascending)",
-    "repeatStatusDescending": "ON (Descending)",
-    "repeatStatusRandom": "ON (Random)",
-    "repeatDialogTitle": "Continuous play settings",
-    "repeatSettingsTitle": "Continuous play settings",
-    "repeatOptionOff": "OFF (do not auto-play)",
-    "repeatOptionAscending": "Play in ascending order",
-    "repeatOptionDescending": "Play in descending order",
-    "repeatOptionRandom": "Shuffle play",
-    "repeatDialogCancel": "Cancel",
-    "repeatDialogSave": "Save",
-    "repeatDialogMessage": "Select how continuous play should behave.",
-
-    "favoriteLockedTitle": "This video is locked",
-    "favoriteLockedMessage": "This video is currently locked.\nUnlock it to remove from favorites.",
-    "favoriteUnlockTitle": "Unlock this video?",
-    "favoriteUnlockMessage": "Unlocking this video will allow it to be removed from favorites.",
-    "favoriteUnlockConfirm": "Unlock",
-    "favoriteUnlockCancel": "Cancel",
-    "favoriteLock": "lock",
-    "favoriteDelete": "delete",
-
-    "updateAvailableTitle": "A new version is available",
-    "updateAvailableMessage": "The latest version is now available.",
-    "updateLater": "Later",
-    "updateNow": "Update",
-
-    "buttonOk": "OK",
-    "settingsAbout": "About this App",
-    "settingsAboutSubtitle": "App information and version",
-    "browserOpenFailed": "Failed to open the browser",
-    "showPartial": "Show Less",
-    "showAll": "Show All",
-    "updateNoticeTitle": "Update Notice",
-    "appUpdatedMessage": "The app has been updated to the latest version",
-    "noVideosFound": "No videos were found",
-    "recentSearches": "Recent Searches",
-    "clear": "Clear",
-    "trendWords": "Trending Words"
+  "newPickupTitle": "Picks",
+  "navPopular": "Trending",
+  "navTopic": "Topic",
+  "navGenre": "Genres",
+  "navFavorites": "Favorites",
+  "noVideosFound": "No videos were found",
+  "genreSearchHeader": "Search videos",
+  "genreNetworkError": "Cannot connect to the network",
+  "favoritesTitle": "Favorites",
+  "favoritesEmptyHint": "Tap the heart icon to add favorites!",
+  "favoritesCountMessage": "Favorites: {current} / {limit}",
+  "@favoritesCountMessage": {
+    "placeholders": {
+      "current": {},
+      "limit": {}
+    }
+  },
+  "favoriteDeleteTitle": "Remove from favorites?",
+  "favoriteDeleteMessage": "Remove \"{title}\" from your favorites?",
+  "@favoriteDeleteMessage": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "favoriteDeleteCancel": "Cancel",
+  "favoriteDeleteConfirm": "Remove",
+  "favoriteLimitTitle": "Favorites limit",
+  "favoriteLimitPurchased": "You can save up to 50 favorites.",
+  "favoriteLimitNotPurchased": "You’ve reached the favorites limit.\nUpgrading lets you save more favorites.",
+  "favoriteLimitClose": "Close",
+  "favoriteLimitUpgrade": "Limit upgrade",
+  "update": "updated",
+  "settingsTheme": "Theme",
+  "settingsThemeSystem": "Use device setting",
+  "settingsThemeLight": "Light mode",
+  "settingsThemeDark": "Dark mode",
+  "settingsThemeLabelSystem": "Device default",
+  "settingsThemeLabelLight": "Light",
+  "settingsThemeLabelDark": "Dark",
+  "settingsFavoriteDeleteTitle": "Confirm when removing favorites",
+  "settingsShop": "Shop",
+  "settingsShopSubtitle": "More features",
+  "settingsPolicies": "Policies",
+  "settingsPrivacyPolicy": "Privacy policy",
+  "aboutRankingCalculation": "How Rankings Are Calculated",
+  "settingsTerms": "Terms of service",
+  "networkErrorTitle": "Cannot connect to the network",
+  "networkErrorDescription": "Please check your connection and try again.",
+  "networkErrorRetry": "Retry",
+  "shopTitleRemoveAds": "Remove ads",
+  "shopDescRemoveAds": "Hide all advertisements",
+  "shopTitleLimit": "Limit upgrade",
+  "shopDescLimit": "Greatly increases the limit for trending videos and favorites",
+  "shopTitleAutoplay": "Auto play",
+  "shopDescAutoplay": "Automatically play videos one after another",
+  "shopPurchasedRemoveAds": "Ads have been removed",
+  "shopPurchasedLimit": "Limits have been upgraded",
+  "shopPurchased": "Purchased",
+  "shopBuy": "{price}\n(Buy)",
+  "@shopBuy": {
+    "placeholders": {
+      "price": {}
+    }
+  },
+  "shopRestore": "Restore purchases",
+  "shopLoadFailed": "Failed to load product information",
+  "shopRestoreAlready": "Your purchases are already restored",
+  "shopRestoreNothing": "No purchases to restore",
+  "shopRestoreDone": "Purchases restored",
+  "settingsRegion": "Region",
+  "regionJapan": "Japan",
+  "regionUnitedStates": "United States",
+  "regionUnitedKingdom": "United Kingdom",
+  "favoriteLockedTitle": "This video is locked",
+  "favoriteLockedMessage": "This video is currently locked.\nUnlock it to remove from favorites.",
+  "favoriteUnlockTitle": "Unlock this video?",
+  "favoriteUnlockMessage": "Unlocking this video will allow it to be removed from favorites.",
+  "favoriteUnlockConfirm": "Unlock",
+  "favoriteUnlockCancel": "Cancel",
+  "favoriteLock": "lock",
+  "favoriteDelete": "delete",
+  "updateAvailableTitle": "A new version is available",
+  "updateAvailableMessage": "The latest version is now available.",
+  "updateLater": "Later",
+  "updateNow": "Update",
+  "buttonOk": "OK",
+  "settingsAbout": "About this App",
+  "browserOpenFailed": "Failed to open the browser",
+  "updateNoticeTitle": "Update Notice",
+  "appUpdatedMessage": "The app has been updated to the latest version",
+  "recentSearches": "Recent Searches",
+  "clear": "Clear",
+  "trendWords": "Trending Words",
+  "commonGame": "Games",
+  "commonOk": "OK",
+  "commonCancel": "Cancel",
+  "commonDone": "Done",
+  "newBadge": "New",
+  "relatedVideos": "Related videos",
+  "pickupRecommended": "Recommended",
+  "pickupTrendMusic": "Trending music",
+  "pushSettingsMenuTitle": "Notifications",
+  "pushSettingsTitle": "Notification settings",
+  "pushSettingsUpdateFailed": "Could not update notification settings",
+  "pushPickupSectionTitle": "Pick-up notifications",
+  "pushPickupDescription": "Get notifications for new videos for each pick-up item.",
+  "pushPickupInitialWarningPrefix": "Notifications are not sent while pick-ups are still at their default settings. To enable them, edit your items in ",
+  "pushPickupEditLink": "Edit pick-ups",
+  "pushPickupInitialWarningSuffix": ".",
+  "pushTrendingSectionTitle": "Trending video notifications",
+  "pushTrendingSectionSubtitle": "Get notified about trending videos.",
+  "pushTrendingTitle": "Trending",
+  "pushItemNotSubscribable": "Notifications are not available for this item",
+  "pickupEditTitle": "Edit pick-ups",
+  "pickupEditDialogTitle": "Change pick-ups",
+  "pickupEditDialogMessage": "Set your pick-ups as shown below.",
+  "pickupEditCurrentSelection": "Current selection",
+  "pickupEditGenreTab": "Genres",
+  "pickupEditChannelTab": "Channels",
+  "pickupEditFavoriteTab": "Favorites",
+  "pickupEditFavoriteEmptyTitle": "No favorites yet",
+  "pickupEditFavoriteEmptyMessage": "When you add favorite videos, their channels will appear here.",
+  "pickupEditNewNotification": "New video notifications",
+  "pickupEditSaveFailed": "Failed to save settings",
+  "pickupEditCategoryFallback": "Category {categoryId}",
+  "@pickupEditCategoryFallback": {
+    "placeholders": {
+      "categoryId": {}
+    }
+  },
+  "topicPickupEditTitle": "Edit pick-ups",
+  "topicPickupEditMessage": "To customize pick-ups by genre or channel, tap the button at the bottom right.",
+  "pickupEmptyNewVideos": "No new videos yet",
+  "watchHistoryTitle": "Watch history",
+  "watchHistoryEmpty": "No watch history yet",
+  "videoPlayerOpenYoutubeTooltip": "Open in YouTube",
+  "videoPlayerTitle": "Playing on YouTube",
+  "videoPlayerDescription": "Tap Open to view the video page.",
+  "videoPlayerOpening": "Opening...",
+  "videoPlayerOpen": "Open",
+  "settingsConfirmDeleteEnabled": "Confirm",
+  "settingsConfirmDeleteDisabled": "Do not confirm",
+  "topBarSortTooltip": "Sort",
+  "sortByScore": "Score",
+  "sortByViews": "Views",
+  "sortByNewest": "Newest",
+  "publishedSecondsAgo": "{count}s ago",
+  "@publishedSecondsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedMinutesAgo": "{count}m ago",
+  "@publishedMinutesAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedHoursAgo": "{count}h ago",
+  "@publishedHoursAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedDaysAgo": "{count}d ago",
+  "@publishedDaysAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedWeeksAgo": "{count}w ago",
+  "@publishedWeeksAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedMonthsAgo": "{count}mo ago",
+  "@publishedMonthsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "publishedYearsAgo": "{count}y ago",
+  "@publishedYearsAgo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountTenThousand": "{count}0K",
+  "@viewCountTenThousand": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountHundredMillion": "{count}00M",
+  "@viewCountHundredMillion": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "viewCountFull": "{count} views",
+  "@viewCountFull": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "animeCurrentSeasonLink": "Current season anime list (external link)",
+  "animeCurrentSeasonTitle": "Current season anime",
+  "animePastSeasonsLink": "Past season lists",
+  "animeLinkPending": "The link URL is not set yet"
 }

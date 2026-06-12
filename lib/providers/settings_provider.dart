@@ -8,8 +8,6 @@ class SettingsProvider extends ChangeNotifier {
 
   bool get skipDeleteConfirm => _skipDeleteConfirm;
 
-  String get label => _skipDeleteConfirm ? "確認しない" : "確認する";
-
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _skipDeleteConfirm = prefs.getBool(_key) ?? false;
