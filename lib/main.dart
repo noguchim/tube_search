@@ -31,6 +31,7 @@ import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/services/limit_service.dart';
+import 'package:tube_search/services/push_navigation_overlay.dart';
 import 'package:tube_search/services/push_token_store.dart';
 import 'package:tube_search/services/watch_history_service.dart';
 import 'package:tube_search/services/youtube_api_service.dart';
@@ -148,6 +149,10 @@ void main() async {
           create: (_) => RecommendationHistoryProvider()..load(),
         ),
 
+        ChangeNotifierProvider(
+          create: (_) => PushNavigationOverlay(),
+        ),
+
         // ★ IapService + IapProvider
         ChangeNotifierProvider(
           create: (_) {
@@ -184,9 +189,35 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   StreamSubscription<String>? _tokenRefreshSub;
+  RegionProvider? _regionProvider;
 
   int _notificationIdFromVideoId(String videoId) {
     return videoId.hashCode & 0x7fffffff;
+  }
+
+  List<String> _parsePickupKeys(dynamic raw) {
+    if (raw == null) return const [];
+
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+
+    final text = raw.toString().trim();
+    if (text.isEmpty) return const [];
+
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is List) {
+        return decoded
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {
+      // Fallback to single key below.
+    }
+
+    return [text];
   }
 
   @override
@@ -194,7 +225,10 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RegionProvider>().initFromLocale(context);
+      final regionProvider = context.read<RegionProvider>();
+      _regionProvider = regionProvider;
+      regionProvider.addListener(_handleRegionChanged);
+      unawaited(regionProvider.initFromLocale());
     });
 
     // 🔥 初回フレーム後にGDPR実行
@@ -205,13 +239,18 @@ class _MyAppState extends State<MyApp> {
     // FCM + ローカル通知初期化
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      final regionProvider = context.read<RegionProvider>();
+      final api = context.read<YouTubeApiService>();
 
       // 先にローカル通知を初期化
       await initLocalNotification();
 
       if (!mounted) return;
 
-      final api = context.read<YouTubeApiService>();
+      await regionProvider.initFromLocale();
+
+      if (!mounted) return;
+
       await _initFcm(api);
 
       // 完全終了 → 通知タップ起動
@@ -236,7 +275,34 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     _tokenRefreshSub?.cancel();
+    _regionProvider?.removeListener(_handleRegionChanged);
     super.dispose();
+  }
+
+  Future<void> _handleRegionChanged() async {
+    if (!mounted) return;
+
+    try {
+      final regionProvider = _regionProvider;
+      if (regionProvider == null) return;
+      final api = context.read<YouTubeApiService>();
+
+      final token = await PushTokenStore.getToken();
+      if (token == null || token.isEmpty) return;
+
+      final deviceId = await DeviceIdStore.getOrCreate();
+      final regionCode = regionProvider.regionCode;
+
+      await api.saveFcmToken(
+        token,
+        regionCode,
+        deviceId,
+      );
+
+      logger.i("✅ FCM token region synced: $regionCode");
+    } catch (e, st) {
+      logger.e("❌ region sync saveFcmToken error: $e", stackTrace: st);
+    }
   }
 
   Future<void> _initConsent() async {
@@ -320,6 +386,7 @@ class _MyAppState extends State<MyApp> {
       final image = message.data['image'];
       final videoId = message.data['videoId']?.toString() ?? '';
       final pickupKey = message.data['pickupKey']?.toString() ?? '';
+      final pickupKeys = _parsePickupKeys(message.data['pickupKeys']);
 
       if (Platform.isIOS) return;
 
@@ -330,6 +397,7 @@ class _MyAppState extends State<MyApp> {
         image,
         videoId,
         pickupKey,
+        pickupKeys,
       );
     });
 
@@ -470,6 +538,7 @@ class _MyAppState extends State<MyApp> {
 
     if (type == 'pickup_new') {
       final pickupKey = data['pickupKey']?.toString() ?? '';
+      final pickupKeys = _parsePickupKeys(data['pickupKeys']);
       final videoId = data['videoId']?.toString() ?? '';
 
       nav.popUntil((route) => route.isFirst);
@@ -481,6 +550,7 @@ class _MyAppState extends State<MyApp> {
         nav.context.read<PickupSettingsProvider>().openFromPush(
               pickupKey: pickupKey,
               videoId: videoId,
+              pickupKeys: pickupKeys,
             );
       });
 
@@ -513,6 +583,7 @@ class _MyAppState extends State<MyApp> {
     String? imageUrl,
     String videoId,
     String pickupKey,
+    List<String> pickupKeys,
   ) async {
     final imageBytes = await _downloadImageWithFallback(imageUrl);
 
@@ -545,6 +616,7 @@ class _MyAppState extends State<MyApp> {
         "type": type,
         "videoId": videoId,
         "pickupKey": pickupKey,
+        "pickupKeys": pickupKeys,
         "title": title,
         "body": body,
       }),
@@ -572,12 +644,14 @@ class _MyAppState extends State<MyApp> {
       }
 
       final context = nav.context;
+      final pushOverlay = context.read<PushNavigationOverlay>();
 
       // =====================================================
       // 新着通知：動画詳細へ直行せず、ホームのピックアップへ
       // =====================================================
       if (type == 'pickup_new') {
         final pickupKey = message.data['pickupKey']?.toString() ?? '';
+        final pickupKeys = _parsePickupKeys(message.data['pickupKeys']);
         final videoId = message.data['videoId']?.toString() ?? '';
 
         nav.popUntil((route) => route.isFirst);
@@ -589,6 +663,7 @@ class _MyAppState extends State<MyApp> {
           nav.context.read<PickupSettingsProvider>().openFromPush(
                 pickupKey: pickupKey,
                 videoId: videoId,
+                pickupKeys: pickupKeys,
               );
         });
 
@@ -600,6 +675,9 @@ class _MyAppState extends State<MyApp> {
       // =====================================================
       // 人気急上昇など：従来通り動画詳細へ
       // =====================================================
+      nav.popUntil((route) => route.isFirst);
+      pushOverlay.show();
+
       if (videoId.isEmpty) {
         logger.w("❌ push: videoId empty");
         return;
@@ -626,6 +704,7 @@ class _MyAppState extends State<MyApp> {
     } catch (e, st) {
       logger.e("❌ push navigation error: $e", stackTrace: st);
     } finally {
+      rootNavigatorKey.currentContext?.read<PushNavigationOverlay>().hide();
       _isPushingFromPush = false;
     }
   }
@@ -654,6 +733,23 @@ class _MyAppState extends State<MyApp> {
       darkTheme: appDarkTheme,
       themeMode: themeProvider.themeMode,
       // ← Provider で切替
+      builder: (context, child) {
+        final visible = context.watch<PushNavigationOverlay>().visible;
+        return Stack(
+          children: [
+            if (child != null) child,
+            if (visible)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
 
       home: const MainNavigationScreen(),
       navigatorKey: rootNavigatorKey,
@@ -838,6 +934,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final iap = context.watch<IapProvider>();
     final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
     final search = context.watch<SearchUIProvider>();
+    final expandedController = context.read<ExpandedVideoController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return KeyboardVisibilityBuilder(
@@ -862,6 +959,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     if (_selectedIndex == index) return;
 
                     setState(() => _selectedIndex = index);
+                    expandedController.close();
                     context.read<SearchUIProvider>().close();
                   },
                   children: _screens,
@@ -888,6 +986,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         _scaffoldKey.currentState?.openDrawer();
                       },
                       onTrendTap: () {
+                        expandedController.close();
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -897,6 +996,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         );
                       },
                       onSearchTap: () {
+                        expandedController.close();
                         context.read<SearchUIProvider>().open();
                       },
                       onTabSelected: (index) {
@@ -907,6 +1007,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
                         // 🔥 検索Overlayを閉じる
                         context.read<SearchUIProvider>().close();
+                        expandedController.close();
 
                         // ==================================================
                         // 🔥 同じタブ → スクロールTOP

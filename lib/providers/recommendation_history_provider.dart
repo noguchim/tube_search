@@ -75,8 +75,10 @@ class RecommendationHistoryProvider extends ChangeNotifier {
 
   final List<RecommendationSignal> _signals = [];
   bool _loaded = false;
+  int _revision = 0;
 
   List<RecommendationSignal> get signals => List.unmodifiable(_signals);
+  int get revision => _revision;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -208,6 +210,7 @@ class RecommendationHistoryProvider extends ChangeNotifier {
 
   Future<void> clear() async {
     _signals.clear();
+    _revision++;
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
@@ -245,6 +248,7 @@ class RecommendationHistoryProvider extends ChangeNotifier {
     }
 
     _sortAndTrim();
+    _revision++;
     notifyListeners();
     await _save();
   }

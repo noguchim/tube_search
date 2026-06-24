@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../widgets/network_error_view.dart';
+
 class AnimeWebViewScreen extends StatefulWidget {
   final String url;
   final String title;
@@ -18,6 +20,15 @@ class AnimeWebViewScreen extends StatefulWidget {
 class _AnimeWebViewScreenState extends State<AnimeWebViewScreen> {
   late final WebViewController _controller;
   bool _loading = true;
+  bool _hasError = false;
+
+  void _loadUrl() {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+    _controller.loadRequest(Uri.parse(widget.url));
+  }
 
   @override
   void initState() {
@@ -27,15 +38,33 @@ class _AnimeWebViewScreenState extends State<AnimeWebViewScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) {
+              setState(() {
+                _loading = true;
+                _hasError = false;
+              });
+            }
+          },
           onNavigationRequest: (_) => NavigationDecision.navigate,
           onPageFinished: (_) {
             if (mounted) {
               setState(() => _loading = false);
             }
           },
+          onWebResourceError: (error) {
+            if (error.isForMainFrame == false) return;
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _hasError = true;
+              });
+            }
+          },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    _loadUrl();
   }
 
   @override
@@ -51,7 +80,9 @@ class _AnimeWebViewScreenState extends State<AnimeWebViewScreen> {
         children: [
           Padding(
             padding: EdgeInsets.only(top: topPadding + 60),
-            child: WebViewWidget(controller: _controller),
+            child: _hasError
+                ? NetworkErrorView(onRetry: _loadUrl)
+                : WebViewWidget(controller: _controller),
           ),
           if (_loading) const Center(child: CircularProgressIndicator()),
           Positioned(

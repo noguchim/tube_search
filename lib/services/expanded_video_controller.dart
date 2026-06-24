@@ -34,6 +34,7 @@ class ExpandedVideoController extends ChangeNotifier {
   }
 
   void close() {
+    if (_video == null && _rank == null) return;
     _video = null;
     _rank = null;
     _presentationMode = VideoPresentationMode.ranked;

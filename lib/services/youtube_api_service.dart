@@ -429,6 +429,7 @@ class YouTubeApiService {
     List<RecommendationSignal> signals = const [],
     Set<String> excludeChannelIds = const {},
     Set<String> excludeCategoryIds = const {},
+    int historyRevision = 0,
     int maxResults = 5,
     String regionCode = "JP",
     bool forceRefresh = false,
@@ -442,7 +443,8 @@ class YouTubeApiService {
     final excludeChannelKey = (excludeChannelIds.toList()..sort()).join(',');
     final excludeCategoryKey = (excludeCategoryIds.toList()..sort()).join(',');
     final key =
-        "recommended_${regionCode}_${maxResults}_${signalKey}_exclude_${excludeChannelKey}_$excludeCategoryKey";
+        "recommended_${regionCode}_${maxResults}_${signalKey}_exclude_${excludeChannelKey}_$excludeCategoryKey"
+        "_rev_$historyRevision";
     final now = DateTime.now();
 
     if (!forceRefresh &&
@@ -482,7 +484,8 @@ class YouTubeApiService {
       "[fetchRecommendedVideos] "
       "signals=${signalPayload.length} region=$regionCode max=$maxResults "
       "excludeChannels=${excludeChannelIds.length} "
-      "excludeCategories=${excludeCategoryIds.length}",
+      "excludeCategories=${excludeCategoryIds.length} "
+      "historyRevision=$historyRevision",
     );
 
     final uri = Uri.https(

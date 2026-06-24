@@ -31,15 +31,18 @@ class VideoDetailScreen extends StatefulWidget {
 
 class VideoDetailScreenState extends State<VideoDetailScreen> {
   late Future<List<YouTubeVideo>> _futureVideos;
+  late final ExpandedVideoController _expandedVideoController;
 
   @override
   void initState() {
     super.initState();
+    _expandedVideoController = context.read<ExpandedVideoController>();
     _futureVideos = _loadVideos();
   }
 
   @override
   void dispose() {
+    _expandedVideoController.close();
     super.dispose();
   }
 

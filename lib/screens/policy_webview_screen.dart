@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../widgets/network_error_view.dart';
+
 class PolicyWebViewScreen extends StatefulWidget {
   final String url; // ← privacy / terms どちらでもOK
 
@@ -17,6 +19,16 @@ class PolicyWebViewScreen extends StatefulWidget {
 class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
   late final WebViewController _controller;
   bool _loading = true;
+  bool _hasError = false;
+  late final Uri _uri;
+
+  void _loadUrl() {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+    _controller.loadRequest(_uri);
+  }
 
   @override
   void initState() {
@@ -27,7 +39,7 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
     final isJapanese = locale.languageCode.toLowerCase().startsWith("ja");
 
     // 🌐 URL に lang パラメータ付与
-    final uri = Uri.parse(
+    _uri = Uri.parse(
       "${widget.url}?lang=${isJapanese ? "ja" : "en"}",
     );
 
@@ -35,6 +47,14 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) {
+              setState(() {
+                _loading = true;
+                _hasError = false;
+              });
+            }
+          },
           onNavigationRequest: (request) async {
             final url = request.url;
 
@@ -52,10 +72,24 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
 
             return NavigationDecision.navigate;
           },
-          onPageFinished: (_) => setState(() => _loading = false),
+          onPageFinished: (_) {
+            if (mounted) {
+              setState(() => _loading = false);
+            }
+          },
+          onWebResourceError: (error) {
+            if (error.isForMainFrame == false) return;
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _hasError = true;
+              });
+            }
+          },
         ),
-      )
-      ..loadRequest(uri);
+      );
+
+    _loadUrl();
   }
 
   @override
@@ -68,7 +102,9 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
         children: [
           Padding(
             padding: EdgeInsets.only(top: topPadding + 60),
-            child: WebViewWidget(controller: _controller),
+            child: _hasError
+                ? NetworkErrorView(onRetry: _loadUrl)
+                : WebViewWidget(controller: _controller),
           ),
           if (_loading) const Center(child: CircularProgressIndicator()),
           Positioned(

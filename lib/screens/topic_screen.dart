@@ -21,6 +21,7 @@ import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/expanded_video_overlay.dart';
+import '../widgets/network_error_view.dart';
 import '../widgets/section_side.dart';
 import '../widgets/top_bar.dart';
 
@@ -36,6 +37,7 @@ class TopicScreen extends StatefulWidget {
 class TopicScreenState extends State<TopicScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final ScrollController _scrollController = ScrollController();
+  late final ExpandedVideoController _expandedVideoController;
   bool _isScrollingDown = false;
   bool _didInitialJump = false;
   double _lastOffset = 0;
@@ -58,6 +60,7 @@ class TopicScreenState extends State<TopicScreen>
   @override
   void initState() {
     super.initState();
+    _expandedVideoController = context.read<ExpandedVideoController>();
     _scrollController.addListener(_handleScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -125,6 +128,7 @@ class TopicScreenState extends State<TopicScreen>
 
   @override
   void dispose() {
+    _expandedVideoController.close();
     _scrollController.dispose();
     super.dispose();
   }
@@ -138,6 +142,7 @@ class TopicScreenState extends State<TopicScreen>
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: () async {
+          context.read<ExpandedVideoController>().close();
           final changed = await Navigator.push<bool>(
             context,
             MaterialPageRoute(builder: (_) => const PickupEditScreen()),
@@ -327,10 +332,13 @@ class NewArrivalSection extends StatefulWidget {
   State<NewArrivalSection> createState() => _NewArrivalSectionState();
 }
 
-class _NewArrivalSectionState extends State<NewArrivalSection> {
+class _NewArrivalSectionState extends State<NewArrivalSection>
+    with WidgetsBindingObserver {
   List<YouTubeVideo> videos = [];
   bool isLoading = true;
+  bool _hasPickupError = false;
   final ScrollController _listController = ScrollController();
+  bool _temporarilyBlockPickupTap = false;
 
   String _pickupTimestamp = "";
   bool _isRefreshingPickup = false;
@@ -344,6 +352,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   final Set<String> _unreadPickupKeys = {};
   final Map<String, DateTime> _latestPickupAt = {};
   Map<String, DateTime> _seenPickupAt = {};
+  bool _isResumingRefresh = false;
 
   List<PickupSelectableItem> _pickupItems = [];
   bool _didInitPickup = false;
@@ -373,6 +382,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _pickupTimestamp = _buildNowLabel();
   }
@@ -628,27 +638,25 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     await history.load();
 
     final signals = await history.topSignalsForRecommendation(limit: 5);
-
-    if (signals.isEmpty) {
-      final allData = await api.fetchPickupAll(
-        regionCode: region,
-        forceRefresh: forceRefresh,
-      );
-      return (allData['recommended'] ?? allData['all'] ?? const [])
-          .take(5)
-          .toList(growable: false);
-    }
-
     final excludeTargets = await history.pickupExcludeTargets();
 
-    return api.fetchRecommendedVideos(
+    final list = await api.fetchRecommendedVideos(
       signals: signals,
       excludeChannelIds: excludeTargets.channelIds,
       excludeCategoryIds: excludeTargets.categoryIds,
+      historyRevision: history.revision,
       maxResults: 5,
       regionCode: region,
       forceRefresh: forceRefresh,
     );
+
+    list.sort((a, b) {
+      final aTime = a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+
+    return list;
   }
 
   @override
@@ -667,6 +675,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
     final pickupSettings = context.read<PickupSettingsProvider>();
     final pendingKey = pickupSettings.pendingPickupKey;
+    final pendingKeys = pickupSettings.pendingPickupKeys;
 
     final nextIndex = pendingKey == null
         ? 0
@@ -675,12 +684,11 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     setState(() {
       _selectedIndex = nextIndex >= 0 ? nextIndex : 0;
       isLoading = true;
+      _hasPickupError = false;
       cache.clear();
       cacheTime.clear();
 
-      if (pendingKey != null) {
-        _unreadPickupKeys.add(pendingKey);
-      }
+      _unreadPickupKeys.addAll(pendingKeys);
     });
 
     _scrollToStart();
@@ -691,8 +699,33 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _listController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (!_didInitPickup || _isResumingRefresh || !mounted) return;
+
+    _refreshAfterResume();
+  }
+
+  Future<void> _refreshAfterResume() async {
+    _isResumingRefresh = true;
+
+    try {
+      await _refreshUnreadBadgesForAllPickups(forceRefresh: true);
+
+      if (!mounted) return;
+
+      await fetch(forceRefresh: true);
+    } catch (e) {
+      logger.e("Pickup resume refresh error: $e");
+    } finally {
+      _isResumingRefresh = false;
+    }
   }
 
   String _buildNowLabel() {
@@ -706,12 +739,15 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     return "$date $time updated";
   }
 
-  Future<void> _refreshPickup() async {
+  Future<void> _refreshPickup({
+    bool suppressTapAfterRefresh = false,
+  }) async {
     if (_isRefreshingPickup) return;
 
     setState(() {
       _isRefreshingPickup = true;
       isLoading = true;
+      _hasPickupError = false;
     });
 
     try {
@@ -722,7 +758,19 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
       setState(() {
         _pickupTimestamp = _buildNowLabel();
+        if (suppressTapAfterRefresh) {
+          _temporarilyBlockPickupTap = true;
+        }
       });
+
+      if (suppressTapAfterRefresh) {
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return;
+
+        setState(() {
+          _temporarilyBlockPickupTap = false;
+        });
+      }
     } catch (e) {
       logger.e("Pickup refresh error: $e");
     } finally {
@@ -762,6 +810,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
       setState(() {
         videos = cache[key]!;
         isLoading = false;
+        _hasPickupError = false;
       });
 
       return;
@@ -802,6 +851,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
       setState(() {
         videos = list;
         isLoading = false;
+        _hasPickupError = false;
 
         cache[key] = list;
         cacheTime[key] = DateTime.now();
@@ -819,6 +869,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
       setState(() {
         videos = [];
         isLoading = false;
+        _hasPickupError = true;
       });
     }
   }
@@ -880,9 +931,11 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle(theme),
-        _buildHeader(),
-        const SizedBox(height: 4),
+        if (!_hasPickupError) ...[
+          _buildTitle(theme),
+          _buildHeader(),
+          const SizedBox(height: 4),
+        ],
         _buildContent(),
       ],
     );
@@ -962,6 +1015,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     final isDark = theme.brightness == Brightness.dark;
     final pickupSettings = context.watch<PickupSettingsProvider>();
     final pendingPickupKey = pickupSettings.pendingPickupKey;
+    final pendingPickupKeys = pickupSettings.pendingPickupKeys;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 10, 6),
@@ -973,8 +1027,9 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           final item = _pickupItems[index];
           final type = _pickupTypeOf(item);
           final isSelected = index == _selectedIndex;
-          final hasBadge =
-              _unreadPickupKeys.contains(type) || pendingPickupKey == type;
+          final hasBadge = _unreadPickupKeys.contains(type) ||
+              pendingPickupKey == type ||
+              pendingPickupKeys.contains(type);
 
           final bgColor = isSelected
               ? (isDark ? Colors.white : Colors.black)
@@ -1020,8 +1075,10 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
 
                       final pickupSettings =
                           context.read<PickupSettingsProvider>();
-                      if (pickupSettings.pendingPickupKey == currentType) {
-                        pickupSettings.clearPendingPush();
+                      if (pickupSettings.pendingPickupKeys.contains(
+                        currentType,
+                      )) {
+                        pickupSettings.clearPendingPickupKey(currentType);
                       }
 
                       final region = context.read<RegionProvider>().regionCode;
@@ -1032,6 +1089,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                           _selectedIndex = index;
                           videos = cache[key]!;
                           isLoading = false;
+                          _hasPickupError = false;
                         });
 
                         _scrollToStart();
@@ -1041,6 +1099,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
                       setState(() {
                         _selectedIndex = index;
                         isLoading = true;
+                        _hasPickupError = false;
                       });
 
                       _scrollToStart();
@@ -1132,8 +1191,8 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     unawaited(_markPickupRead(type));
 
     final pickupSettings = context.read<PickupSettingsProvider>();
-    if (pickupSettings.pendingPickupKey == type) {
-      pickupSettings.clearPendingPush();
+    if (pickupSettings.pendingPickupKeys.contains(type)) {
+      pickupSettings.clearPendingPickupKey(type);
     }
   }
 
@@ -1152,17 +1211,20 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
     if (videos.isEmpty) {
       return SizedBox(
         height: 255,
-        child: _buildEmpty(),
+        child: _hasPickupError ? _buildError() : _buildEmpty(),
       );
     }
 
-    return SectionSide(
-      videos: videos,
-      isNewVideo: _isNewVideoForCurrentPickup,
-      onVideoTap: _handlePickupVideoTap,
-      asSliver: false,
-      showPopularityScore: false,
-      showRankBadge: false,
+    return IgnorePointer(
+      ignoring: _temporarilyBlockPickupTap,
+      child: SectionSide(
+        videos: videos,
+        isNewVideo: _isNewVideoForCurrentPickup,
+        onVideoTap: _handlePickupVideoTap,
+        asSliver: false,
+        showPopularityScore: false,
+        showRankBadge: false,
+      ),
     );
   }
 
@@ -1179,6 +1241,14 @@ class _NewArrivalSectionState extends State<NewArrivalSection> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildError() {
+    return NetworkErrorView(
+      onRetry: () async {
+        await _refreshPickup(suppressTapAfterRefresh: true);
+      },
     );
   }
 }

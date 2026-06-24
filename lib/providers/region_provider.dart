@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RegionProvider extends ChangeNotifier {
@@ -24,13 +24,17 @@ class RegionProvider extends ChangeNotifier {
   // --------------------------------------------------
   // ⭐ 初期化（保存 → 端末推定 → US フォールバック）
   // --------------------------------------------------
-  Future<void> initFromLocale(BuildContext context) async {
+  Future<void> initFromLocale() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefRegion);
+    final previous = _regionCode;
 
     if (saved != null) {
       _regionCode = saved;
       debugPrint("🌏 [Region] loaded from storage → $_regionCode");
+      if (_regionCode != previous) {
+        notifyListeners();
+      }
       return;
     }
 
@@ -52,6 +56,10 @@ class RegionProvider extends ChangeNotifier {
 
     await prefs.setString(_prefRegion, _regionCode);
     debugPrint("🌏 [Region] saved initial region → $_regionCode");
+
+    if (_regionCode != previous) {
+      notifyListeners();
+    }
   }
 
   // --------------------------------------------------

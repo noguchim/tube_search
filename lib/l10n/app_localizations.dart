@@ -761,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @topicPickupEditMessage.
   ///
   /// In en, this message translates to:
-  /// **'To customize pick-ups by genre or channel, tap the button at the bottom right.'**
+  /// **'Use the button at the bottom right to customize your pick-ups by genre or channel.'**
   String get topicPickupEditMessage;
 
   /// No description provided for @pickupEmptyNewVideos.

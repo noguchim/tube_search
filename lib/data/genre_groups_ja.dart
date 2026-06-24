@@ -118,11 +118,12 @@ const genreGroupsJa = <GenreGroup>[
           query: "パチスロ スマスロ",
           color: Color(0xFF26A69A)),
       GenreCategory(
-          id: 23,
-          name: "コメディ",
-          isOfficial: true,
-          query: "コメディ",
-          color: Color(0xFFF4511E)),
+        id: 23,
+        name: "お笑い",
+        isOfficial: true,
+        query: "お笑い コメディ",
+        color: Color(0xFFF4511E),
+      )
     ],
   ),
 

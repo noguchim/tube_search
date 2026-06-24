@@ -41,6 +41,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
   bool get wantKeepAlive => true;
   bool _isScrollingDown = false;
   final ScrollController _scrollController = ScrollController();
+  late final ExpandedVideoController _expandedVideoController;
   int _lastLimit = 20;
 
   late final IapProvider _iapProvider;
@@ -63,6 +64,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
   @override
   void initState() {
     super.initState();
+    _expandedVideoController = context.read<ExpandedVideoController>();
 
     final api = context.read<YouTubeApiService>();
     final region = context.read<RegionProvider>().regionCode;
@@ -102,6 +104,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
   @override
   void dispose() {
+    _expandedVideoController.close();
     _iapProvider.removeListener(_onIapChanged);
     _regionProvider.removeListener(_onRegionChanged);
     _scrollController.removeListener(_onScroll);

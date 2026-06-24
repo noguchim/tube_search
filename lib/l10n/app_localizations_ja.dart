@@ -350,8 +350,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get topicPickupEditTitle => 'ピックアップの編集';
 
   @override
-  String get topicPickupEditMessage =>
-      'ピックアップをお好みのジャンルやチャンネルに変更したい場合は、右下のボタンをタップ！';
+  String get topicPickupEditMessage => '右下のボタンから、ピックアップをお好みのジャンルやチャンネルに変更できます。';
 
   @override
   String get pickupEmptyNewVideos => 'まだ新着動画がありません';

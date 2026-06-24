@@ -333,9 +333,11 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     String value, {
     required bool selected,
     required VoidCallback onTap,
+    double? maxTextWidth,
   }) {
     final theme = Theme.of(context);
-    final maxTextWidth = MediaQuery.of(context).size.width - 120;
+    final resolvedMaxTextWidth =
+        maxTextWidth ?? (MediaQuery.of(context).size.width - 120);
 
     return InkWell(
       borderRadius: BorderRadius.circular(999),
@@ -366,7 +368,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
             ],
             ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: maxTextWidth,
+                maxWidth: resolvedMaxTextWidth,
               ),
               child: Text(
                 value,
@@ -1007,6 +1009,8 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
     final region = context.watch<RegionProvider>().regionCode;
     final l = AppLocalizations.of(context)!;
     final groups = _getGenreGroups(region);
@@ -1074,124 +1078,72 @@ class _PickupEditScreenState extends State<PickupEditScreen>
               ),
             ),
 
-            // =================================================
-            // Title
-            // =================================================
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                14,
-                12,
-                14,
-                10,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(
-                  12,
-                  12,
-                  12,
-                  14,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? theme.colorScheme.surface
-                      : theme.scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.pickupEditCurrentSelection,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.68),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _selected.map((item) {
-                        return _buildChip(
-                          item.title,
-                          selected: true,
-                          onTap: () => _toggle(item),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-
-            // =================================================
-            // Tab
-            // =================================================
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-              ),
-              child: SizedBox(
-                height: 42,
-                child: TabBar(
-                  controller: _tabController,
-                  dividerColor: Colors.transparent,
-                  indicator: UnderlineTabIndicator(
-                    borderSide: BorderSide(
-                      width: 3,
-                      color: theme.colorScheme.primary,
-                    ),
-                    insets: EdgeInsets.zero,
-                  ),
-                  labelColor: theme.colorScheme.onSurface,
-                  unselectedLabelColor:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                  labelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  tabs: [
-                    Tab(text: l.pickupEditGenreTab),
-                    Tab(text: l.pickupEditChannelTab),
-                    Tab(text: l.pickupEditFavoriteTab),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // =================================================
-            // Content
-            // =================================================
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildGenreSectionWrap(groups),
-                  _channelsLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _buildChannelSectionWrap(
-                          _channels,
-                          categoryNameById,
-                          categoryOrderById,
+              child: isLandscape
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 250,
+                            child: _buildCurrentSelectionCard(
+                              theme,
+                              isDark,
+                              l,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _buildTabBar(theme, l),
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: _buildTabContent(
+                                    groups,
+                                    favoriteChannels,
+                                    categoryNameById,
+                                    categoryOrderById,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            14,
+                            12,
+                            14,
+                            10,
+                          ),
+                          child: _buildCurrentSelectionCard(
+                            theme,
+                            isDark,
+                            l,
+                          ),
                         ),
-                  _buildFavoriteChannelSectionWrap(favoriteChannels),
-                ],
-              ),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: _buildTabBar(theme, l),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: _buildTabContent(
+                            groups,
+                            favoriteChannels,
+                            categoryNameById,
+                            categoryOrderById,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
 
             // =================================================
@@ -1210,70 +1162,186 @@ class _PickupEditScreenState extends State<PickupEditScreen>
               ),
               child: SafeArea(
                 top: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          l.commonCancel,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: theme.colorScheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isLandscape ? 520 : double.infinity,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: (_selected.isEmpty || _isSaving)
-                            ? null
-                            : () async {
-                                if (_isSaving) return;
-
-                                await _showPickupConfirmDialog();
-                              },
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                l.commonDone,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                      ),
+                            ),
+                            child: Text(
+                              l.commonCancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: (_selected.isEmpty || _isSaving)
+                                ? null
+                                : () async {
+                                    if (_isSaving) return;
+
+                                    await _showPickupConfirmDialog();
+                                  },
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    l.commonDone,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCurrentSelectionCard(
+    ThemeData theme,
+    bool isDark,
+    AppLocalizations l,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final chipMaxTextWidth = (constraints.maxWidth - 92).clamp(72.0, 220.0);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? theme.colorScheme.surface
+                : theme.scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l.pickupEditCurrentSelection,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _selected.map((item) {
+                  return _buildChip(
+                    item.title,
+                    selected: true,
+                    onTap: () => _toggle(item),
+                    maxTextWidth: chipMaxTextWidth,
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTabBar(ThemeData theme, AppLocalizations l) {
+    return SizedBox(
+      height: 42,
+      child: TabBar(
+        controller: _tabController,
+        dividerColor: Colors.transparent,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(
+            width: 3,
+            color: theme.colorScheme.primary,
+          ),
+          insets: EdgeInsets.zero,
+        ),
+        labelColor: theme.colorScheme.onSurface,
+        unselectedLabelColor:
+            theme.colorScheme.onSurface.withValues(alpha: 0.55),
+        labelStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+        tabs: [
+          Tab(text: l.pickupEditGenreTab),
+          Tab(text: l.pickupEditChannelTab),
+          Tab(text: l.pickupEditFavoriteTab),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent(
+    List<GenreGroup> groups,
+    List<PickupSelectableItem> favoriteChannels,
+    Map<int, String> categoryNameById,
+    Map<int, int> categoryOrderById,
+  ) {
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildGenreSectionWrap(groups),
+        _channelsLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildChannelSectionWrap(
+                _channels,
+                categoryNameById,
+                categoryOrderById,
+              ),
+        _buildFavoriteChannelSectionWrap(favoriteChannels),
+      ],
     );
   }
 }

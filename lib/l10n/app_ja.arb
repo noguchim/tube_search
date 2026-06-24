@@ -130,7 +130,7 @@
     }
   },
   "topicPickupEditTitle": "ピックアップの編集",
-  "topicPickupEditMessage": "ピックアップをお好みのジャンルやチャンネルに変更したい場合は、右下のボタンをタップ！",
+  "topicPickupEditMessage": "右下のボタンから、ピックアップをお好みのジャンルやチャンネルに変更できます。",
   "pickupEmptyNewVideos": "まだ新着動画がありません",
   "watchHistoryTitle": "視聴履歴",
   "watchHistoryEmpty": "視聴履歴がありません",

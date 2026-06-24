@@ -268,202 +268,226 @@ class _ShopScreenState extends State<ShopScreen> {
                       ListView(
                         padding: const EdgeInsets.fromLTRB(16, 64, 16, 24),
                         children: [
-                          // ===== 広告削除 =====
-                          ShopListCard(
-                            icon: Icons.ads_click,
-                            title: l.shopTitleRemoveAds,
-                            description: l.shopDescRemoveAds,
-                            enabled: !removeAdsPurchased,
-                            purchased: removeAdsPurchased,
-                            iconColor: Theme.of(context).colorScheme.primary,
-                            priceLabel: _priceRemove,
-                            minHeight: 80,
-                            onBuy: removeAdsPurchased
-                                ? null
-                                : () async {
-                                    logger.i('[UI] Buy tapped');
-                                    setState(() => isProcessing = true);
-                                    try {
-                                      final messenger =
-                                          ScaffoldMessenger.of(context);
-                                      final iap =
-                                          context.read<IapProvider>().service;
-
-                                      final product = await iap.loadProduct(
-                                          IapProducts.removeAds.id);
-                                      if (product == null) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              l.shopLoadFailed,
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      await iap.buy(product);
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => isProcessing = false);
-                                      }
-                                    }
-                                  },
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ===== 上限拡張 =====
-                          ShopListCard(
-                            icon: Icons.upgrade,
-                            title: l.shopTitleLimit,
-                            description: l.shopDescLimit,
-                            enabled: !limitUpgradePurchased,
-                            purchased: limitUpgradePurchased,
-                            iconColor: const Color(0xFF9B59B6),
-                            priceLabel: _priceLimit,
-                            minHeight: 80,
-                            onBuy: limitUpgradePurchased
-                                ? null
-                                : () async {
-                                    logger.i('[UI] Buy tapped (limit_upgrade)');
-                                    setState(() => isProcessing = true);
-                                    try {
-                                      final messenger =
-                                          ScaffoldMessenger.of(context);
-                                      final iap =
-                                          context.read<IapProvider>().service;
-
-                                      final product = await iap.loadProduct(
-                                          IapProducts.limitUpgrade.id);
-                                      if (product == null) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              l.shopLoadFailed,
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      await iap.buy(product);
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => isProcessing = false);
-                                      }
-                                    }
-                                  },
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ===== 連続再生（将来用）=====
-                          // ShopListCard(
-                          //   icon: Icons.play_circle_outline,
-                          //   title:
-                          //       AppLocalizations.of(context)!.shopTitleAutoplay,
-                          //   description:
-                          //       AppLocalizations.of(context)!.shopDescAutoplay,
-                          //   enabled: false,
-                          //   purchased: false,
-                          //   iconColor: const Color(0xFFE67E22),
-                          //   priceLabel: "0",
-                          //   minHeight: 90,
-                          // ),
-
-                          const SizedBox(height: 50),
-
                           Center(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                logger.i("-----restore tap-----");
-                                final messenger = ScaffoldMessenger.of(context);
-                                setState(() => isProcessing = true);
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 560),
+                              child: Column(
+                                children: [
+                                  // ===== 広告削除 =====
+                                  ShopListCard(
+                                    icon: Icons.ads_click,
+                                    title: l.shopTitleRemoveAds,
+                                    description: l.shopDescRemoveAds,
+                                    enabled: !removeAdsPurchased,
+                                    purchased: removeAdsPurchased,
+                                    iconColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    priceLabel: _priceRemove,
+                                    minHeight: 80,
+                                    onBuy: removeAdsPurchased
+                                        ? null
+                                        : () async {
+                                            logger.i('[UI] Buy tapped');
+                                            setState(() => isProcessing = true);
+                                            try {
+                                              final messenger =
+                                                  ScaffoldMessenger.of(context);
+                                              final iap = context
+                                                  .read<IapProvider>()
+                                                  .service;
 
-                                try {
-                                  final iap = context.read<IapProvider>();
+                                              final product =
+                                                  await iap.loadProduct(
+                                                      IapProducts.removeAds.id);
+                                              if (product == null) {
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      l.shopLoadFailed,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              await iap.buy(product);
+                                            } finally {
+                                              if (mounted) {
+                                                setState(
+                                                    () => isProcessing = false);
+                                              }
+                                            }
+                                          },
+                                  ),
 
-                                  final beforeRemove =
-                                      iap.isPurchased(IapProducts.removeAds.id);
-                                  final beforeLimit = iap
-                                      .isPurchased(IapProducts.limitUpgrade.id);
+                                  const SizedBox(height: 16),
 
-                                  _suppressIapSnack = true;
+                                  // ===== 上限拡張 =====
+                                  ShopListCard(
+                                    icon: Icons.upgrade,
+                                    title: l.shopTitleLimit,
+                                    description: l.shopDescLimit,
+                                    enabled: !limitUpgradePurchased,
+                                    purchased: limitUpgradePurchased,
+                                    iconColor: const Color(0xFF9B59B6),
+                                    priceLabel: _priceLimit,
+                                    minHeight: 80,
+                                    onBuy: limitUpgradePurchased
+                                        ? null
+                                        : () async {
+                                            logger.i(
+                                                '[UI] Buy tapped (limit_upgrade)');
+                                            setState(() => isProcessing = true);
+                                            try {
+                                              final messenger =
+                                                  ScaffoldMessenger.of(context);
+                                              final iap = context
+                                                  .read<IapProvider>()
+                                                  .service;
 
-                                  // ✅ restore中に purchaseStream が反映するまで待つ実装になっている前提
-                                  await iap.service.restore();
+                                              final product = await iap
+                                                  .loadProduct(IapProducts
+                                                      .limitUpgrade.id);
+                                              if (product == null) {
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      l.shopLoadFailed,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              await iap.buy(product);
+                                            } finally {
+                                              if (mounted) {
+                                                setState(
+                                                    () => isProcessing = false);
+                                              }
+                                            }
+                                          },
+                                  ),
 
-                                  final afterRemove =
-                                      iap.isPurchased(IapProducts.removeAds.id);
-                                  final afterLimit = iap
-                                      .isPurchased(IapProducts.limitUpgrade.id);
+                                  const SizedBox(height: 16),
 
-                                  _suppressIapSnack = false;
+                                  // ===== 連続再生（将来用）=====
+                                  // ShopListCard(
+                                  //   icon: Icons.play_circle_outline,
+                                  //   title:
+                                  //       AppLocalizations.of(context)!.shopTitleAutoplay,
+                                  //   description:
+                                  //       AppLocalizations.of(context)!.shopDescAutoplay,
+                                  //   enabled: false,
+                                  //   purchased: false,
+                                  //   iconColor: const Color(0xFFE67E22),
+                                  //   priceLabel: "0",
+                                  //   minHeight: 90,
+                                  // ),
 
-                                  final restoredNow =
-                                      (!beforeRemove && afterRemove) ||
-                                          (!beforeLimit && afterLimit);
+                                  const SizedBox(height: 50),
 
-                                  final alreadyOwned =
-                                      afterRemove || afterLimit;
+                                  Center(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () async {
+                                        logger.i("-----restore tap-----");
+                                        final messenger =
+                                            ScaffoldMessenger.of(context);
+                                        setState(() => isProcessing = true);
 
-                                  logger.i("IAP state after restore tap: "
-                                      "beforeRemove1^$beforeRemove "
-                                      "beforeLimit=$beforeLimit "
-                                      "afterRemove=$afterRemove "
-                                      "afterLimit=$afterLimit "
-                                      "restoredNow=$restoredNow alreadyOwned=$alreadyOwned");
+                                        try {
+                                          final iap =
+                                              context.read<IapProvider>();
 
-                                  // ✅ SnackBarはこの1回だけ
-                                  final String msg;
-                                  if (restoredNow) {
-                                    msg = l.shopRestoreDone;
-                                  } else if (alreadyOwned) {
-                                    msg = l.shopRestoreAlready;
-                                  } else {
-                                    msg = l.shopRestoreNothing;
-                                  }
+                                          final beforeRemove = iap.isPurchased(
+                                              IapProducts.removeAds.id);
+                                          final beforeLimit = iap.isPurchased(
+                                              IapProducts.limitUpgrade.id);
 
-                                  messenger
-                                    ..hideCurrentSnackBar()
-                                    ..showSnackBar(
-                                      SnackBar(
-                                        content: Text(msg),
+                                          _suppressIapSnack = true;
+
+                                          // ✅ restore中に purchaseStream が反映するまで待つ実装になっている前提
+                                          await iap.service.restore();
+
+                                          final afterRemove = iap.isPurchased(
+                                              IapProducts.removeAds.id);
+                                          final afterLimit = iap.isPurchased(
+                                              IapProducts.limitUpgrade.id);
+
+                                          _suppressIapSnack = false;
+
+                                          final restoredNow =
+                                              (!beforeRemove && afterRemove) ||
+                                                  (!beforeLimit && afterLimit);
+
+                                          final alreadyOwned =
+                                              afterRemove || afterLimit;
+
+                                          logger.i(
+                                              "IAP state after restore tap: "
+                                              "beforeRemove1^$beforeRemove "
+                                              "beforeLimit=$beforeLimit "
+                                              "afterRemove=$afterRemove "
+                                              "afterLimit=$afterLimit "
+                                              "restoredNow=$restoredNow alreadyOwned=$alreadyOwned");
+
+                                          // ✅ SnackBarはこの1回だけ
+                                          final String msg;
+                                          if (restoredNow) {
+                                            msg = l.shopRestoreDone;
+                                          } else if (alreadyOwned) {
+                                            msg = l.shopRestoreAlready;
+                                          } else {
+                                            msg = l.shopRestoreNothing;
+                                          }
+
+                                          messenger
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(
+                                              SnackBar(
+                                                content: Text(msg),
+                                              ),
+                                            );
+                                        } finally {
+                                          _suppressIapSnack = false;
+                                          if (mounted) {
+                                            setState(
+                                                () => isProcessing = false);
+                                          }
+                                        }
+                                      },
+                                      icon: const Icon(
+                                        Icons.restore,
+                                        size: 18,
+                                        color: Colors.white70,
                                       ),
-                                    );
-                                } finally {
-                                  _suppressIapSnack = false;
-                                  if (mounted) {
-                                    setState(() => isProcessing = false);
-                                  }
-                                }
-                              },
-                              icon: const Icon(
-                                Icons.restore,
-                                size: 18,
-                                color: Colors.white70,
-                              ),
-                              label: Text(
-                                AppLocalizations.of(context)!.shopRestore,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 14,
-                                ),
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.35),
-                                  width: 1,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.05),
+                                      label: Text(
+                                        AppLocalizations.of(context)!
+                                            .shopRestore,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 14,
+                                        ),
+                                        side: BorderSide(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.35),
+                                          width: 1,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(24),
+                                        ),
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.05),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

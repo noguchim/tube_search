@@ -360,7 +360,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get topicPickupEditMessage =>
-      'To customize pick-ups by genre or channel, tap the button at the bottom right.';
+      'Use the button at the bottom right to customize your pick-ups by genre or channel.';
 
   @override
   String get pickupEmptyNewVideos => 'No new videos yet';

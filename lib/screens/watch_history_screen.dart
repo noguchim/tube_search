@@ -79,6 +79,10 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     final double safeTop = MediaQuery.of(context).padding.top;
+    final media = MediaQuery.of(context);
+    final isLandscape = media.orientation == Orientation.landscape;
+    final isTablet = media.size.shortestSide >= 600;
+    final useGrid = isLandscape || isTablet;
     final items = context.watch<WatchHistoryService>().items;
     final grouped = _group(items);
     final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
@@ -135,7 +139,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                                   ),
                                 ),
 
-                                ...items.map(_item),
+                                _buildDateItems(items, useGrid: useGrid),
                               ],
                             );
                           },
@@ -194,6 +198,31 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
   // -----------------------------
   // アイテム
   // -----------------------------
+  Widget _buildDateItems(
+    List<WatchHistoryItem> items, {
+    required bool useGrid,
+  }) {
+    if (!useGrid) {
+      return Column(
+        children: items.map(_item).toList(),
+      );
+    }
+
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 116,
+        crossAxisSpacing: 0,
+        mainAxisSpacing: 0,
+      ),
+      itemBuilder: (context, index) => _item(items[index]),
+    );
+  }
+
   Widget _item(WatchHistoryItem item) {
     final video = item.video;
     bool isPushing = false;

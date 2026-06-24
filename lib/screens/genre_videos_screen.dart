@@ -55,6 +55,7 @@ class GenreVideosScreen extends StatefulWidget {
 class _GenreVideosScreenState extends State<GenreVideosScreen> {
   late Future<List<YouTubeVideo>> _futureVideos;
   final ScrollController _scrollController = ScrollController();
+  late final ExpandedVideoController _expandedVideoController;
 
   int _lastLimit = 20;
 
@@ -65,6 +66,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   @override
   void initState() {
     super.initState();
+    _expandedVideoController = context.read<ExpandedVideoController>();
     _loadSort();
     _futureVideos = _loadVideos();
     _scrollController.addListener(_onScroll);
@@ -89,6 +91,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
   @override
   void dispose() {
+    _expandedVideoController.close();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -129,22 +132,13 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
       await history.load();
 
       final signals = await history.topSignalsForRecommendation(limit: 8);
-
-      if (signals.isEmpty) {
-        final allData = await api.fetchPickupAll(
-          regionCode: region,
-          forceRefresh: forceRefresh,
-        );
-        list = allData['recommended'] ?? allData['all'] ?? [];
-        return _applySort(list.take(limit).toList());
-      }
-
       final excludeTargets = await history.pickupExcludeTargets();
 
       list = await api.fetchRecommendedVideos(
         signals: signals,
         excludeChannelIds: excludeTargets.channelIds,
         excludeCategoryIds: excludeTargets.categoryIds,
+        historyRevision: history.revision,
         maxResults: limit,
         regionCode: region,
         forceRefresh: forceRefresh,
@@ -324,49 +318,60 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
+    final media = MediaQuery.of(context);
+    final useConstrainedWidth = media.orientation == Orientation.landscape ||
+        media.size.shortestSide >= 600;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF202020) : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.16)
-                : Colors.black.withValues(alpha: 0.08),
-            width: 1,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: useConstrainedWidth ? 560 : double.infinity,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _AnimeLinkRow(
-              label: l.animeCurrentSeasonLink,
-              onTap: () => _openAnimeLink(
-                url: _animeCurrentSeasonUrl(regionCode),
-                title: l.animeCurrentSeasonTitle,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color:
+                  isDark ? const Color(0xFF202020) : theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.16)
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+            child: Column(
+              children: [
+                _AnimeLinkRow(
+                  label: l.animeCurrentSeasonLink,
+                  onTap: () => _openAnimeLink(
+                    url: _animeCurrentSeasonUrl(regionCode),
+                    title: l.animeCurrentSeasonTitle,
+                  ),
+                ),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                ),
+                _AnimeLinkRow(
+                  label: l.animePastSeasonsLink,
+                  onTap: () => _openAnimeLink(
+                    url: _animePastSeasonsUrl(regionCode),
+                    title: l.animePastSeasonsLink,
+                  ),
+                ),
+              ],
             ),
-            _AnimeLinkRow(
-              label: l.animePastSeasonsLink,
-              onTap: () => _openAnimeLink(
-                url: _animePastSeasonsUrl(regionCode),
-                title: l.animePastSeasonsLink,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
