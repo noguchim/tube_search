@@ -220,6 +220,16 @@ class _MyAppState extends State<MyApp> {
     return [text];
   }
 
+  bool _isPickupNewPayload(Map<dynamic, dynamic> data) {
+    final type = data['type']?.toString() ?? '';
+    if (type == 'pickup_new') return true;
+
+    final pickupKey = data['pickupKey']?.toString() ?? '';
+    if (pickupKey.isNotEmpty) return true;
+
+    return _parsePickupKeys(data['pickupKeys']).isNotEmpty;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -313,7 +323,9 @@ class _MyAppState extends State<MyApp> {
     try {
       if (url == null || url.isEmpty) throw Exception("empty url");
 
-      final res = await http.get(Uri.parse(url));
+      final res = await http.get(Uri.parse(url)).timeout(
+            const Duration(seconds: 5),
+          );
 
       if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
         return res.bodyBytes;
@@ -390,14 +402,18 @@ class _MyAppState extends State<MyApp> {
 
       if (Platform.isIOS) return;
 
-      showLocalNotification(
-        type,
-        title,
-        body,
-        image,
-        videoId,
-        pickupKey,
-        pickupKeys,
+      unawaited(
+        showLocalNotification(
+          type,
+          title,
+          body,
+          image,
+          videoId,
+          pickupKey,
+          pickupKeys,
+        ).catchError((e, st) {
+          logger.e("❌ local notification show error: $e", stackTrace: st);
+        }),
       );
     });
 
@@ -494,9 +510,9 @@ class _MyAppState extends State<MyApp> {
     );
 
     const channel = AndroidNotificationChannel(
-      'default_channel',
-      'Default Notifications',
-      description: 'General notifications',
+      'pickup_channel_v2',
+      'Pickup Notifications',
+      description: 'New video notifications',
       importance: Importance.high,
     );
 
@@ -524,7 +540,6 @@ class _MyAppState extends State<MyApp> {
   void handleLocalNotificationTap(String payload) async {
     final data = jsonDecode(payload);
 
-    final type = data['type']?.toString() ?? '';
     final videoId = data['videoId']?.toString() ?? '';
     final title = data['title']?.toString() ?? '';
 
@@ -536,7 +551,7 @@ class _MyAppState extends State<MyApp> {
 
     final context = nav.context;
 
-    if (type == 'pickup_new') {
+    if (_isPickupNewPayload(data)) {
       final pickupKey = data['pickupKey']?.toString() ?? '';
       final pickupKeys = _parsePickupKeys(data['pickupKeys']);
       final videoId = data['videoId']?.toString() ?? '';
@@ -596,8 +611,8 @@ class _MyAppState extends State<MyApp> {
     );
 
     final android = AndroidNotificationDetails(
-      'default_channel',
-      'Default Notifications',
+      'pickup_channel_v2',
+      'Pickup Notifications',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
@@ -649,7 +664,7 @@ class _MyAppState extends State<MyApp> {
       // =====================================================
       // 新着通知：動画詳細へ直行せず、ホームのピックアップへ
       // =====================================================
-      if (type == 'pickup_new') {
+      if (_isPickupNewPayload(message.data)) {
         final pickupKey = message.data['pickupKey']?.toString() ?? '';
         final pickupKeys = _parsePickupKeys(message.data['pickupKeys']);
         final videoId = message.data['videoId']?.toString() ?? '';
@@ -769,6 +784,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   bool _isScrollingDown = false;
   bool debugMode = false;
+  int _lastHandledPickupPushRevision = -1;
 
   // late final List<Widget> _screens;
   double _pageProgress = 0.0;
@@ -929,13 +945,50 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
+  void _selectHomeTabFromPush() {
+    if (!mounted) return;
+
+    context.read<SearchUIProvider>().close();
+    context.read<ExpandedVideoController>().close();
+
+    if (_selectedIndex == 0) {
+      _handleReselectTab(0);
+      return;
+    }
+
+    setState(() {
+      _isTapNavigating = true;
+      _selectedIndex = 0;
+      _pageProgress = 0;
+    });
+
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isTapNavigating = false;
+      _pageProgress = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final iap = context.watch<IapProvider>();
     final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
     final search = context.watch<SearchUIProvider>();
     final expandedController = context.read<ExpandedVideoController>();
+    final pickupSettings = context.watch<PickupSettingsProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (pickupSettings.pendingPickupKey != null &&
+        _lastHandledPickupPushRevision != pickupSettings.revision) {
+      _lastHandledPickupPushRevision = pickupSettings.revision;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _selectHomeTabFromPush();
+      });
+    }
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
@@ -990,7 +1043,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
+                          useRootNavigator: true,
                           useSafeArea: true,
+                          enableDrag: false,
+                          isDismissible: false,
                           backgroundColor: Colors.transparent,
                           builder: (_) => const TrendWordSheet(),
                         );

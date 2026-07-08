@@ -37,6 +37,7 @@ class GenreVideosScreen extends StatefulWidget {
   final String categoryTitle;
   final String? keyword;
   final String searchMode;
+  final String searchSource;
   final ValueChanged<bool>? onScrollChanged;
 
   const GenreVideosScreen({
@@ -45,6 +46,7 @@ class GenreVideosScreen extends StatefulWidget {
     required this.categoryTitle,
     this.keyword,
     required this.searchMode,
+    this.searchSource = "",
     this.onScrollChanged,
   });
 
@@ -153,6 +155,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         categoryId: cat,
         keyword: kw,
         searchMode: widget.searchMode,
+        searchSource: widget.searchSource,
         maxResults: limit,
         regionCode: region,
         forceRefresh: forceRefresh,
@@ -163,6 +166,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           categoryId: "",
           keyword: kw,
           searchMode: widget.searchMode,
+          searchSource: widget.searchSource,
           maxResults: limit,
           regionCode: region,
           forceRefresh: forceRefresh,
@@ -440,8 +444,12 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       floatingActionButton: expanded.video == null
           ? Padding(
-              padding:
-                  EdgeInsets.only(bottom: adsRemoved ? 15 : 45), // ← AdMob分持ち上げ
+              padding: EdgeInsets.only(
+                bottom: UISpacing.fabBottomOffset(
+                  context,
+                  hasAd: !adsRemoved,
+                ),
+              ),
               child: DensityFab(
                 density: density,
                 onToggle: () => context.read<DensityProvider>().toggle(),

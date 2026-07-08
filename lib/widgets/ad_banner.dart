@@ -149,6 +149,7 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
       child: (_isLoaded && banner != null) && !AdMobConfig.useTestAds
           ? AdWidget(ad: banner)
           : _buildDummyBannerGlass(context),
+      // child: _buildDummyBannerGlass(context),
     );
   }
 

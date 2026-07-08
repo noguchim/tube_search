@@ -365,6 +365,8 @@ class SettingsLogic {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -452,6 +454,8 @@ class SettingsLogic {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -503,6 +507,8 @@ class SettingsLogic {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -637,6 +643,8 @@ class SettingsLogic {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -718,6 +726,8 @@ class SettingsLogic {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -835,6 +845,8 @@ class SettingsLogic {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      enableDrag: false,
       backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

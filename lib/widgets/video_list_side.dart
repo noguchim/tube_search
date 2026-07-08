@@ -14,6 +14,7 @@ import '../utils/open_in_custom_tabs.dart';
 import '../utils/rank_badge.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'live_badge.dart';
 import 'new_video_badge.dart';
 import 'popularity_chip.dart';
 
@@ -134,6 +135,21 @@ class VideoListSide extends StatelessWidget {
                               bottom: 4,
                               child: _DurationPill(duration: duration),
                             ),
+                          if (video.isLive)
+                            const Positioned(
+                              left: 5,
+                              bottom: 7,
+                              child: IgnorePointer(
+                                child: LiveBadge(
+                                  fontSize: 11.5,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  backgroundColor: Color(0xFFF57C00),
+                                ),
+                              ),
+                            ),
                           Positioned(
                             top: 0,
                             right: -2,
@@ -148,21 +164,20 @@ class VideoListSide extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (showNewBadge)
-                            const Positioned(
-                              top: 6,
-                              left: 6,
-                              child: IgnorePointer(
-                                child: NewVideoBadge(),
-                              ),
-                            )
-                          else if (rank != null)
+                          if (showNewBadge || rank != null)
                             Positioned(
                               top: 6,
                               left: 6,
                               child: IgnorePointer(
-                                ignoring: true,
-                                child: rankBadge(context, rank!),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (showNewBadge)
+                                      const NewVideoBadge()
+                                    else if (rank != null)
+                                      rankBadge(context, rank!),
+                                  ],
+                                ),
                               ),
                             ),
                         ],

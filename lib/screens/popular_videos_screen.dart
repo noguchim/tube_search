@@ -336,7 +336,12 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: expanded.video == null && !searchIsOpen
           ? Padding(
-              padding: EdgeInsets.only(bottom: adsRemoved ? 15 : 45),
+              padding: EdgeInsets.only(
+                bottom: UISpacing.fabBottomOffset(
+                  context,
+                  hasAd: !adsRemoved,
+                ),
+              ),
               child: DensityFab(
                 density: density,
                 onToggle: () => context.read<DensityProvider>().toggle(),

@@ -18,6 +18,7 @@ import '../utils/rank_badge.dart';
 import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'live_badge.dart';
 
 class VideoOverlayCard extends StatelessWidget {
   final YouTubeVideo video;
@@ -175,6 +176,22 @@ class VideoOverlayCard extends StatelessWidget {
                           ),
                         ),
                       ),
+
+                      if (video.isLive)
+                        const Positioned(
+                          left: 7,
+                          bottom: 78,
+                          child: IgnorePointer(
+                            child: LiveBadge(
+                              fontSize: 14,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              backgroundColor: Color(0xFFF57C00),
+                            ),
+                          ),
+                        ),
 
                       // =====================================================
                       // ❤️ お気に入り

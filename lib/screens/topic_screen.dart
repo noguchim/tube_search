@@ -10,12 +10,15 @@ import 'package:tube_search/screens/pickup_edit_screen.dart';
 import '../data/pickup_selectable_item.dart';
 import '../data/youtube_video.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/iap_provider.dart';
 import '../providers/pickup_settings_provider.dart';
 import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
 import '../providers/search_ui_provider.dart';
 import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
+import '../services/iap_products.dart';
+import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
@@ -258,6 +261,8 @@ class TopicScreenState extends State<TopicScreen>
     final expanded = context.watch<ExpandedVideoController>();
     final expandedController = context.read<ExpandedVideoController>();
     final searchIsOpen = context.watch<SearchUIProvider>().isOpen;
+    final adsRemoved =
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
 
     context.watch<FavoritesService>();
 
@@ -266,7 +271,12 @@ class TopicScreenState extends State<TopicScreen>
           isDark ? theme.scaffoldBackgroundColor : const Color(0xFFFFFFFF),
       floatingActionButton: expanded.video == null && !searchIsOpen
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 45),
+              padding: EdgeInsets.only(
+                bottom: UISpacing.fabBottomOffset(
+                  context,
+                  hasAd: !adsRemoved,
+                ),
+              ),
               child: _buildEditFab(),
             )
           : null,
@@ -531,8 +541,65 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     }
   }
 
+  ({String type, String value})? _pushSubscriptionOf(
+      PickupSelectableItem item) {
+    if (!item.pushEnabled) return null;
+
+    if (item.type == PickupTargetType.channel &&
+        item.channelId != null &&
+        item.channelId!.isNotEmpty) {
+      return (type: 'channel', value: item.channelId!);
+    }
+
+    if (item.type == PickupTargetType.category && item.categoryId != null) {
+      return (type: 'category', value: item.categoryId!.toString());
+    }
+
+    return null;
+  }
+
+  Future<void> _markPickupSeenInApp({
+    required PickupSelectableItem item,
+    required List<YouTubeVideo> seenVideos,
+  }) async {
+    final subscription = _pushSubscriptionOf(item);
+    if (subscription == null) return;
+
+    final api = context.read<YouTubeApiService>();
+    final token = await PushTokenStore.getToken();
+    if (token == null || token.isEmpty) return;
+
+    final videoIds = seenVideos
+        .map((video) => video.id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .take(20)
+        .toList();
+
+    if (videoIds.isEmpty) return;
+
+    try {
+      await api.markPersonalPushSeenInApp(
+        token: token,
+        subscriptionType: subscription.type,
+        subscriptionValue: subscription.value,
+        videoIds: videoIds,
+      );
+    } catch (e) {
+      logger.w("Pickup seen_in_app sync skipped: $e");
+    }
+  }
+
   Future<void> _markPickupRead(String type) async {
     final latest = _latestPickupAt[type];
+    final item = _pickupItems.firstWhere(
+      (item) => _pickupTypeOf(item) == type,
+      orElse: () => const PickupSelectableItem(
+        type: PickupTargetType.category,
+        key: '',
+        title: '',
+      ),
+    );
 
     if (latest == null) {
       setState(() {
@@ -547,6 +614,13 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     });
 
     await _saveSeenPickupAt();
+
+    if (item.key.isNotEmpty) {
+      unawaited(_markPickupSeenInApp(
+        item: item,
+        seenVideos: videos,
+      ));
+    }
   }
 
   Future<void> _loadPickupItems() async {

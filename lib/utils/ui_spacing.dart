@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
 
 class UISpacing {
+  static double fabBottomOffset(
+    BuildContext context, {
+    bool hasAd = false,
+  }) {
+    final media = MediaQuery.of(context);
+    final isTablet = media.size.shortestSide >= 600;
+
+    if (!hasAd) {
+      return 15.0;
+    }
+
+    return isTablet ? 120.0 : 45.0;
+  }
+
   static double bottomSpacer(
     BuildContext context, {
     bool hasFab = false,

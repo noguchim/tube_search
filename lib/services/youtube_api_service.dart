@@ -30,6 +30,8 @@ class YouTubeApiService {
 
   final Map<String, List<YouTubeVideo>> _searchCache = {};
   final Map<String, DateTime> _searchFetchedAt = {};
+  final Map<String, Future<List<YouTubeVideo>>> _searchInFlight = {};
+  static const Duration _searchCacheTTL = Duration(minutes: 30);
 
   final Map<String, Map<String, dynamic>> _contentCache = {};
   final Map<String, DateTime> _contentCacheTime = {};
@@ -42,6 +44,19 @@ class YouTubeApiService {
     final value = json[camelKey] ?? json[snakeKey];
     final text = value?.toString().trim();
     return text == null || text.isEmpty ? null : text;
+  }
+
+  bool _boolValue(
+    Map<dynamic, dynamic> json,
+    String camelKey,
+    String snakeKey,
+  ) {
+    final value = json[camelKey] ?? json[snakeKey];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+
+    final text = value?.toString().trim().toLowerCase();
+    return text == 'true' || text == '1' || text == 'live';
   }
 
   // ------------------------------------------------------------
@@ -225,6 +240,9 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
         score: (() {
           final vScore = (v["score"] as num?)?.toDouble();
           if (vScore == null) return null;
@@ -273,6 +291,7 @@ class YouTubeApiService {
     required String categoryId,
     required String keyword,
     required String searchMode,
+    String searchSource = "",
     int maxResults = 50,
     String regionCode = "JP",
     bool forceRefresh = false,
@@ -285,30 +304,36 @@ class YouTubeApiService {
     final now = DateTime.now();
 
     final key =
-        "search_${regionCode}_${categoryId}_${kw.toLowerCase()}_${searchMode}_$maxResults";
+        "search_${regionCode}_${categoryId}_${kw.toLowerCase()}_${searchMode}_${searchSource}_$maxResults";
 
     logger.i("💾 SearchWithStats: key=$key");
 
     if (!forceRefresh &&
         _searchCache.containsKey(key) &&
         _searchFetchedAt.containsKey(key) &&
-        now.difference(_searchFetchedAt[key]!) < _popularCacheTTL) {
+        now.difference(_searchFetchedAt[key]!) < _searchCacheTTL) {
       logger.i("💾 SearchWithStats: Using cache ($key)");
       return _searchCache[key]!;
-    } else {
-      logger.i("💾 SearchWithStats: No cache and search");
     }
+
+    if (!forceRefresh && _searchInFlight.containsKey(key)) {
+      logger.i("💾 SearchWithStats: Joining in-flight request ($key)");
+      return _searchInFlight[key]!;
+    }
+
+    logger.i("💾 SearchWithStats: No cache and search");
 
     final params = {
       "q": kw,
       "mode": searchMode,
+      "source": searchSource,
       "max": "$maxResults",
       "region": regionCode,
       "categoryId": categoryId, // ←追加（最重要）
     };
 
     logger.i(
-        "[searchWithStats]query=$kw mode=$searchMode max=$maxResults region=$regionCode categoryId=$categoryId");
+        "[searchWithStats]query=$kw mode=$searchMode source=$searchSource max=$maxResults region=$regionCode categoryId=$categoryId");
 
     final uri = Uri.https(
       baseApi,
@@ -316,6 +341,21 @@ class YouTubeApiService {
       params,
     );
 
+    final request = _fetchSearchWithStats(uri, key, now);
+    _searchInFlight[key] = request;
+
+    try {
+      return await request;
+    } finally {
+      _searchInFlight.remove(key);
+    }
+  }
+
+  Future<List<YouTubeVideo>> _fetchSearchWithStats(
+    Uri uri,
+    String key,
+    DateTime fetchedAt,
+  ) async {
     final data = await _getJson(uri);
 
     if (data is! List) {
@@ -333,6 +373,9 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
         score: (() {
           final vScore = (v["score"] as num?)?.toDouble();
           if (vScore == null) return null;
@@ -343,7 +386,7 @@ class YouTubeApiService {
     }).toList();
 
     _searchCache[key] = list;
-    _searchFetchedAt[key] = now;
+    _searchFetchedAt[key] = fetchedAt;
 
     final listCount = list.length;
     logger.i("list-count=$listCount");
@@ -399,6 +442,9 @@ class YouTubeApiService {
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
           viewCount: v["viewCount"] as int?,
           durationSeconds: v["durationSeconds"] as int?,
+          isLive: _boolValue(v, "isLive", "is_live"),
+          liveBroadcastContent:
+              _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
           score: (() {
             final vScore = (v["score"] as num?)?.toDouble();
             if (vScore == null) return null;
@@ -512,6 +558,9 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
         score: (() {
           final vScore = (v["score"] as num?)?.toDouble();
           if (vScore == null) return null;
@@ -683,6 +732,9 @@ class YouTubeApiService {
             : DateTime.tryParse(publishedAtRaw)?.toLocal(),
         viewCount: parseIntOrNull(v["viewCount"]),
         durationSeconds: parseIntOrNull(v["durationSeconds"]),
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
         score: null,
       );
     } catch (e) {
@@ -713,6 +765,9 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["published_at"] ?? "")?.toLocal(),
         viewCount: int.tryParse("${v["view_count"]}"),
         durationSeconds: int.tryParse("${v["duration_seconds"]}"),
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
       );
     }).toList();
   }
@@ -785,6 +840,67 @@ class YouTubeApiService {
     logger.i(
       "✅ push subscriptions replaced count=${items.length}",
     );
+  }
+
+  Future<void> markPersonalPushSeenInApp({
+    required String token,
+    required String subscriptionType,
+    required String subscriptionValue,
+    required List<String> videoIds,
+    int retryCount = 0,
+  }) async {
+    if (videoIds.isEmpty) return;
+
+    await _ensureToken();
+
+    final uri = Uri.https(
+      baseApi,
+      "/api/push_personal_seen_mark.php",
+    );
+
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_jwtToken',
+        'User-Agent': 'NBFactoryApp/1.0',
+      },
+      body: {
+        'token': token,
+        'subscription_type': subscriptionType,
+        'subscription_value': subscriptionValue,
+        'video_ids': jsonEncode(videoIds.take(20).toList()),
+      },
+    );
+
+    if (res.statusCode == 401) {
+      logger.w("⚠️ JWT expired");
+
+      if (retryCount >= 1) {
+        logger.e("❌ markPersonalPushSeenInApp retry failed");
+        throw Exception("markPersonalPushSeenInApp JWT retry failed");
+      }
+
+      _jwtToken = null;
+
+      return markPersonalPushSeenInApp(
+        token: token,
+        subscriptionType: subscriptionType,
+        subscriptionValue: subscriptionValue,
+        videoIds: videoIds,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    if (res.statusCode != 200) {
+      logger.e(
+        "❌ markPersonalPushSeenInApp error: "
+        "${res.statusCode} ${res.body}",
+      );
+
+      throw Exception("markPersonalPushSeenInApp failed");
+    }
+
+    logger.i("✅ personal push seen marked count=${videoIds.length}");
   }
 
   Future<void> updatePushStatus({
@@ -952,6 +1068,9 @@ class YouTubeApiService {
         publishedAt: DateTime.tryParse(v["publishedAt"] ?? "")?.toLocal(),
         viewCount: v["viewCount"] as int?,
         durationSeconds: v["durationSeconds"] as int?,
+        isLive: _boolValue(v, "isLive", "is_live"),
+        liveBroadcastContent:
+            _stringValue(v, "liveBroadcastContent", "live_broadcast_content"),
         score: (() {
           final vScore = (v["score"] as num?)?.toDouble();
           if (vScore == null) return null;

@@ -193,6 +193,7 @@ class _SearchOverlayState extends State<SearchOverlay>
           categoryTitle: kw,
           keyword: kw,
           searchMode: searchMode,
+          searchSource: "free",
         ),
       ),
     );

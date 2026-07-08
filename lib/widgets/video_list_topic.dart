@@ -16,6 +16,7 @@ import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'live_badge.dart';
 
 class VideoListTopic extends StatelessWidget {
   final YouTubeVideo video;
@@ -178,11 +179,20 @@ class VideoListTopic extends StatelessWidget {
                                           ),
                                   ),
 
-                                  if (showNewBadge)
-                                    const Positioned(
+                                  if (showNewBadge || video.isLive)
+                                    Positioned(
                                       left: 8,
                                       top: 8,
-                                      child: _NewVideoBadge(),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (showNewBadge)
+                                            const _NewVideoBadge(),
+                                          if (showNewBadge && video.isLive)
+                                            const SizedBox(width: 6),
+                                          if (video.isLive) const LiveBadge(),
+                                        ],
+                                      ),
                                     ),
 
                                   // ▶ 再生ボタン

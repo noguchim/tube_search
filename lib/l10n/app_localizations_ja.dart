@@ -262,6 +262,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get newBadge => '新着';
 
   @override
+  String get liveBadge => 'ライブ中';
+
+  @override
   String get relatedVideos => '関連動画';
 
   @override
@@ -296,13 +299,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get pushPickupInitialWarningSuffix => 'でピックアップ項目の編集を行ってください。';
 
   @override
-  String get pushTrendingSectionTitle => '人気動画の通知';
+  String get pushTrendingSectionTitle => '超上昇動画の通知';
 
   @override
-  String get pushTrendingSectionSubtitle => '急上昇動画を通知します。';
+  String get pushTrendingSectionSubtitle => '投稿後、大きく再生数を伸ばしている動画を通知します。';
 
   @override
-  String get pushTrendingTitle => '人気急上昇';
+  String get pushTrendingTitle => '超上昇';
 
   @override
   String get pushItemNotSubscribable => 'この項目は通知対象外です';

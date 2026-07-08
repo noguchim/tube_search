@@ -19,6 +19,7 @@ import '../utils/rank_badge.dart';
 import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'live_badge.dart';
 import 'new_video_badge.dart';
 
 class VideoListTile extends StatelessWidget {
@@ -236,21 +237,36 @@ class VideoListTile extends StatelessWidget {
                                     ),
                                   ),
 
-                                  // Rank
-                                  if (showNewBadge)
+                                  if (video.isLive)
                                     const Positioned(
-                                      top: 10,
-                                      left: 10,
+                                      left: 8,
+                                      bottom: 8,
                                       child: IgnorePointer(
-                                        child: NewVideoBadge(),
+                                        child: LiveBadge(
+                                          fontSize: 14,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          backgroundColor: Color(0xFFF57C00),
+                                        ),
                                       ),
-                                    )
-                                  else if (showRankingInfo)
+                                    ),
+
+                                  if (showNewBadge || showRankingInfo)
                                     Positioned(
                                       top: 10,
                                       left: 10,
                                       child: IgnorePointer(
-                                        child: rankBadge(context, rank),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (showNewBadge)
+                                              const NewVideoBadge()
+                                            else if (showRankingInfo)
+                                              rankBadge(context, rank),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                 ],

@@ -267,6 +267,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newBadge => 'New';
 
   @override
+  String get liveBadge => 'Live';
+
+  @override
   String get relatedVideos => 'Related videos';
 
   @override
@@ -303,14 +306,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushPickupInitialWarningSuffix => '.';
 
   @override
-  String get pushTrendingSectionTitle => 'Trending video notifications';
+  String get pushTrendingSectionTitle => 'Fast-Rising Video Notifications';
 
   @override
   String get pushTrendingSectionSubtitle =>
-      'Get notified about trending videos.';
+      'Get notified about videos that are quickly gaining views after being posted.';
 
   @override
-  String get pushTrendingTitle => 'Trending';
+  String get pushTrendingTitle => 'Fast-Rising';
 
   @override
   String get pushItemNotSubscribable =>

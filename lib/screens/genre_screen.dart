@@ -6,11 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../data/base_genre_models.dart';
 import '../data/genre_provider.dart';
-import '../providers/iap_provider.dart';
 import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
-import '../services/limit_service.dart';
-import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/top_bar.dart';
@@ -31,8 +28,6 @@ class GenreScreenState extends State<GenreScreen>
   bool _isScrollingDown = false;
   bool _didInitialJump = false;
   double _lastOffset = 0;
-  Timer? _trendMusicPrefetchTimer;
-  final Set<String> _prefetchedTrendMusicKeys = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -57,8 +52,6 @@ class GenreScreenState extends State<GenreScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _scheduleTrendMusicPrefetch();
-
     if (!_didInitialJump) {
       _didInitialJump = true;
 
@@ -72,44 +65,8 @@ class GenreScreenState extends State<GenreScreen>
 
   @override
   void dispose() {
-    _trendMusicPrefetchTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _scheduleTrendMusicPrefetch() {
-    final region = context.read<RegionProvider>().regionCode;
-    final limit = LimitService.videoListLimit(context.read<IapProvider>());
-    final key = '$region:$limit';
-
-    if (_prefetchedTrendMusicKeys.contains(key)) return;
-
-    _trendMusicPrefetchTimer?.cancel();
-    _trendMusicPrefetchTimer = Timer(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-
-      _prefetchedTrendMusicKeys.add(key);
-
-      unawaited(_prefetchTrendMusic(region: region, limit: limit));
-    });
-  }
-
-  Future<void> _prefetchTrendMusic({
-    required String region,
-    required int limit,
-  }) async {
-    try {
-      logger.i("[GenreScreen] prefetch trend music region=$region limit=$limit");
-      await context.read<YouTubeApiService>().searchWithStats(
-            categoryId: "10",
-            keyword: "音楽",
-            searchMode: "or",
-            maxResults: limit,
-            regionCode: region,
-          );
-    } catch (e, st) {
-      logger.w("[GenreScreen] trend music prefetch skipped: $e\n$st");
-    }
   }
 
   // ----------------------------------------------------

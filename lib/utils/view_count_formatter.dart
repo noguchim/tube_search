@@ -14,6 +14,7 @@ String formatViewCount(
 }) {
   final num? number = num.tryParse(value);
   if (number == null) return '0';
+  if (number <= 0) return '-';
 
   final locale = Localizations.localeOf(context).languageCode;
   final l = AppLocalizations.of(context)!;

@@ -25,6 +25,8 @@ class WatchHistoryService extends ChangeNotifier {
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
           viewCount: v["viewCount"],
           durationSeconds: v["durationSeconds"],
+          isLive: v["isLive"] == true,
+          liveBroadcastContent: v["liveBroadcastContent"]?.toString(),
         );
 
         return WatchHistoryItem(
@@ -97,6 +99,8 @@ class WatchHistoryService extends ChangeNotifier {
       "publishedAt": video.publishedAt?.toIso8601String(),
       "viewCount": video.viewCount,
       "durationSeconds": video.durationSeconds,
+      "isLive": video.isLive,
+      "liveBroadcastContent": video.liveBroadcastContent,
       "watchedAt": DateTime.now().toIso8601String(),
     };
 

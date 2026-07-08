@@ -18,6 +18,7 @@ import '../utils/rank_badge.dart';
 import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
+import 'live_badge.dart';
 
 class VideoListTileSmall extends StatelessWidget {
   final YouTubeVideo video;
@@ -247,13 +248,34 @@ class VideoListTileSmall extends StatelessWidget {
                                 ),
                               ),
 
+                              if (video.isLive)
+                                const Positioned(
+                                  left: 5,
+                                  bottom: 5,
+                                  child: IgnorePointer(
+                                    child: LiveBadge(
+                                      fontSize: 10.5,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      backgroundColor: Color(0xFFF57C00),
+                                    ),
+                                  ),
+                                ),
+
                               // Rank badge
                               Positioned(
                                 top: 6,
                                 left: 6,
                                 child: IgnorePointer(
                                   ignoring: true,
-                                  child: rankBadge(context, rank),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      rankBadge(context, rank),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

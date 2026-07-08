@@ -590,6 +590,12 @@ abstract class AppLocalizations {
   /// **'New'**
   String get newBadge;
 
+  /// No description provided for @liveBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get liveBadge;
+
   /// No description provided for @relatedVideos.
   ///
   /// In en, this message translates to:
@@ -659,19 +665,19 @@ abstract class AppLocalizations {
   /// No description provided for @pushTrendingSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Trending video notifications'**
+  /// **'Fast-Rising Video Notifications'**
   String get pushTrendingSectionTitle;
 
   /// No description provided for @pushTrendingSectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Get notified about trending videos.'**
+  /// **'Get notified about videos that are quickly gaining views after being posted.'**
   String get pushTrendingSectionSubtitle;
 
   /// No description provided for @pushTrendingTitle.
   ///
   /// In en, this message translates to:
-  /// **'Trending'**
+  /// **'Fast-Rising'**
   String get pushTrendingTitle;
 
   /// No description provided for @pushItemNotSubscribable.

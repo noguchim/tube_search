@@ -25,6 +25,8 @@ class FavoritesService extends ChangeNotifier {
           publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
           viewCount: v["viewCount"],
           durationSeconds: v["durationSeconds"],
+          isLive: v["isLive"] == true,
+          liveBroadcastContent: v["liveBroadcastContent"]?.toString(),
           savedAt: DateTime.tryParse(v["savedAt"] ?? ""),
           locked: v["locked"] == true,
         );
@@ -108,6 +110,8 @@ class FavoritesService extends ChangeNotifier {
         "publishedAt": video.publishedAt?.toIso8601String(),
         "viewCount": video.viewCount,
         "durationSeconds": video.durationSeconds,
+        "isLive": video.isLive,
+        "liveBroadcastContent": video.liveBroadcastContent,
         "savedAt": DateTime.now().toIso8601String(),
         "locked": false,
       };
@@ -186,6 +190,8 @@ class FavoritesService extends ChangeNotifier {
       "publishedAt": video.publishedAt?.toIso8601String(),
       "viewCount": video.viewCount,
       "durationSeconds": video.durationSeconds,
+      "isLive": video.isLive,
+      "liveBroadcastContent": video.liveBroadcastContent,
       "savedAt": DateTime.now().toIso8601String(),
       "locked": false,
     };
