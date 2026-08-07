@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How to use Continue Watching</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f2f2f6;
+      --surface: #ffffff;
+      --text: #171717;
+      --muted: #626262;
+      --line: #e5e5e5;
+      --accent: #ff3b30;
+      --check: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 8px 18px calc(32px + env(safe-area-inset-bottom));
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    main { max-width: 720px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 24px; line-height: 1.35; }
+    h2 { margin: 28px 0 10px; font-size: 19px; line-height: 1.4; }
+    p { margin: 8px 0; }
+    .steps {
+      margin: 0 0 4px;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid var(--line);
+    }
+    .steps li {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .number {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-weight: 700;
+      line-height: 1;
+    }
+    ul { margin: 8px 0; padding-left: 1.4em; }
+    li { margin: 8px 0; }
+    .label {
+      display: inline-block;
+      margin-right: 4px;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .check { color: var(--check); }
+    .play { color: var(--accent); }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <ol class="steps">
+    <li><span class="number">1</span><div><strong>Select videos</strong><br>Videos with a <span class="check">checked box</span> are included.</div></li>
+    <li><span class="number">2</span><div><strong>Choose where to start</strong><br>Use <span class="label">Previous</span><span class="label">Next</span> to move the selected video.</div></li>
+    <li><span class="number">3</span><div><strong>Start playback</strong><br>Tap the <span class="play">Play button</span> to start from the selected video.</div></li>
+  </ol>
+
+  <h2>Selecting videos</h2>
+  <ul>
+    <li>Only videos with a green check are played in sequence.</li>
+    <li>Clear a check to skip that video.</li>
+    <li>Live streams and similar videos may not be available for selection.</li>
+  </ul>
+
+  <h2>History and playlists</h2>
+  <ul>
+    <li>Select an earlier playlist in History to continue or watch it again.</li>
+    <li>Use the History menu to rename or delete a playlist.</li>
+  </ul>
+</main>
+</body>
+</html>

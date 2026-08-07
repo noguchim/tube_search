@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>続けて視聴の使い方</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f2f2f6;
+      --surface: #ffffff;
+      --text: #171717;
+      --muted: #626262;
+      --line: #e5e5e5;
+      --accent: #ff3b30;
+      --check: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 8px 18px calc(32px + env(safe-area-inset-bottom));
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    main { max-width: 720px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 24px; line-height: 1.35; }
+    h2 { margin: 28px 0 10px; font-size: 19px; line-height: 1.4; }
+    p { margin: 8px 0; }
+    .steps {
+      margin: 0 0 4px;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid var(--line);
+    }
+    .steps li {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .number {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-weight: 700;
+      line-height: 1;
+    }
+    ul { margin: 8px 0; padding-left: 1.4em; }
+    li { margin: 8px 0; }
+    .label {
+      display: inline-block;
+      margin-right: 4px;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .check { color: var(--check); }
+    .play { color: var(--accent); }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <ol class="steps">
+    <li><span class="number">1</span><div><strong>動画を選ぶ</strong><br><span class="check">チェックON</span>の動画が再生対象です。</div></li>
+    <li><span class="number">2</span><div><strong>再生位置を選ぶ</strong><br><span class="label">前へ</span><span class="label">次へ</span>で選択中動画を移動します。</div></li>
+    <li><span class="number">3</span><div><strong>再生する</strong><br><span class="play">再生ボタン</span>を押すと、選択中動画から再生が始まります。</div></li>
+  </ol>
+
+  <h2>動画の選択</h2>
+  <ul>
+    <li>緑のチェックが付いた動画だけが順番に再生されます。</li>
+    <li>チェックを外すと、その動画を再生対象から除外できます。</li>
+    <li>ライブ中などの動画は選択対象外となる場合があります。</li>
+  </ul>
+
+  <h2>履歴と再生リスト</h2>
+  <ul>
+    <li>履歴から以前のリストを選び、続きから再生したり、もう一度再生したりできます。</li>
+    <li>履歴のメニューから、再生リストの名前変更と削除ができます。</li>
+  </ul>
+</main>
+</body>
+</html>
