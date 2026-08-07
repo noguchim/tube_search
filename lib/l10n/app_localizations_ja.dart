@@ -140,6 +140,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shopDescLimit => '人気一覧表示とお気に入り登録の上限大幅アップ';
 
   @override
+  String get shopTitleContinueWatchPro => '続けて視聴PRO';
+
+  @override
+  String get shopDescContinueWatchPro => '保存できる再生リストを10件から30件に拡張します';
+
+  @override
   String get shopTitleAutoplay => '連続再生';
 
   @override
@@ -150,6 +156,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shopPurchasedLimit => '上限を拡張しました';
+
+  @override
+  String get shopPurchasedContinueWatchPro => '続けて視聴PROを有効にしました';
 
   @override
   String get shopPurchased => '購入済み';
@@ -458,4 +467,130 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get animeLinkPending => 'リンク先は未設定です';
+
+  @override
+  String get continueWatchTitle => '続けて視聴';
+
+  @override
+  String get continueWatchHeaderLine1 => '続けて視聴';
+
+  @override
+  String get continueWatchHeaderLine2 => '';
+
+  @override
+  String get continueWatchTooltip => '続けて視聴';
+
+  @override
+  String get continueWatchCurrentTab => '再生中';
+
+  @override
+  String get continueWatchHistoryTab => '履歴';
+
+  @override
+  String get continueWatchEmpty => '続けて視聴できる動画がありません';
+
+  @override
+  String get continueWatchHistoryEmpty => '保存された再生リストはありません';
+
+  @override
+  String get continueWatchLimitTitle => '再生リストの保存上限';
+
+  @override
+  String continueWatchFreeLimitMessage(int freeLimit, int proLimit) {
+    return '保存できる再生リストは最大$freeLimit件です。\n続けて視聴PROで最大$proLimit件まで拡張できます。';
+  }
+
+  @override
+  String continueWatchProLimitMessage(int proLimit) {
+    return '保存できる再生リストは最大$proLimit件です。\n履歴から不要な再生リストを削除してください。';
+  }
+
+  @override
+  String get continueWatchOpenShop => 'ショップを見る';
+
+  @override
+  String get continueWatchOpenHistory => '履歴を見る';
+
+  @override
+  String get continueWatchExcluded => '対象外';
+
+  @override
+  String get continueWatchStartCurrentList => 'この一覧で新しく開始';
+
+  @override
+  String get continueWatchPrevious => '前へ';
+
+  @override
+  String get continueWatchNext => '次へ';
+
+  @override
+  String get continueWatchHowTo => '使い方';
+
+  @override
+  String get continueWatchHowToTitle => '続けて視聴の使い方';
+
+  @override
+  String get continueWatchSelectAll => '全選択';
+
+  @override
+  String get continueWatchClearAll => '全解除';
+
+  @override
+  String get continueWatchSelectionMenu => '選択メニュー';
+
+  @override
+  String get continueWatchCompactView => 'コンパクト表示';
+
+  @override
+  String get continueWatchLargeView => '拡大表示';
+
+  @override
+  String get continueWatchPlay => '再生';
+
+  @override
+  String get continueWatchPaused => '一時停止中';
+
+  @override
+  String get continueWatchPin => '保存';
+
+  @override
+  String get continueWatchUnpin => '保存を解除';
+
+  @override
+  String get continueWatchRestart => 'もう一度見る';
+
+  @override
+  String get continueWatchRename => '名前を変更';
+
+  @override
+  String get continueWatchQueueName => '再生リスト名';
+
+  @override
+  String get continueWatchSave => '保存';
+
+  @override
+  String get continueWatchDelete => '削除';
+
+  @override
+  String get continueWatchDeleteTitle => 'この再生リストを削除しますか？';
+
+  @override
+  String get continueWatchCompletedTitle => '再生完了';
+
+  @override
+  String get continueWatchCompleted => '再生リストを最後まで再生しました。お疲れさまでした。';
+
+  @override
+  String continueWatchNextCountdown(int seconds) {
+    return '次の動画を$seconds秒後に再生します';
+  }
+
+  @override
+  String get continueWatchStop => '停止';
+
+  @override
+  String get continueWatchUpNext => '次の動画';
+
+  @override
+  String get continueWatchPlayNow => '今すぐ再生';
 }

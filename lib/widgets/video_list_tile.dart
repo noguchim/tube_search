@@ -21,6 +21,7 @@ import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
 import 'new_video_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoListTile extends StatelessWidget {
   final YouTubeVideo video;
@@ -41,13 +42,13 @@ class VideoListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
-    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color cardColor =
-        isDark ? const Color(0xFF202020) : theme.colorScheme.surface;
+    final Color cardColor = isDark
+        ? const Color(0xFF202020)
+        : theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
     final BorderRadius borderRadius = BorderRadius.circular(12);
@@ -87,8 +88,8 @@ class VideoListTile extends StatelessWidget {
     final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
-            ? formatDuration(video.durationSeconds!)
-            : "--:--";
+        ? formatDuration(video.durationSeconds!)
+        : "--:--";
 
     final viewText = formatViewCount(
       context,
@@ -98,9 +99,7 @@ class VideoListTile extends StatelessWidget {
     final timeAndDuration = '$timeAgo${separator(context)}$duration';
 
     final isFav = fav.isFavoriteSync(id);
-    final isWatched = history.isWatchedSync(id);
-    final titleColor =
-        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
+    final titleColor = onSurface;
 
     final showRankingInfo = presentationMode == VideoPresentationMode.ranked;
 
@@ -112,7 +111,11 @@ class VideoListTile extends StatelessWidget {
       try {
         if (id.isEmpty) return;
         logger.w("🚨 OPEN CCT id=$id");
-        await openYouTubeInInAppBrowser(context, videoId: id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isTaping = false;
       }
@@ -193,9 +196,9 @@ class VideoListTile extends StatelessWidget {
                                             fit: BoxFit.cover,
                                             errorWidget: (_, __, ___) =>
                                                 Image.asset(
-                                              'assets/images/no_image.png',
-                                              fit: BoxFit.cover,
-                                            ),
+                                                  'assets/images/no_image.png',
+                                                  fit: BoxFit.cover,
+                                                ),
                                           )
                                         : Image.asset(
                                             'assets/images/no_image.png',
@@ -215,14 +218,19 @@ class VideoListTile extends StatelessWidget {
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          margin:
-                                              const EdgeInsets.only(right: 4),
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.75),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.75,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Text(
                                             timeAndDuration,
@@ -269,6 +277,10 @@ class VideoListTile extends StatelessWidget {
                                         ),
                                       ),
                                     ),
+                                  ThumbnailPlaybackProgress(
+                                    videoId: video.id,
+                                    durationSeconds: video.durationSeconds,
+                                  ),
                                 ],
                               ),
                             ),
@@ -304,10 +316,7 @@ class VideoListTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: onSurface,
-                        ),
+                        style: TextStyle(fontSize: 14, color: onSurface),
                       ),
                       const SizedBox(height: 10),
                       SizedBox(
@@ -319,10 +328,8 @@ class VideoListTile extends StatelessWidget {
                               bottom: -8,
                               child: GestureDetector(
                                 behavior: HitTestBehavior.opaque,
-                                onTap: () => handleFavoriteTap(
-                                  context,
-                                  video: video,
-                                ),
+                                onTap: () =>
+                                    handleFavoriteTap(context, video: video),
                                 child: SizedBox(
                                   width: 44,
                                   height: 44,

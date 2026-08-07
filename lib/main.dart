@@ -14,6 +14,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tube_search/data/youtube_video.dart';
 import 'package:tube_search/providers/density_provider.dart';
 import 'package:tube_search/providers/iap_provider.dart';
 import 'package:tube_search/providers/pickup_settings_provider.dart';
@@ -25,17 +26,21 @@ import 'package:tube_search/providers/search_ui_provider.dart';
 import 'package:tube_search/providers/settings_provider.dart';
 import 'package:tube_search/screens/settings_drawer.dart';
 import 'package:tube_search/screens/topic_screen.dart';
+import 'package:tube_search/screens/continue_watch_screen.dart';
 import 'package:tube_search/screens/video_detail_screen.dart';
 import 'package:tube_search/services/device_id_store.dart';
 import 'package:tube_search/services/expanded_video_controller.dart';
 import 'package:tube_search/services/iap_products.dart';
 import 'package:tube_search/services/iap_service.dart';
 import 'package:tube_search/services/limit_service.dart';
+import 'package:tube_search/services/playback_progress_service.dart';
 import 'package:tube_search/services/push_navigation_overlay.dart';
 import 'package:tube_search/services/push_token_store.dart';
 import 'package:tube_search/services/watch_history_service.dart';
+import 'package:tube_search/services/continue_watch_service.dart';
 import 'package:tube_search/services/youtube_api_service.dart';
 import 'package:tube_search/theme/app_theme.dart';
+import 'package:tube_search/utils/admob_config.dart';
 import 'package:tube_search/utils/app_logger.dart';
 import 'package:tube_search/utils/app_version.dart';
 import 'package:tube_search/utils/navigator_key.dart';
@@ -58,9 +63,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   MobileAds.instance.updateRequestConfiguration(
-    RequestConfiguration(
-      testDeviceIds: [],
-    ),
+    RequestConfiguration(testDeviceIds: []),
   );
 
   await MobileAds.instance.initialize();
@@ -77,18 +80,12 @@ void main() async {
   // Firebase
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final messaging = FirebaseMessaging.instance;
 
   // 通知許可（1回でOK）
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
 
   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
     alert: true,
@@ -105,13 +102,9 @@ void main() async {
         ChangeNotifierProvider.value(value: favorites),
         ChangeNotifierProvider.value(value: themeProvider),
 
-        Provider<YouTubeApiService>(
-          create: (_) => YouTubeApiService(),
-        ),
+        Provider<YouTubeApiService>(create: (_) => YouTubeApiService()),
 
-        ChangeNotifierProvider(
-          create: (_) => ExpandedVideoController(),
-        ),
+        ChangeNotifierProvider(create: (_) => ExpandedVideoController()),
 
         ChangeNotifierProvider(
           create: (_) {
@@ -121,37 +114,29 @@ void main() async {
           },
         ),
 
-        ChangeNotifierProvider(
-          create: (_) => SettingsProvider()..load(),
-        ),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
 
         ChangeNotifierProvider(
           create: (_) => PushNotificationProvider()..load(),
         ),
 
-        ChangeNotifierProvider(
-          create: (_) => WatchHistoryService()..load(),
-        ),
+        ChangeNotifierProvider(create: (_) => WatchHistoryService()..load()),
 
         ChangeNotifierProvider(
-          create: (_) => SearchUIProvider(),
+          create: (_) => PlaybackProgressService()..load(),
         ),
 
-        ChangeNotifierProvider(
-          create: (_) => PushSubscriptionProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => SearchUIProvider()),
 
-        ChangeNotifierProvider(
-          create: (_) => PickupSettingsProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => PushSubscriptionProvider()),
+
+        ChangeNotifierProvider(create: (_) => PickupSettingsProvider()),
 
         ChangeNotifierProvider(
           create: (_) => RecommendationHistoryProvider()..load(),
         ),
 
-        ChangeNotifierProvider(
-          create: (_) => PushNavigationOverlay(),
-        ),
+        ChangeNotifierProvider(create: (_) => PushNavigationOverlay()),
 
         // ★ IapService + IapProvider
         ChangeNotifierProvider(
@@ -170,6 +155,20 @@ void main() async {
             );
 
             return provider;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<IapProvider, ContinueWatchService>(
+          create: (_) => ContinueWatchService()..load(),
+          update: (_, iap, service) {
+            final continueWatch = service ?? ContinueWatchService();
+            continueWatch.setProEnabled(
+              iap.isPurchased(IapProducts.continueWatchPro.id),
+            );
+            if (!continueWatch.loaded) {
+              unawaited(continueWatch.load());
+            }
+            return continueWatch;
           },
         ),
       ],
@@ -265,13 +264,10 @@ class _MyAppState extends State<MyApp> {
 
       // 完全終了 → 通知タップ起動
       if (widget.initialMessage != null) {
-        Future.delayed(
-          const Duration(milliseconds: 500),
-          () async {
-            if (!mounted) return;
-            await handlePushNavigation(widget.initialMessage!);
-          },
-        );
+        Future.delayed(const Duration(milliseconds: 500), () async {
+          if (!mounted) return;
+          await handlePushNavigation(widget.initialMessage!);
+        });
       }
     });
 
@@ -303,11 +299,7 @@ class _MyAppState extends State<MyApp> {
       final deviceId = await DeviceIdStore.getOrCreate();
       final regionCode = regionProvider.regionCode;
 
-      await api.saveFcmToken(
-        token,
-        regionCode,
-        deviceId,
-      );
+      await api.saveFcmToken(token, regionCode, deviceId);
 
       logger.i("✅ FCM token region synced: $regionCode");
     } catch (e, st) {
@@ -323,9 +315,9 @@ class _MyAppState extends State<MyApp> {
     try {
       if (url == null || url.isEmpty) throw Exception("empty url");
 
-      final res = await http.get(Uri.parse(url)).timeout(
-            const Duration(seconds: 5),
-          );
+      final res = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
         return res.bodyBytes;
@@ -361,11 +353,7 @@ class _MyAppState extends State<MyApp> {
       }
 
       await PushTokenStore.save(token);
-      await api.saveFcmToken(
-        token,
-        regionCode,
-        deviceId,
-      );
+      await api.saveFcmToken(token, regionCode, deviceId);
 
       if (!mounted) return;
 
@@ -417,36 +405,32 @@ class _MyAppState extends State<MyApp> {
       );
     });
 
-    _tokenRefreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen(
-      (newToken) async {
-        try {
-          logger.i("🔥 TOKEN REFRESH: $newToken");
+    _tokenRefreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen((
+      newToken,
+    ) async {
+      try {
+        logger.i("🔥 TOKEN REFRESH: $newToken");
 
-          final regionCode = regionProvider.regionCode;
+        final regionCode = regionProvider.regionCode;
 
-          await PushTokenStore.save(newToken);
+        await PushTokenStore.save(newToken);
 
-          await api.saveFcmToken(
-            newToken,
-            regionCode,
-            deviceId,
-          );
+        await api.saveFcmToken(newToken, regionCode, deviceId);
 
-          final keys = await api.fetchPushSubscriptionKeys(
-            token: newToken,
-          );
+        final keys = await api.fetchPushSubscriptionKeys(token: newToken);
 
-          if (!mounted) return;
+        if (!mounted) return;
 
-          pushSubscriptions.setEnabledKeys(keys);
+        pushSubscriptions.setEnabledKeys(keys);
 
-          logger.i("✅ Push subscriptions refreshed count=${keys.length}");
-        } catch (e, st) {
-          logger.e("❌ token refresh subscription preload error: $e",
-              stackTrace: st);
-        }
-      },
-    );
+        logger.i("✅ Push subscriptions refreshed count=${keys.length}");
+      } catch (e, st) {
+        logger.e(
+          "❌ token refresh subscription preload error: $e",
+          stackTrace: st,
+        );
+      }
+    });
   }
 
   Future<String?> _getFcmToken(FirebaseMessaging messaging) async {
@@ -483,9 +467,7 @@ class _MyAppState extends State<MyApp> {
     String token,
   ) async {
     try {
-      final keys = await api.fetchPushSubscriptionKeys(
-        token: token,
-      );
+      final keys = await api.fetchPushSubscriptionKeys(token: token);
 
       if (!mounted) return;
 
@@ -504,10 +486,7 @@ class _MyAppState extends State<MyApp> {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
 
-    const settings = InitializationSettings(
-      android: androidInit,
-      iOS: iosInit,
-    );
+    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
 
     const channel = AndroidNotificationChannel(
       'pickup_channel_v2',
@@ -516,9 +495,10 @@ class _MyAppState extends State<MyApp> {
       importance: Importance.high,
     );
 
-    final androidPlugin =
-        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     await androidPlugin?.createNotificationChannel(channel);
 
@@ -563,10 +543,10 @@ class _MyAppState extends State<MyApp> {
         if (nav == null) return;
 
         nav.context.read<PickupSettingsProvider>().openFromPush(
-              pickupKey: pickupKey,
-              videoId: videoId,
-              pickupKeys: pickupKeys,
-            );
+          pickupKey: pickupKey,
+          videoId: videoId,
+          pickupKeys: pickupKeys,
+        );
       });
 
       return;
@@ -583,10 +563,7 @@ class _MyAppState extends State<MyApp> {
 
     nav.push(
       MaterialPageRoute(
-        builder: (_) => VideoDetailScreen(
-          video: video,
-          title: title,
-        ),
+        builder: (_) => VideoDetailScreen(video: video, title: title),
       ),
     );
   }
@@ -676,10 +653,10 @@ class _MyAppState extends State<MyApp> {
           if (nav == null) return;
 
           nav.context.read<PickupSettingsProvider>().openFromPush(
-                pickupKey: pickupKey,
-                videoId: videoId,
-                pickupKeys: pickupKeys,
-              );
+            pickupKey: pickupKey,
+            videoId: videoId,
+            pickupKeys: pickupKeys,
+          );
         });
 
         return;
@@ -710,10 +687,7 @@ class _MyAppState extends State<MyApp> {
 
       nav.push(
         MaterialPageRoute(
-          builder: (_) => VideoDetailScreen(
-            video: video,
-            title: title,
-          ),
+          builder: (_) => VideoDetailScreen(video: video, title: title),
         ),
       );
     } catch (e, st) {
@@ -735,10 +709,7 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
         AppLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ja'),
-      ],
+      supportedLocales: const [Locale('en'), Locale('ja')],
 
       debugShowCheckedModeBanner: false,
       title: 'Tube+',
@@ -757,9 +728,7 @@ class _MyAppState extends State<MyApp> {
               Positioned.fill(
                 child: ColoredBox(
                   color: Colors.black.withValues(alpha: 0.22),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
           ],
@@ -798,23 +767,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   // final _settingsKey = GlobalKey<SettingsScreenState>();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final Map<int, List<YouTubeVideo>> _continueWatchSources = {
+    0: const [],
+    1: const [],
+    3: const [],
+  };
 
   List<Widget> get _screens => [
-        TopicScreen(
-          onScrollChanged: _onScrollChanged,
-          key: _topicKey,
-        ),
-        PopularVideosScreen(
-          onScrollChanged: _onScrollChanged,
-          key: _popularKey,
-        ),
-        GenreScreen(
-          onScrollChanged: _onScrollChanged,
-          key: _genreKey,
-        ),
-        FavoritesScreen(onScrollChanged: _onScrollChanged, key: _favoriteKey),
-        // SettingsScreen(key: _settingsKey),
-      ];
+    TopicScreen(
+      onScrollChanged: _onScrollChanged,
+      onVideosChanged: (videos) => _setContinueWatchSource(0, videos),
+      key: _topicKey,
+    ),
+    PopularVideosScreen(
+      onScrollChanged: _onScrollChanged,
+      onVideosChanged: (videos) => _setContinueWatchSource(1, videos),
+      key: _popularKey,
+    ),
+    GenreScreen(onScrollChanged: _onScrollChanged, key: _genreKey),
+    FavoritesScreen(
+      onScrollChanged: _onScrollChanged,
+      onVideosChanged: (videos) => _setContinueWatchSource(3, videos),
+      key: _favoriteKey,
+    ),
+    // SettingsScreen(key: _settingsKey),
+  ];
 
   @override
   void initState() {
@@ -928,6 +905,45 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
+  void _setContinueWatchSource(int index, List<YouTubeVideo> videos) {
+    final previous = _continueWatchSources[index] ?? const <YouTubeVideo>[];
+    String signature(List<YouTubeVideo> source) => source
+        .map(
+          (video) =>
+              '${video.id}:${video.durationSeconds}:${video.isLive}:'
+              '${video.liveBroadcastContent}',
+        )
+        .join('|');
+    if (signature(previous) == signature(videos)) return;
+    if (!mounted) return;
+    setState(() {
+      _continueWatchSources[index] = videos;
+    });
+  }
+
+  Future<void> _openContinueWatch() async {
+    final l = AppLocalizations.of(context)!;
+    final videos =
+        _continueWatchSources[_selectedIndex] ?? const <YouTubeVideo>[];
+    final titles = [
+      l.newPickupTitle,
+      l.navPopular,
+      l.navGenre,
+      l.favoritesTitle,
+    ];
+    final sourceTypes = ['pickup', 'popular', 'genre', 'favorites'];
+    context.read<ExpandedVideoController>().close();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ContinueWatchScreen(
+          sourceVideos: videos,
+          sourceTitle: titles[_selectedIndex],
+          sourceType: sourceTypes[_selectedIndex],
+        ),
+      ),
+    );
+  }
+
   void _handleReselectTab(int index) {
     switch (index) {
       case 0:
@@ -981,6 +997,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final expandedController = context.read<ExpandedVideoController>();
     final pickupSettings = context.watch<PickupSettingsProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final continueWatch = context.watch<ContinueWatchService>();
+    final currentSource =
+        _continueWatchSources[_selectedIndex] ?? const <YouTubeVideo>[];
+    final hasEligibleCurrentSource = currentSource.any(
+      ContinueWatchService.isEligibleVideo,
+    );
+    final continueWatchEnabled =
+        _selectedIndex != 2 &&
+        (_selectedIndex == 3
+            ? hasEligibleCurrentSource
+            : continueWatch.hasSavedQueues || hasEligibleCurrentSource);
 
     if (pickupSettings.pendingPickupKey != null &&
         _lastHandledPickupPushRevision != pickupSettings.revision) {
@@ -992,8 +1019,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return KeyboardVisibilityBuilder(
       builder: (context, isKeyboardVisible) {
-        final bool shouldShowBanner =
-            iap.isReady && (!adsRemoved) && (!isKeyboardVisible);
+        final bool shouldShowAds =
+            iap.isReady && AdMobConfig.shouldShowAds(adsRemoved: adsRemoved);
+        final bool shouldShowBanner = shouldShowAds && !isKeyboardVisible;
 
         return Scaffold(
           key: _scaffoldKey,
@@ -1009,9 +1037,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (index) {
+                    if (_isTapNavigating) return;
                     if (_selectedIndex == index) return;
 
                     setState(() => _selectedIndex = index);
+                    if (index == 3) {
+                      _favoriteKey.currentState?.refreshMetadata();
+                    }
                     expandedController.close();
                     context.read<SearchUIProvider>().close();
                   },
@@ -1055,8 +1087,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         expandedController.close();
                         context.read<SearchUIProvider>().open();
                       },
-                      onTabSelected: (index) {
+                      continueWatchEnabled: continueWatchEnabled,
+                      onContinueWatchTap: _openContinueWatch,
+                      onTabSelected: (index) async {
                         Feedback.forTap(context);
+                        if (_isTapNavigating) return;
 
                         // 🔥 キーボード・Focusを先に確実に解除
                         FocusManager.instance.primaryFocus?.unfocus();
@@ -1070,6 +1105,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         // ==================================================
                         if (_selectedIndex == index) {
                           _handleReselectTab(index);
+                          if (index == 3) {
+                            _favoriteKey.currentState?.refreshMetadata();
+                          }
                           return;
                         }
 
@@ -1082,14 +1120,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           _pageProgress = index.toDouble();
                         });
 
-                        _pageController.jumpToPage(index);
-
-                        if (mounted) {
-                          setState(() {
-                            _isTapNavigating = false;
-                            _pageProgress = index.toDouble();
-                          });
+                        await _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                        );
+                        if (!mounted) return;
+                        if (index == 3) {
+                          _favoriteKey.currentState?.refreshMetadata();
                         }
+
+                        setState(() {
+                          _isTapNavigating = false;
+                          _pageProgress = index.toDouble();
+                        });
                       },
                     ),
                   ),

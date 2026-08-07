@@ -6,8 +6,11 @@ import 'package:provider/provider.dart';
 
 import '../data/base_genre_models.dart';
 import '../data/genre_provider.dart';
+import '../providers/iap_provider.dart';
 import '../providers/recommendation_history_provider.dart';
 import '../providers/region_provider.dart';
+import '../services/iap_products.dart';
+import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/top_bar.dart';
@@ -428,6 +431,9 @@ class GenreScreenState extends State<GenreScreen>
     final theme = Theme.of(context);
     final region = context.watch<RegionProvider>().regionCode;
     final groups = getGenreGroupsForRegion(region);
+    final adsRemoved =
+        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final shouldShowAds = AdMobConfig.shouldShowAds(adsRemoved: adsRemoved);
     final media = MediaQuery.of(context);
     final safeTop = media.padding.top;
     final shortestSide = media.size.shortestSide;
@@ -458,7 +464,7 @@ class GenreScreenState extends State<GenreScreen>
                 height: UISpacing.bottomSpacer(
                   context,
                   hasFab: false,
-                  hasAd: true,
+                  hasAd: shouldShowAds,
                 ),
               ),
             ),

@@ -18,6 +18,7 @@ import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class ExpandedVideoOverlay extends StatelessWidget {
   final YouTubeVideo video;
@@ -42,14 +43,14 @@ class ExpandedVideoOverlay extends StatelessWidget {
     final double maxWidth = isLargeTablet
         ? 700
         : isTablet
-            ? 440
-            : 360;
+        ? 440
+        : 360;
 
     final double maxHeight = isLargeTablet
         ? 530
         : isTablet
-            ? 400
-            : 335;
+        ? 400
+        : 335;
 
     return Material(
       color: Colors.transparent,
@@ -75,10 +76,7 @@ class ExpandedVideoOverlay extends StatelessWidget {
                   maxWidth: maxWidth,
                   maxHeight: maxHeight,
                 ),
-                child: ExpandedVideoCard(
-                  video: video,
-                  onClose: onClose,
-                ),
+                child: ExpandedVideoCard(video: video, onClose: onClose),
               ),
             ),
           ],
@@ -112,7 +110,6 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
-    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -127,8 +124,8 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     final timeAgo = formatPublishedAgo(context, video.publishedAt);
     final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
-            ? formatDuration(video.durationSeconds!)
-            : "--:--";
+        ? formatDuration(video.durationSeconds!)
+        : "--:--";
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -136,9 +133,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
     );
     final timeAndDuration = '$timeAgo${separator(context)}$duration';
     final isFav = fav.isFavoriteSync(id);
-    final isWatched = history.isWatchedSync(id);
-    final titleColor =
-        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
+    final titleColor = onSurface;
     final borderRadius = BorderRadius.circular(16);
 
     final controller = context.watch<ExpandedVideoController>();
@@ -168,7 +163,11 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
       try {
         final id = video.id;
         if (id.isEmpty) return;
-        await openYouTubeInInAppBrowser(context, videoId: id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isTaping = false;
       }
@@ -245,7 +244,8 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                                           width: 20,
                                           height: 20,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2),
+                                            strokeWidth: 2,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -256,8 +256,9 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                                       fit: BoxFit.cover,
                                     ),
 
-                                    fadeInDuration:
-                                        const Duration(milliseconds: 200),
+                                    fadeInDuration: const Duration(
+                                      milliseconds: 200,
+                                    ),
                                   )
                                 : Image.asset(
                                     'assets/images/no_image.png',
@@ -280,13 +281,15 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                           // 🔥 投稿日/動画時間
                           Positioned(
                             right: 4,
-                            bottom: 4,
+                            bottom: 8,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   margin: const EdgeInsets.only(right: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.black.withValues(alpha: 0.75),
@@ -344,6 +347,10 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                               ),
                             ),
                           ),
+                          ThumbnailPlaybackProgress(
+                            videoId: video.id,
+                            durationSeconds: video.durationSeconds,
+                          ),
                         ],
                       ),
                     ),
@@ -387,10 +394,7 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: onSurface,
-                      ),
+                      style: TextStyle(fontSize: 14, color: onSurface),
                     ),
 
                     const SizedBox(height: 6),
@@ -437,10 +441,8 @@ class _ExpandedVideoCardState extends State<ExpandedVideoCard>
                             isFavorite: isFav,
                             showBackground: false,
                             scale: 1.25,
-                            onTap: () => handleFavoriteTap(
-                              context,
-                              video: video,
-                            ),
+                            onTap: () =>
+                                handleFavoriteTap(context, video: video),
                           ),
                         ),
                       ],

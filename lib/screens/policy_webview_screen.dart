@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../widgets/app_back_button.dart';
 import '../widgets/network_error_view.dart';
 
 class PolicyWebViewScreen extends StatefulWidget {
   final String url; // ← privacy / terms どちらでもOK
 
-  const PolicyWebViewScreen({
-    super.key,
-    required this.url,
-  });
+  const PolicyWebViewScreen({super.key, required this.url});
 
   @override
   State<PolicyWebViewScreen> createState() => _PolicyWebViewScreenState();
@@ -39,9 +37,7 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
     final isJapanese = locale.languageCode.toLowerCase().startsWith("ja");
 
     // 🌐 URL に lang パラメータ付与
-    _uri = Uri.parse(
-      "${widget.url}?lang=${isJapanese ? "ja" : "en"}",
-    );
+    _uri = Uri.parse("${widget.url}?lang=${isJapanese ? "ja" : "en"}");
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -62,10 +58,7 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
             if (url.contains('play.google.com')) {
               final uri = Uri.parse(url);
 
-              await launchUrl(
-                uri,
-                mode: LaunchMode.externalApplication,
-              );
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
 
               return NavigationDecision.prevent;
             }
@@ -110,22 +103,9 @@ class _PolicyWebViewScreenState extends State<PolicyWebViewScreen> {
           Positioned(
             top: topPadding + 8,
             left: 8,
-            child: Material(
-              color: Colors.white,
-              shape: const CircleBorder(),
-              elevation: 6,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 20,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
+            child: AppBackButton(
+              onPressed: () => Navigator.pop(context),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],

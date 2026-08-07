@@ -52,10 +52,13 @@
   "shopDescRemoveAds": "広告を非表示にします",
   "shopTitleLimit": "上限拡張",
   "shopDescLimit": "人気一覧表示とお気に入り登録の上限大幅アップ",
+  "shopTitleContinueWatchPro": "続けて視聴PRO",
+  "shopDescContinueWatchPro": "保存できる再生リストを10件から30件に拡張します",
   "shopTitleAutoplay": "連続再生",
   "shopDescAutoplay": "動画を自動で連続再生",
   "shopPurchasedRemoveAds": "広告を削除しました",
   "shopPurchasedLimit": "上限を拡張しました",
+  "shopPurchasedContinueWatchPro": "続けて視聴PROを有効にしました",
   "shopPurchased": "購入済み",
   "shopBuy": "{price}\n(購入する)",
   "@shopBuy": {
@@ -209,5 +212,69 @@
   "animeCurrentSeasonLink": "今期アニメ一覧はこちら（外部リンク）",
   "animeCurrentSeasonTitle": "今期アニメ一覧",
   "animePastSeasonsLink": "過去のシーズン一覧",
-  "animeLinkPending": "リンク先は未設定です"
+  "animeLinkPending": "リンク先は未設定です",
+  "continueWatchTitle": "続けて視聴",
+  "continueWatchHeaderLine1": "続けて視聴",
+  "continueWatchHeaderLine2": "",
+  "continueWatchTooltip": "続けて視聴",
+  "continueWatchCurrentTab": "再生中",
+  "continueWatchHistoryTab": "履歴",
+  "continueWatchEmpty": "続けて視聴できる動画がありません",
+  "continueWatchHistoryEmpty": "保存された再生リストはありません",
+  "continueWatchLimitTitle": "再生リストの保存上限",
+  "continueWatchFreeLimitMessage": "保存できる再生リストは最大{freeLimit}件です。\n続けて視聴PROで最大{proLimit}件まで拡張できます。",
+  "@continueWatchFreeLimitMessage": {
+    "placeholders": {
+      "freeLimit": {
+        "type": "int"
+      },
+      "proLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchProLimitMessage": "保存できる再生リストは最大{proLimit}件です。\n履歴から不要な再生リストを削除してください。",
+  "@continueWatchProLimitMessage": {
+    "placeholders": {
+      "proLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchOpenShop": "ショップを見る",
+  "continueWatchOpenHistory": "履歴を見る",
+  "continueWatchExcluded": "対象外",
+  "continueWatchStartCurrentList": "この一覧で新しく開始",
+  "continueWatchPrevious": "前へ",
+  "continueWatchNext": "次へ",
+  "continueWatchHowTo": "使い方",
+  "continueWatchHowToTitle": "続けて視聴の使い方",
+  "continueWatchSelectAll": "全選択",
+  "continueWatchClearAll": "全解除",
+  "continueWatchSelectionMenu": "選択メニュー",
+  "continueWatchCompactView": "コンパクト表示",
+  "continueWatchLargeView": "拡大表示",
+  "continueWatchPlay": "再生",
+  "continueWatchPaused": "一時停止中",
+  "continueWatchPin": "保存",
+  "continueWatchUnpin": "保存を解除",
+  "continueWatchRestart": "もう一度見る",
+  "continueWatchRename": "名前を変更",
+  "continueWatchQueueName": "再生リスト名",
+  "continueWatchSave": "保存",
+  "continueWatchDelete": "削除",
+  "continueWatchDeleteTitle": "この再生リストを削除しますか？",
+  "continueWatchCompletedTitle": "再生完了",
+  "continueWatchCompleted": "再生リストを最後まで再生しました。お疲れさまでした。",
+  "continueWatchNextCountdown": "次の動画を{seconds}秒後に再生します",
+  "@continueWatchNextCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchStop": "停止",
+  "continueWatchUpNext": "次の動画",
+  "continueWatchPlayNow": "今すぐ再生"
 }

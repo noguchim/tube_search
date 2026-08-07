@@ -52,10 +52,13 @@
   "shopDescRemoveAds": "Hide all advertisements",
   "shopTitleLimit": "Limit upgrade",
   "shopDescLimit": "Greatly increases the limit for trending videos and favorites",
+  "shopTitleContinueWatchPro": "Continue Watching Pro",
+  "shopDescContinueWatchPro": "Expand saved playlists from 10 to 30",
   "shopTitleAutoplay": "Auto play",
   "shopDescAutoplay": "Automatically play videos one after another",
   "shopPurchasedRemoveAds": "Ads have been removed",
   "shopPurchasedLimit": "Limits have been upgraded",
+  "shopPurchasedContinueWatchPro": "Continue Watching Pro is now active",
   "shopPurchased": "Purchased",
   "shopBuy": "{price}\n(Buy)",
   "@shopBuy": {
@@ -209,5 +212,69 @@
   "animeCurrentSeasonLink": "Current season anime list (external link)",
   "animeCurrentSeasonTitle": "Current season anime",
   "animePastSeasonsLink": "Past season lists",
-  "animeLinkPending": "The link URL is not set yet"
+  "animeLinkPending": "The link URL is not set yet",
+  "continueWatchTitle": "Continue watching",
+  "continueWatchHeaderLine1": "Continue",
+  "continueWatchHeaderLine2": "watching",
+  "continueWatchTooltip": "Continue watching",
+  "continueWatchCurrentTab": "Now playing",
+  "continueWatchHistoryTab": "History",
+  "continueWatchEmpty": "There are no videos available to continue watching",
+  "continueWatchHistoryEmpty": "No saved playlists",
+  "continueWatchLimitTitle": "Saved playlist limit",
+  "continueWatchFreeLimitMessage": "You can save up to {freeLimit} playlists.\nContinue Watching Pro increases the limit to {proLimit}.",
+  "@continueWatchFreeLimitMessage": {
+    "placeholders": {
+      "freeLimit": {
+        "type": "int"
+      },
+      "proLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchProLimitMessage": "You can save up to {proLimit} playlists.\nDelete an unneeded playlist from History to save another.",
+  "@continueWatchProLimitMessage": {
+    "placeholders": {
+      "proLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchOpenShop": "View shop",
+  "continueWatchOpenHistory": "View history",
+  "continueWatchExcluded": "Unavailable",
+  "continueWatchStartCurrentList": "Start with this list",
+  "continueWatchPrevious": "Previous",
+  "continueWatchNext": "Next",
+  "continueWatchHowTo": "How to use",
+  "continueWatchHowToTitle": "How to use Continue Watching",
+  "continueWatchSelectAll": "Select all",
+  "continueWatchClearAll": "Clear all",
+  "continueWatchSelectionMenu": "Selection menu",
+  "continueWatchCompactView": "Compact view",
+  "continueWatchLargeView": "Large view",
+  "continueWatchPlay": "Play",
+  "continueWatchPaused": "Paused",
+  "continueWatchPin": "Save",
+  "continueWatchUnpin": "Unsave",
+  "continueWatchRestart": "Watch again",
+  "continueWatchRename": "Rename",
+  "continueWatchQueueName": "Playlist name",
+  "continueWatchSave": "Save",
+  "continueWatchDelete": "Delete",
+  "continueWatchDeleteTitle": "Delete this playlist?",
+  "continueWatchCompletedTitle": "Playback complete",
+  "continueWatchCompleted": "You have finished the entire playlist. Thanks for watching.",
+  "continueWatchNextCountdown": "Next video starts in {seconds} seconds",
+  "@continueWatchNextCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "continueWatchStop": "Stop",
+  "continueWatchUpNext": "Up next",
+  "continueWatchPlayNow": "Play now"
 }

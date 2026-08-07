@@ -17,6 +17,7 @@ import '../utils/open_in_custom_tabs.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoListTopic extends StatelessWidget {
   final YouTubeVideo video;
@@ -33,13 +34,13 @@ class VideoListTopic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
-    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color cardColor =
-        isDark ? const Color(0xFF282828) : theme.colorScheme.surface;
+    final Color cardColor = isDark
+        ? const Color(0xFF282828)
+        : theme.colorScheme.surface;
     final Color onSurface = theme.colorScheme.onSurface;
 
     final BorderRadius borderRadius = BorderRadius.circular(12);
@@ -77,9 +78,7 @@ class VideoListTopic extends StatelessWidget {
     final viewAndTime = '$viewText${separator(context)}$timeAgo';
 
     final isFav = fav.isFavoriteSync(id);
-    final isWatched = history.isWatchedSync(id);
-    final titleColor =
-        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
+    final titleColor = onSurface;
 
     bool isPushing = false;
 
@@ -89,7 +88,11 @@ class VideoListTopic extends StatelessWidget {
       try {
         if (id.isEmpty) return;
         logger.w("🚨 OPEN CCT id=$id");
-        await openYouTubeInInAppBrowser(context, videoId: id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isPushing = false;
       }
@@ -169,9 +172,9 @@ class VideoListTopic extends StatelessWidget {
                                             fit: BoxFit.cover,
                                             errorWidget: (_, __, ___) =>
                                                 Image.asset(
-                                              'assets/images/no_image.png',
-                                              fit: BoxFit.cover,
-                                            ),
+                                                  'assets/images/no_image.png',
+                                                  fit: BoxFit.cover,
+                                                ),
                                           )
                                         : Image.asset(
                                             'assets/images/no_image.png',
@@ -207,12 +210,16 @@ class VideoListTopic extends StatelessWidget {
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.75),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.75,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Text(
                                             viewAndTime,
@@ -250,6 +257,10 @@ class VideoListTopic extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                  ThumbnailPlaybackProgress(
+                                    videoId: video.id,
+                                    durationSeconds: video.durationSeconds,
+                                  ),
                                 ],
                               ),
                             ),
@@ -285,10 +296,7 @@ class VideoListTopic extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: onSurface,
-                        ),
+                        style: TextStyle(fontSize: 12, color: onSurface),
                       ),
                     ],
                   ),
@@ -308,17 +316,11 @@ class _NewVideoBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: const Color(0xFFEF4444),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Colors.white,
-          width: 1.2,
-        ),
+        border: Border.all(color: Colors.white, width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.30),
@@ -330,11 +332,7 @@ class _NewVideoBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.fiber_manual_record,
-            size: 8,
-            color: Colors.white,
-          ),
+          const Icon(Icons.fiber_manual_record, size: 8, color: Colors.white),
           const SizedBox(width: 4),
           Text(
             AppLocalizations.of(context)!.newBadge,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import 'app_back_button.dart';
 
 class TopBarBack extends StatelessWidget {
   final String title;
@@ -10,6 +11,9 @@ class TopBarBack extends StatelessWidget {
   final ValueChanged<String>? onSortSelected;
   final String currentSort; // ← 追加（必須）
   final bool showSort;
+  final VoidCallback? onContinueWatchTap;
+  final bool continueWatchEnabled;
+  final bool showContinueWatch;
 
   const TopBarBack({
     super.key,
@@ -18,6 +22,9 @@ class TopBarBack extends StatelessWidget {
     this.onSortSelected,
     this.currentSort = "score",
     this.showSort = true,
+    this.onContinueWatchTap,
+    this.continueWatchEnabled = false,
+    this.showContinueWatch = true,
   });
 
   @override
@@ -47,21 +54,7 @@ class TopBarBack extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ← 戻る
-            InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onBack,
-              child: const SizedBox(
-                width: 40,
-                height: 40,
-                child: Center(
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 22,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+            AppBackButton(onPressed: onBack, color: Colors.white),
 
             const SizedBox(width: 8),
 
@@ -82,22 +75,47 @@ class TopBarBack extends StatelessWidget {
 
             // 右側メニュー
             SizedBox(
-              width: 48,
-              child: (showSort && onSortSelected != null)
-                  ? PopupMenuButton<String>(
-                      icon: const Icon(
-                        Icons.swap_vert,
+              width: 80,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (showContinueWatch)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 40,
+                          height: 40,
+                        ),
+                        tooltip: l.continueWatchTooltip,
+                        onPressed: continueWatchEnabled
+                            ? onContinueWatchTap
+                            : null,
+                        icon: const Icon(Icons.playlist_play_rounded),
                         color: Colors.white,
+                        disabledColor: Colors.white38,
                       ),
-                      tooltip: l.topBarSortTooltip,
-                      onSelected: onSortSelected,
-                      itemBuilder: (context) => [
-                        _buildItem(context, "score", l.sortByScore),
-                        _buildItem(context, "views", l.sortByViews),
-                        _buildItem(context, "date", l.sortByNewest),
-                      ],
-                    )
-                  : const SizedBox(),
+                    ),
+                  if (showSort && onSortSelected != null)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.swap_vert, color: Colors.white),
+                        tooltip: l.topBarSortTooltip,
+                        onSelected: onSortSelected,
+                        itemBuilder: (context) => [
+                          _buildItem(context, "score", l.sortByScore),
+                          _buildItem(context, "views", l.sortByViews),
+                          _buildItem(context, "date", l.sortByNewest),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -109,7 +127,10 @@ class TopBarBack extends StatelessWidget {
   // 🔥 チェック付きメニュー
   // =============================
   PopupMenuItem<String> _buildItem(
-      BuildContext context, String value, String label) {
+    BuildContext context,
+    String value,
+    String label,
+  ) {
     final isSelected = currentSort == value;
 
     return PopupMenuItem(

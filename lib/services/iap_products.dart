@@ -34,10 +34,19 @@ class IapProducts {
     purchaseMessageKey: 'iapLimitUpgradePurchased',
   );
 
+  /// 続けて視聴PRO
+  static const continueWatchPro = IapProduct(
+    id: 'continue_watch_pro_v1',
+    prefKey: 'iap_continue_watch_pro_v1',
+    displayNameKey: 'iapContinueWatchProName',
+    purchaseMessageKey: 'iapContinueWatchProPurchased',
+  );
+
   /// 🔗 一覧（ループ・検索用）
   static const List<IapProduct> all = [
     removeAds,
     limitUpgrade,
+    continueWatchPro,
   ];
 
   /// 🔍 productId から商品を取得（見つからない場合は null）

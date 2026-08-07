@@ -18,13 +18,11 @@ Future<void> requestReviewIfAvailable() async {
   }
 }
 
-Future<bool> shouldAskForReviewThisMonth({
-  required int minUsageCount,
-}) async {
+Future<bool> shouldAskForReviewThisMonth({required int minUsageCount}) async {
   final now = DateTime.now();
 
-  // 月ゲート（6月・12月）
-  if (now.month != 6 && now.month != 12) return false;
+  // 月ゲート（8月・12月）
+  if (now.month != 8 && now.month != 12) return false;
 
   final prefs = await SharedPreferences.getInstance();
 

@@ -17,10 +17,13 @@ import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
+import '../services/continue_watch_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
 import '../utils/card_density_prefs.dart';
 import '../utils/ui_spacing.dart';
 import 'anime_webview_screen.dart';
+import 'continue_watch_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/density_fab.dart';
 import '../widgets/empty_result_view.dart';
@@ -64,6 +67,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
   final bool _isSearching = false;
   bool _showTopBar = true;
   String _sort = "score";
+  List<YouTubeVideo> _displayedVideos = const [];
+  String _displayedVideoSignature = '';
 
   @override
   void initState() {
@@ -125,7 +130,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     final mode = widget.searchMode;
     logger.i(
-        "[_loadVideos]query=$kw mode=$mode max=$limit region=$region categoryId=$cat");
+      "[_loadVideos]query=$kw mode=$mode max=$limit region=$region categoryId=$cat",
+    );
 
     List<YouTubeVideo> list = [];
 
@@ -217,8 +223,11 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
         break;
 
       case "date":
-        list.sort((a, b) => (b.publishedAt ?? DateTime(0))
-            .compareTo(a.publishedAt ?? DateTime(0)));
+        list.sort(
+          (a, b) => (b.publishedAt ?? DateTime(0)).compareTo(
+            a.publishedAt ?? DateTime(0),
+          ),
+        );
         for (int i = 0; i < list.length; i++) {
           final v = list[i];
           final formattedDate = v.publishedAt != null
@@ -262,6 +271,19 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     return "${s.substring(0, max)}...";
   }
 
+  Future<void> _openContinueWatch(String title) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ContinueWatchScreen(
+          sourceVideos: _displayedVideos,
+          sourceTitle: title,
+          sourceType: widget.searchSource.isNotEmpty ? 'search' : 'genre',
+          sourceQuery: widget.keyword,
+        ),
+      ),
+    );
+  }
+
   bool _shouldShowAnimeLinks(String regionCode) {
     final region = regionCode.toUpperCase();
     return widget.categoryId == "31" && (region == "JP" || region == "EN");
@@ -293,15 +315,10 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     return "https://anime.nicovideo.jp/period/";
   }
 
-  void _openAnimeLink({
-    required String url,
-    required String title,
-  }) {
+  void _openAnimeLink({required String url, required String title}) {
     if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.animeLinkPending),
-        ),
+        SnackBar(content: Text(AppLocalizations.of(context)!.animeLinkPending)),
       );
       return;
     }
@@ -310,10 +327,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AnimeWebViewScreen(
-          url: url,
-          title: title,
-        ),
+        builder: (_) => AnimeWebViewScreen(url: url, title: title),
       ),
     );
   }
@@ -323,7 +337,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
     final media = MediaQuery.of(context);
-    final useConstrainedWidth = media.orientation == Orientation.landscape ||
+    final useConstrainedWidth =
+        media.orientation == Orientation.landscape ||
         media.size.shortestSide >= 600;
 
     return Padding(
@@ -335,8 +350,9 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color:
-                  isDark ? const Color(0xFF202020) : theme.colorScheme.surface,
+              color: isDark
+                  ? const Color(0xFF202020)
+                  : theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isDark
@@ -434,11 +450,22 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
 
     final density = context.watch<DensityProvider>().density;
 
-    final adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
-    final bool shouldShowBanner = !adsRemoved;
+    final adsRemoved = context.watch<IapProvider>().isPurchased(
+      IapProducts.removeAds.id,
+    );
+    final bool shouldShowAds = AdMobConfig.shouldShowAds(
+      adsRemoved: adsRemoved,
+    );
+    final bool shouldShowBanner = shouldShowAds;
     final controller = context.read<ExpandedVideoController>();
     final regionCode = context.watch<RegionProvider>().regionCode;
+    final continueWatch = context.watch<ContinueWatchService>();
+    final hasEligibleDisplayedVideo = _displayedVideos.any(
+      ContinueWatchService.isEligibleVideo,
+    );
+    final continueWatchEnabled = widget.searchSource == 'free'
+        ? hasEligibleDisplayedVideo
+        : continueWatch.hasSavedQueues || hasEligibleDisplayedVideo;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -447,7 +474,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               padding: EdgeInsets.only(
                 bottom: UISpacing.fabBottomOffset(
                   context,
-                  hasAd: !adsRemoved,
+                  hasAd: shouldShowAds,
                 ),
               ),
               child: DensityFab(
@@ -483,6 +510,16 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
               }
 
               final videos = snap.data ?? [];
+              final signature = videos.map((video) => video.id).join('|');
+              if (signature != _displayedVideoSignature) {
+                _displayedVideoSignature = signature;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() {
+                    _displayedVideos = List<YouTubeVideo>.unmodifiable(videos);
+                  });
+                });
+              }
 
               // ★ 0件表示
               if (videos.isEmpty) {
@@ -517,7 +554,7 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                             height: UISpacing.bottomSpacer(
                               context,
                               hasFab: true,
-                              hasAd: !adsRemoved,
+                              hasAd: shouldShowAds,
                             ),
                           ),
                         ),
@@ -574,6 +611,8 @@ class _GenreVideosScreenState extends State<GenreVideosScreen> {
                 title: topTitle,
                 currentSort: _sort,
                 onBack: Navigator.of(context).pop,
+                continueWatchEnabled: continueWatchEnabled,
+                onContinueWatchTap: () => _openContinueWatch(topTitle),
                 onSortSelected: (value) async {
                   setState(() {
                     _sort = value;
@@ -622,10 +661,7 @@ class _AnimeLinkRow extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _AnimeLinkRow({
-    required this.label,
-    required this.onTap,
-  });
+  const _AnimeLinkRow({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -636,10 +672,7 @@ class _AnimeLinkRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 14,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Row(
             children: [
               Expanded(

@@ -12,6 +12,7 @@ import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/youtube_api_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/card_density_prefs.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/density_fab.dart';
@@ -25,10 +26,12 @@ import '../widgets/top_bar.dart';
 
 class PopularVideosScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
+  final ValueChanged<List<YouTubeVideo>>? onVideosChanged;
 
   const PopularVideosScreen({
     super.key,
     this.onScrollChanged,
+    this.onVideosChanged,
   });
 
   @override
@@ -50,6 +53,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
   List<YouTubeVideo>? _videos;
   bool _isLoading = true;
   Object? _error;
+  String _lastPublishedVideoSignature = '';
 
   void scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -70,10 +74,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     final region = context.read<RegionProvider>().regionCode;
     final limit = LimitService.videoListLimit(context.read<IapProvider>());
 
-    final cached = api.getCachedPopular(
-      regionCode: region,
-      max: limit,
-    );
+    final cached = api.getCachedPopular(regionCode: region, max: limit);
 
     if (cached.isNotEmpty) {
       _videos = cached;
@@ -137,7 +138,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
         widget.onScrollChanged?.call(true);
       }
     }
-
     // 🔼 上スクロール
     else if (delta < -5) {
       if (_isScrollingDown) {
@@ -247,9 +247,22 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
 
     final double topBarOffset = TopBarSpec.total(safeTop) + extraTopGap;
 
-    final adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final adsRemoved = context.watch<IapProvider>().isPurchased(
+      IapProducts.removeAds.id,
+    );
+    final shouldShowAds = AdMobConfig.shouldShowAds(adsRemoved: adsRemoved);
     final controller = context.read<ExpandedVideoController>();
+
+    final publishedVideos = _videos ?? const <YouTubeVideo>[];
+    final signature = publishedVideos.map((video) => video.id).join('|');
+    if (signature != _lastPublishedVideoSignature) {
+      _lastPublishedVideoSignature = signature;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onVideosChanged?.call(
+          List<YouTubeVideo>.unmodifiable(publishedVideos),
+        );
+      });
+    }
 
     // =========================================================
     // 🔥 状態分岐（ここが本体）
@@ -261,7 +274,6 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
     if (_isLoading) {
       body = const Center(child: CircularProgressIndicator());
     }
-
     // ❌ エラー
     else if (_error != null) {
       body = NetworkErrorView(
@@ -270,20 +282,19 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
         },
       );
     }
-
     // ⚠ データなし
     else if (_videos == null || _videos!.isEmpty) {
       body = Center(
         child: Text(
           AppLocalizations.of(context)!.noVideosFound,
           style: TextStyle(
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
       );
     }
-
     // ✅ 正常表示
     else {
       final videos = _videos!;
@@ -298,16 +309,14 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(height: topBarOffset),
-                ),
+                SliverToBoxAdapter(child: SizedBox(height: topBarOffset)),
                 _densityControl(videos),
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: UISpacing.bottomSpacer(
                       context,
                       hasFab: true,
-                      hasAd: !adsRemoved,
+                      hasAd: shouldShowAds,
                     ),
                   ),
                 ),
@@ -339,7 +348,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
               padding: EdgeInsets.only(
                 bottom: UISpacing.fabBottomOffset(
                   context,
-                  hasAd: !adsRemoved,
+                  hasAd: shouldShowAds,
                 ),
               ),
               child: DensityFab(
@@ -349,11 +358,7 @@ class PopularVideosScreenState extends State<PopularVideosScreen>
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: Stack(
-        children: [
-          body,
-        ],
-      ),
+      body: Stack(children: [body]),
     );
   }
 }

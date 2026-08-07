@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
 import '../services/iap_products.dart';
 import '../utils/app_logger.dart';
+import '../widgets/app_back_button.dart';
 import '../widgets/network_error_view.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -20,9 +21,12 @@ class _ShopScreenState extends State<ShopScreen> {
   bool isProcessing = false;
   bool _lastRemoveAds = false;
   bool _lastLimit = false;
+  bool _lastContinueWatchPro = false;
   late IapProvider _provider;
   String _priceRemove = "—";
   String _priceLimit = "—";
+  String _priceContinueWatchPro = "—";
+  bool _continueWatchProAvailable = false;
   bool _hasError = false;
   bool _isLoading = true;
   bool _suppressIapSnack = false;
@@ -43,6 +47,9 @@ class _ShopScreenState extends State<ShopScreen> {
 
       _lastRemoveAds = _provider.isPurchased(IapProducts.removeAds.id);
       _lastLimit = _provider.isPurchased(IapProducts.limitUpgrade.id);
+      _lastContinueWatchPro = _provider.isPurchased(
+        IapProducts.continueWatchPro.id,
+      );
 
       _provider.addListener(_onIapChanged);
 
@@ -58,8 +65,9 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Future<bool> _checkNetwork() async {
     try {
-      final result = await InternetAddress.lookup('apple.com')
-          .timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup(
+        'apple.com',
+      ).timeout(const Duration(seconds: 3));
 
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {
@@ -97,9 +105,13 @@ class _ShopScreenState extends State<ShopScreen> {
           .loadProduct(IapProducts.limitUpgrade.id)
           .timeout(const Duration(seconds: 10));
 
+      final pContinueWatchPro = await iap
+          .loadProduct(IapProducts.continueWatchPro.id)
+          .timeout(const Duration(seconds: 10));
+
       if (!mounted) return;
 
-      // ③ 両方取得できないならエラー扱い
+      // ③ 既存商品を取得できない場合はエラー扱い
       if (pRemove == null || pLimit == null) {
         setState(() {
           _hasError = true;
@@ -113,6 +125,12 @@ class _ShopScreenState extends State<ShopScreen> {
         logger.i("[_loadPrices] _priceRemove = $_priceRemove");
         _priceLimit = pLimit.price;
         logger.i("[_loadPrices] _priceLimit = $_priceLimit");
+        _priceContinueWatchPro = pContinueWatchPro?.price ?? "—";
+        _continueWatchProAvailable = pContinueWatchPro != null;
+        logger.i(
+          "[_loadPrices] _priceContinueWatchPro = "
+          "$_priceContinueWatchPro available=$_continueWatchProAvailable",
+        );
         _isLoading = false;
       });
     } catch (_) {
@@ -136,21 +154,23 @@ class _ShopScreenState extends State<ShopScreen> {
 
     final remove = provider.isPurchased(IapProducts.removeAds.id);
     final limit = provider.isPurchased(IapProducts.limitUpgrade.id);
+    final continueWatchPro = provider.isPurchased(
+      IapProducts.continueWatchPro.id,
+    );
 
     // ✅ 復元中は「個別購入メッセージ」を出さない（復元ボタン側で1回だけ出す）
     if (_suppressIapSnack) {
       logger.i("restore route -> return");
       _lastRemoveAds = remove;
       _lastLimit = limit;
+      _lastContinueWatchPro = continueWatchPro;
       return;
     } else {
       logger.i("normal message route -> item messages");
     }
 
     if (!_lastRemoveAds && remove) {
-      _showSnack(
-        _resolveMessage(t, IapProducts.removeAds.purchaseMessageKey),
-      );
+      _showSnack(_resolveMessage(t, IapProducts.removeAds.purchaseMessageKey));
     }
 
     if (!_lastLimit && limit) {
@@ -159,8 +179,15 @@ class _ShopScreenState extends State<ShopScreen> {
       );
     }
 
+    if (!_lastContinueWatchPro && continueWatchPro) {
+      _showSnack(
+        _resolveMessage(t, IapProducts.continueWatchPro.purchaseMessageKey),
+      );
+    }
+
     _lastRemoveAds = remove;
     _lastLimit = limit;
+    _lastContinueWatchPro = continueWatchPro;
   }
 
   String _resolveMessage(AppLocalizations t, String key) {
@@ -169,6 +196,8 @@ class _ShopScreenState extends State<ShopScreen> {
         return t.shopPurchasedRemoveAds; // ← 既存 L10N に合わせて調整
       case 'iapLimitUpgradePurchased':
         return t.shopPurchasedLimit;
+      case 'iapContinueWatchProPurchased':
+        return t.shopPurchasedContinueWatchPro;
       default:
         return '';
     }
@@ -182,10 +211,15 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     // 👇 購入状態を Provider から取得（将来商品が増えても安全）
-    final removeAdsPurchased =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
-    final limitUpgradePurchased =
-        context.watch<IapProvider>().isPurchased(IapProducts.limitUpgrade.id);
+    final removeAdsPurchased = context.watch<IapProvider>().isPurchased(
+      IapProducts.removeAds.id,
+    );
+    final limitUpgradePurchased = context.watch<IapProvider>().isPurchased(
+      IapProducts.limitUpgrade.id,
+    );
+    final continueWatchProPurchased = context.watch<IapProvider>().isPurchased(
+      IapProducts.continueWatchPro.id,
+    );
     final l = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -223,42 +257,25 @@ class _ShopScreenState extends State<ShopScreen> {
                         color: const Color(0xFFFAF5EF),
                         width: double.infinity,
                         height: double.infinity,
-                        child: Center(
-                          child: NetworkErrorView(onRetry: _retry),
-                        ),
+                        child: Center(child: NetworkErrorView(onRetry: _retry)),
                       ),
 
                       // ← 戻る
                       Positioned(
                         top: 8,
                         left: 8,
-                        child: Material(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          shape: const CircleBorder(),
-                          elevation: 4,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => Navigator.pop(context),
-                            child: const Padding(
-                              padding: EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.arrow_back_ios_new,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                        child: AppBackButton(
+                          onPressed: () => Navigator.pop(context),
+                          color: Colors.white,
                         ),
                       ),
                     ],
                   )
-
                 // =========================
                 // ⏳ ローディング
                 // =========================
                 else if (_isLoading)
                   const Center(child: CircularProgressIndicator())
-
                 // =========================
                 // 🎁 通常ショップ表示
                 // =========================
@@ -280,8 +297,9 @@ class _ShopScreenState extends State<ShopScreen> {
                                     description: l.shopDescRemoveAds,
                                     enabled: !removeAdsPurchased,
                                     purchased: removeAdsPurchased,
-                                    iconColor:
-                                        Theme.of(context).colorScheme.primary,
+                                    iconColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                     priceLabel: _priceRemove,
                                     minHeight: 80,
                                     onBuy: removeAdsPurchased
@@ -296,9 +314,10 @@ class _ShopScreenState extends State<ShopScreen> {
                                                   .read<IapProvider>()
                                                   .service;
 
-                                              final product =
-                                                  await iap.loadProduct(
-                                                      IapProducts.removeAds.id);
+                                              final product = await iap
+                                                  .loadProduct(
+                                                    IapProducts.removeAds.id,
+                                                  );
                                               if (product == null) {
                                                 messenger.showSnackBar(
                                                   SnackBar(
@@ -313,13 +332,14 @@ class _ShopScreenState extends State<ShopScreen> {
                                             } finally {
                                               if (mounted) {
                                                 setState(
-                                                    () => isProcessing = false);
+                                                  () => isProcessing = false,
+                                                );
                                               }
                                             }
                                           },
                                   ),
 
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 24),
 
                                   // ===== 上限拡張 =====
                                   ShopListCard(
@@ -335,7 +355,8 @@ class _ShopScreenState extends State<ShopScreen> {
                                         ? null
                                         : () async {
                                             logger.i(
-                                                '[UI] Buy tapped (limit_upgrade)');
+                                              '[UI] Buy tapped (limit_upgrade)',
+                                            );
                                             setState(() => isProcessing = true);
                                             try {
                                               final messenger =
@@ -345,8 +366,9 @@ class _ShopScreenState extends State<ShopScreen> {
                                                   .service;
 
                                               final product = await iap
-                                                  .loadProduct(IapProducts
-                                                      .limitUpgrade.id);
+                                                  .loadProduct(
+                                                    IapProducts.limitUpgrade.id,
+                                                  );
                                               if (product == null) {
                                                 messenger.showSnackBar(
                                                   SnackBar(
@@ -361,7 +383,68 @@ class _ShopScreenState extends State<ShopScreen> {
                                             } finally {
                                               if (mounted) {
                                                 setState(
-                                                    () => isProcessing = false);
+                                                  () => isProcessing = false,
+                                                );
+                                              }
+                                            }
+                                          },
+                                  ),
+
+                                  const SizedBox(height: 24),
+
+                                  // ===== 続けて視聴PRO =====
+                                  ShopListCard(
+                                    icon: Icons.playlist_play_rounded,
+                                    title: l.shopTitleContinueWatchPro,
+                                    description: l.shopDescContinueWatchPro,
+                                    enabled:
+                                        _continueWatchProAvailable &&
+                                        !continueWatchProPurchased,
+                                    purchased: continueWatchProPurchased,
+                                    iconColor: const Color(0xFF16A34A),
+                                    iconSize: 50,
+                                    priceLabel: _priceContinueWatchPro,
+                                    minHeight: 80,
+                                    showComingSoon: !_continueWatchProAvailable,
+                                    onBuy:
+                                        continueWatchProPurchased ||
+                                            !_continueWatchProAvailable
+                                        ? null
+                                        : () async {
+                                            logger.i(
+                                              '[UI] Buy tapped '
+                                              '(continue_watch_pro_v1)',
+                                            );
+                                            setState(() => isProcessing = true);
+                                            try {
+                                              final messenger =
+                                                  ScaffoldMessenger.of(context);
+                                              final iap = context
+                                                  .read<IapProvider>()
+                                                  .service;
+
+                                              final product = await iap
+                                                  .loadProduct(
+                                                    IapProducts
+                                                        .continueWatchPro
+                                                        .id,
+                                                  );
+                                              if (product == null) {
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      l.shopLoadFailed,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              await iap.buy(product);
+                                            } finally {
+                                              if (mounted) {
+                                                setState(
+                                                  () => isProcessing = false,
+                                                );
                                               }
                                             }
                                           },
@@ -382,25 +465,31 @@ class _ShopScreenState extends State<ShopScreen> {
                                   //   priceLabel: "0",
                                   //   minHeight: 90,
                                   // ),
-
                                   const SizedBox(height: 50),
 
                                   Center(
                                     child: OutlinedButton.icon(
                                       onPressed: () async {
                                         logger.i("-----restore tap-----");
-                                        final messenger =
-                                            ScaffoldMessenger.of(context);
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
                                         setState(() => isProcessing = true);
 
                                         try {
-                                          final iap =
-                                              context.read<IapProvider>();
+                                          final iap = context
+                                              .read<IapProvider>();
 
                                           final beforeRemove = iap.isPurchased(
-                                              IapProducts.removeAds.id);
+                                            IapProducts.removeAds.id,
+                                          );
                                           final beforeLimit = iap.isPurchased(
-                                              IapProducts.limitUpgrade.id);
+                                            IapProducts.limitUpgrade.id,
+                                          );
+                                          final beforeContinueWatchPro = iap
+                                              .isPurchased(
+                                                IapProducts.continueWatchPro.id,
+                                              );
 
                                           _suppressIapSnack = true;
 
@@ -408,26 +497,41 @@ class _ShopScreenState extends State<ShopScreen> {
                                           await iap.service.restore();
 
                                           final afterRemove = iap.isPurchased(
-                                              IapProducts.removeAds.id);
+                                            IapProducts.removeAds.id,
+                                          );
                                           final afterLimit = iap.isPurchased(
-                                              IapProducts.limitUpgrade.id);
+                                            IapProducts.limitUpgrade.id,
+                                          );
+                                          final afterContinueWatchPro = iap
+                                              .isPurchased(
+                                                IapProducts.continueWatchPro.id,
+                                              );
 
                                           _suppressIapSnack = false;
 
                                           final restoredNow =
                                               (!beforeRemove && afterRemove) ||
-                                                  (!beforeLimit && afterLimit);
+                                              (!beforeLimit && afterLimit) ||
+                                              (!beforeContinueWatchPro &&
+                                                  afterContinueWatchPro);
 
                                           final alreadyOwned =
-                                              afterRemove || afterLimit;
+                                              afterRemove ||
+                                              afterLimit ||
+                                              afterContinueWatchPro;
 
                                           logger.i(
-                                              "IAP state after restore tap: "
-                                              "beforeRemove1^$beforeRemove "
-                                              "beforeLimit=$beforeLimit "
-                                              "afterRemove=$afterRemove "
-                                              "afterLimit=$afterLimit "
-                                              "restoredNow=$restoredNow alreadyOwned=$alreadyOwned");
+                                            "IAP state after restore tap: "
+                                            "beforeRemove1^$beforeRemove "
+                                            "beforeLimit=$beforeLimit "
+                                            "beforeContinueWatchPro="
+                                            "$beforeContinueWatchPro "
+                                            "afterRemove=$afterRemove "
+                                            "afterLimit=$afterLimit "
+                                            "afterContinueWatchPro="
+                                            "$afterContinueWatchPro "
+                                            "restoredNow=$restoredNow alreadyOwned=$alreadyOwned",
+                                          );
 
                                           // ✅ SnackBarはこの1回だけ
                                           final String msg;
@@ -442,15 +546,14 @@ class _ShopScreenState extends State<ShopScreen> {
                                           messenger
                                             ..hideCurrentSnackBar()
                                             ..showSnackBar(
-                                              SnackBar(
-                                                content: Text(msg),
-                                              ),
+                                              SnackBar(content: Text(msg)),
                                             );
                                         } finally {
                                           _suppressIapSnack = false;
                                           if (mounted) {
                                             setState(
-                                                () => isProcessing = false);
+                                              () => isProcessing = false,
+                                            );
                                           }
                                         }
                                       },
@@ -460,8 +563,9 @@ class _ShopScreenState extends State<ShopScreen> {
                                         color: Colors.white70,
                                       ),
                                       label: Text(
-                                        AppLocalizations.of(context)!
-                                            .shopRestore,
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.shopRestore,
                                         style: const TextStyle(
                                           color: Colors.white70,
                                           fontSize: 14,
@@ -474,13 +578,15 @@ class _ShopScreenState extends State<ShopScreen> {
                                           vertical: 14,
                                         ),
                                         side: BorderSide(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.35),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.35,
+                                          ),
                                           width: 1,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(24),
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
                                         ),
                                         backgroundColor: Colors.white
                                             .withValues(alpha: 0.05),
@@ -498,22 +604,9 @@ class _ShopScreenState extends State<ShopScreen> {
                       Positioned(
                         top: 8,
                         left: 8,
-                        child: Material(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          shape: const CircleBorder(),
-                          elevation: 4,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => Navigator.pop(context),
-                            child: const Padding(
-                              padding: EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.arrow_back_ios_new,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                        child: AppBackButton(
+                          onPressed: () => Navigator.pop(context),
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -543,9 +636,11 @@ class ShopListCard extends StatelessWidget {
   final bool enabled;
   final bool purchased;
   final Color iconColor;
+  final double iconSize;
   final VoidCallback? onBuy;
   final String priceLabel;
   final double minHeight;
+  final bool showComingSoon;
 
   const ShopListCard({
     super.key,
@@ -555,9 +650,11 @@ class ShopListCard extends StatelessWidget {
     required this.enabled,
     required this.purchased,
     required this.iconColor,
+    this.iconSize = 44,
     this.onBuy,
     required this.priceLabel,
     this.minHeight = 80,
+    this.showComingSoon = true,
   });
 
   @override
@@ -574,11 +671,7 @@ class ShopListCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    size: 44,
-                    color: iconColor,
-                  ),
+                  Icon(icon, size: iconSize, color: iconColor),
 
                   const SizedBox(width: 16),
 
@@ -626,8 +719,11 @@ class ShopListCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle,
-                              size: 16, color: Colors.green),
+                          const Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             AppLocalizations.of(context)!.shopPurchased,
@@ -640,7 +736,6 @@ class ShopListCard extends StatelessWidget {
                         ],
                       ),
                     )
-
                   // 未購入 → 「購入する」
                   else if (enabled)
                     SizedBox(
@@ -675,7 +770,7 @@ class ShopListCard extends StatelessWidget {
         ),
 
         // Coming soon
-        if (!enabled && !purchased)
+        if (showComingSoon && !enabled && !purchased)
           Positioned.fill(
             child: IgnorePointer(
               child: Padding(

@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../widgets/app_back_button.dart';
 import '../widgets/network_error_view.dart';
 
 class AnimeWebViewScreen extends StatefulWidget {
   final String url;
   final String title;
 
-  const AnimeWebViewScreen({
-    super.key,
-    required this.url,
-    required this.title,
-  });
+  const AnimeWebViewScreen({super.key, required this.url, required this.title});
 
   @override
   State<AnimeWebViewScreen> createState() => _AnimeWebViewScreenState();
@@ -74,8 +71,9 @@ class _AnimeWebViewScreenState extends State<AnimeWebViewScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF060606) : const Color(0xFFFAFAFA),
+      backgroundColor: isDark
+          ? const Color(0xFF060606)
+          : const Color(0xFFFAFAFA),
       body: Stack(
         children: [
           Padding(
@@ -109,22 +107,9 @@ class _AnimeWebViewScreenState extends State<AnimeWebViewScreen> {
           Positioned(
             top: topPadding + 8,
             left: 8,
-            child: Material(
-              color: Colors.white,
-              shape: const CircleBorder(),
-              elevation: 6,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 20,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
+            child: AppBackButton(
+              onPressed: () => Navigator.pop(context),
+              color: theme.colorScheme.onSurface,
             ),
           ),
         ],

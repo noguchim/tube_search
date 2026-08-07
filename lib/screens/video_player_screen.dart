@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
 import '../utils/open_in_custom_tabs.dart';
+import '../widgets/app_back_button.dart';
 import '../widgets/network_error_view.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -51,6 +52,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   String get _currentTitle => (_currentVideo['title'] ?? '').toString();
 
+  int? get _currentDurationSeconds {
+    final value = _currentVideo['durationSeconds'];
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -95,7 +102,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     try {
       logger.i("🌐 Open in CCT: $id title=$_currentTitle");
-      await openYouTubeInInAppBrowser(context, videoId: id);
+      await openYouTubeInInAppBrowser(
+        context,
+        videoId: id,
+        durationSeconds: _currentDurationSeconds,
+      );
 
       // CustomTabsを閉じて戻ってきた後
       if (!mounted) return;
@@ -132,9 +143,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF111111) : Colors.white,
         elevation: 0.4,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new,
-              color: isDark ? Colors.white : Colors.black87),
+        leading: AppBackButton(
+          color: isDark ? Colors.white : Colors.black87,
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -161,8 +171,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.ondemand_video,
-                        size: 44, color: theme.hintColor),
+                    Icon(
+                      Icons.ondemand_video,
+                      size: 44,
+                      color: theme.hintColor,
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       l.videoPlayerTitle,
@@ -171,8 +184,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     const SizedBox(height: 6),
                     Text(
                       l.videoPlayerDescription,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.hintColor),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 14),

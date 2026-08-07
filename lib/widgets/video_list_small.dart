@@ -19,6 +19,7 @@ import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoListTileSmall extends StatelessWidget {
   final YouTubeVideo video;
@@ -33,7 +34,6 @@ class VideoListTileSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoritesService>();
-    final history = context.watch<WatchHistoryService>();
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -80,9 +80,7 @@ class VideoListTileSmall extends StatelessWidget {
       format: ViewCountFormat.full,
     );
     final isFav = fav.isFavoriteSync(id);
-    final isWatched = history.isWatchedSync(id);
-    final titleColor =
-        isWatched ? onSurface.withValues(alpha: 0.46) : onSurface;
+    final titleColor = onSurface;
 
     const double thumbW = 136;
     const double thumbH = 76;
@@ -97,7 +95,11 @@ class VideoListTileSmall extends StatelessWidget {
 
         if (id.isEmpty) return;
 
-        await openYouTubeInInAppBrowser(context, videoId: id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isPushing = false;
       }
@@ -190,7 +192,8 @@ class VideoListTileSmall extends StatelessWidget {
                                               width: 14,
                                               height: 14,
                                               child: CircularProgressIndicator(
-                                                  strokeWidth: 2),
+                                                strokeWidth: 2,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -198,9 +201,9 @@ class VideoListTileSmall extends StatelessWidget {
                                         // エラー時
                                         errorWidget: (_, __, ___) =>
                                             Image.asset(
-                                          'assets/images/no_image.png',
-                                          fit: BoxFit.cover,
-                                        ),
+                                              'assets/images/no_image.png',
+                                              fit: BoxFit.cover,
+                                            ),
                                       )
                                     : Image.asset(
                                         'assets/images/no_image.png',
@@ -223,16 +226,19 @@ class VideoListTileSmall extends StatelessWidget {
                               // 🔥 投稿日
                               Positioned(
                                 right: 4,
-                                bottom: 4,
+                                bottom: 8,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.75),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.75,
+                                        ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -251,7 +257,7 @@ class VideoListTileSmall extends StatelessWidget {
                               if (video.isLive)
                                 const Positioned(
                                   left: 5,
-                                  bottom: 5,
+                                  bottom: 9,
                                   child: IgnorePointer(
                                     child: LiveBadge(
                                       fontSize: 10.5,
@@ -272,11 +278,13 @@ class VideoListTileSmall extends StatelessWidget {
                                   ignoring: true,
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      rankBadge(context, rank),
-                                    ],
+                                    children: [rankBadge(context, rank)],
                                   ),
                                 ),
+                              ),
+                              ThumbnailPlaybackProgress(
+                                videoId: video.id,
+                                durationSeconds: video.durationSeconds,
                               ),
                             ],
                           ),
@@ -315,10 +323,7 @@ class VideoListTileSmall extends StatelessWidget {
                             channel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: onSurface,
-                            ),
+                            style: TextStyle(fontSize: 13, color: onSurface),
                           ),
                         ),
 
@@ -335,10 +340,8 @@ class VideoListTileSmall extends StatelessWidget {
                                 bottom: -10,
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
-                                  onTap: () => handleFavoriteTap(
-                                    context,
-                                    video: video,
-                                  ),
+                                  onTap: () =>
+                                      handleFavoriteTap(context, video: video),
                                   child: SizedBox(
                                     width: 44,
                                     height: 44,
@@ -350,8 +353,10 @@ class VideoListTileSmall extends StatelessWidget {
                                         isFavorite: isFav,
                                         showBackground: false,
                                         scale: 1.1,
-                                        onTap: () => handleFavoriteTap(context,
-                                            video: video),
+                                        onTap: () => handleFavoriteTap(
+                                          context,
+                                          video: video,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -383,7 +388,7 @@ class VideoListTileSmall extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ),

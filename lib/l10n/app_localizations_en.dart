@@ -142,6 +142,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Greatly increases the limit for trending videos and favorites';
 
   @override
+  String get shopTitleContinueWatchPro => 'Continue Watching Pro';
+
+  @override
+  String get shopDescContinueWatchPro => 'Expand saved playlists from 10 to 30';
+
+  @override
   String get shopTitleAutoplay => 'Auto play';
 
   @override
@@ -152,6 +158,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shopPurchasedLimit => 'Limits have been upgraded';
+
+  @override
+  String get shopPurchasedContinueWatchPro =>
+      'Continue Watching Pro is now active';
 
   @override
   String get shopPurchased => 'Purchased';
@@ -469,4 +479,132 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get animeLinkPending => 'The link URL is not set yet';
+
+  @override
+  String get continueWatchTitle => 'Continue watching';
+
+  @override
+  String get continueWatchHeaderLine1 => 'Continue';
+
+  @override
+  String get continueWatchHeaderLine2 => 'watching';
+
+  @override
+  String get continueWatchTooltip => 'Continue watching';
+
+  @override
+  String get continueWatchCurrentTab => 'Now playing';
+
+  @override
+  String get continueWatchHistoryTab => 'History';
+
+  @override
+  String get continueWatchEmpty =>
+      'There are no videos available to continue watching';
+
+  @override
+  String get continueWatchHistoryEmpty => 'No saved playlists';
+
+  @override
+  String get continueWatchLimitTitle => 'Saved playlist limit';
+
+  @override
+  String continueWatchFreeLimitMessage(int freeLimit, int proLimit) {
+    return 'You can save up to $freeLimit playlists.\nContinue Watching Pro increases the limit to $proLimit.';
+  }
+
+  @override
+  String continueWatchProLimitMessage(int proLimit) {
+    return 'You can save up to $proLimit playlists.\nDelete an unneeded playlist from History to save another.';
+  }
+
+  @override
+  String get continueWatchOpenShop => 'View shop';
+
+  @override
+  String get continueWatchOpenHistory => 'View history';
+
+  @override
+  String get continueWatchExcluded => 'Unavailable';
+
+  @override
+  String get continueWatchStartCurrentList => 'Start with this list';
+
+  @override
+  String get continueWatchPrevious => 'Previous';
+
+  @override
+  String get continueWatchNext => 'Next';
+
+  @override
+  String get continueWatchHowTo => 'How to use';
+
+  @override
+  String get continueWatchHowToTitle => 'How to use Continue Watching';
+
+  @override
+  String get continueWatchSelectAll => 'Select all';
+
+  @override
+  String get continueWatchClearAll => 'Clear all';
+
+  @override
+  String get continueWatchSelectionMenu => 'Selection menu';
+
+  @override
+  String get continueWatchCompactView => 'Compact view';
+
+  @override
+  String get continueWatchLargeView => 'Large view';
+
+  @override
+  String get continueWatchPlay => 'Play';
+
+  @override
+  String get continueWatchPaused => 'Paused';
+
+  @override
+  String get continueWatchPin => 'Save';
+
+  @override
+  String get continueWatchUnpin => 'Unsave';
+
+  @override
+  String get continueWatchRestart => 'Watch again';
+
+  @override
+  String get continueWatchRename => 'Rename';
+
+  @override
+  String get continueWatchQueueName => 'Playlist name';
+
+  @override
+  String get continueWatchSave => 'Save';
+
+  @override
+  String get continueWatchDelete => 'Delete';
+
+  @override
+  String get continueWatchDeleteTitle => 'Delete this playlist?';
+
+  @override
+  String get continueWatchCompletedTitle => 'Playback complete';
+
+  @override
+  String get continueWatchCompleted =>
+      'You have finished the entire playlist. Thanks for watching.';
+
+  @override
+  String continueWatchNextCountdown(int seconds) {
+    return 'Next video starts in $seconds seconds';
+  }
+
+  @override
+  String get continueWatchStop => 'Stop';
+
+  @override
+  String get continueWatchUpNext => 'Up next';
+
+  @override
+  String get continueWatchPlayNow => 'Play now';
 }

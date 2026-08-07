@@ -5,10 +5,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
 
-enum TopBarMode {
-  tabs,
-  back,
-}
+enum TopBarMode { tabs, back }
 
 class TopBarSpec {
   static const double topRowHeight = 42.0;
@@ -30,6 +27,8 @@ class TopBar extends StatefulWidget {
   final VoidCallback? onMenuTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onTrendTap;
+  final VoidCallback? onContinueWatchTap;
+  final bool continueWatchEnabled;
 
   const TopBar({
     super.key,
@@ -43,6 +42,8 @@ class TopBar extends StatefulWidget {
     this.onMenuTap,
     this.onSearchTap,
     this.onTrendTap,
+    this.onContinueWatchTap,
+    this.continueWatchEnabled = false,
   });
 
   @override
@@ -91,16 +92,14 @@ class _TopBarState extends State<TopBar> {
 
       const double logoAreaWidth = 64;
 
-      targetOffset = (index * _tabWidth) -
+      targetOffset =
+          (index * _tabWidth) -
           ((screenWidth - logoAreaWidth) / 2) +
           (_tabWidth / 2);
     }
 
     _scrollController.animateTo(
-      targetOffset.clamp(
-        position.minScrollExtent,
-        position.maxScrollExtent,
-      ),
+      targetOffset.clamp(position.minScrollExtent, position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
@@ -135,9 +134,7 @@ class _TopBarState extends State<TopBar> {
               children: [
                 SizedBox(height: safeTop), // ← SafeArea
 
-                Expanded(
-                  child: _buildTabs(context),
-                ),
+                Expanded(child: _buildTabs(context)),
               ],
             ),
           ),
@@ -196,12 +193,7 @@ class _TopBarState extends State<TopBar> {
   Widget _buildTabs(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    final tabs = [
-      l.navTopic,
-      l.navPopular,
-      l.navGenre,
-      l.navFavorites,
-    ];
+    final tabs = [l.navTopic, l.navPopular, l.navGenre, l.navFavorites];
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -228,6 +220,8 @@ class _TopBarState extends State<TopBar> {
                 fit: BoxFit.contain,
               ),
               const Spacer(),
+              _buildContinueWatchButton(),
+              const SizedBox(width: 2),
               _buildTrendButton(),
               const SizedBox(width: 4),
               _buildSearchButton(),
@@ -247,11 +241,7 @@ class _TopBarState extends State<TopBar> {
             itemCount: tabs.length,
             padding: const EdgeInsets.symmetric(horizontal: 5),
             itemBuilder: (context, index) {
-              return _buildTab(
-                context,
-                index: index,
-                label: tabs[index],
-              );
+              return _buildTab(context, index: index, label: tabs[index]);
             },
           ),
         ),
@@ -268,12 +258,26 @@ class _TopBarState extends State<TopBar> {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: widget.onTrendTap,
-          child: const Icon(
-            Icons.trending_up,
-            size: 25,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.trending_up, size: 25, color: Colors.white),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContinueWatchButton() {
+    final l = AppLocalizations.of(context)!;
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: IconButton(
+        tooltip: l.continueWatchTooltip,
+        onPressed: widget.continueWatchEnabled
+            ? widget.onContinueWatchTap
+            : null,
+        icon: const Icon(Icons.playlist_play_rounded),
+        iconSize: 28,
+        color: Colors.white,
+        disabledColor: Colors.white38,
       ),
     );
   }
@@ -287,11 +291,7 @@ class _TopBarState extends State<TopBar> {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: widget.onSearchTap,
-          child: const Icon(
-            Icons.search,
-            size: 26,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.search, size: 26, color: Colors.white),
         ),
       ),
     );
@@ -335,8 +335,8 @@ class _TopBarState extends State<TopBar> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
 
           height: 34,
-          // 🔥 26 → 34 にUP
 
+          // 🔥 26 → 34 にUP
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? null : const Color(0xFF3A3A3A),
@@ -345,11 +345,7 @@ class _TopBarState extends State<TopBar> {
                 ? LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      highlightColor,
-                      baseColor,
-                      shadowColor,
-                    ],
+                    colors: [highlightColor, baseColor, shadowColor],
                   )
                 : null,
 
@@ -361,7 +357,7 @@ class _TopBarState extends State<TopBar> {
                       color: Colors.black.withValues(alpha: 0.25),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ]
                 : [], // ← これ重要
           ),
@@ -380,7 +376,6 @@ class _TopBarState extends State<TopBar> {
                           ),
                         ),
                       )
-
                     // 📝 その他
                     : Text(
                         label,

@@ -6,31 +6,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/youtube_video.dart';
 import '../providers/iap_provider.dart';
 import 'limit_service.dart';
+import 'youtube_api_service.dart';
 
 class FavoritesService extends ChangeNotifier {
   static const String key = "favorite_videos";
+  static const Duration _metadataRefreshCooldown = Duration(hours: 6);
+  static const int _metadataVersion = 2;
 
   List<Map<String, dynamic>> _cache = [];
   bool _loaded = false;
+  bool _isRefreshingMetadata = false;
 
   bool get loaded => _loaded;
 
   List<YouTubeVideo> get items => _cache.map((v) {
-        return YouTubeVideo(
-          id: v["id"] ?? "",
-          title: v["title"] ?? "",
-          thumbnailUrl: v["thumbnailUrl"] ?? "",
-          channelId: v["channelId"]?.toString(),
-          channelTitle: v["channelTitle"] ?? "",
-          publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
-          viewCount: v["viewCount"],
-          durationSeconds: v["durationSeconds"],
-          isLive: v["isLive"] == true,
-          liveBroadcastContent: v["liveBroadcastContent"]?.toString(),
-          savedAt: DateTime.tryParse(v["savedAt"] ?? ""),
-          locked: v["locked"] == true,
-        );
-      }).toList();
+    return YouTubeVideo(
+      id: v["id"] ?? "",
+      title: v["title"] ?? "",
+      thumbnailUrl: v["thumbnailUrl"] ?? "",
+      channelId: v["channelId"]?.toString(),
+      channelTitle: v["channelTitle"] ?? "",
+      publishedAt: DateTime.tryParse(v["publishedAt"] ?? ""),
+      viewCount: v["viewCount"],
+      durationSeconds: v["durationSeconds"],
+      isLive: v["isLive"] == true,
+      liveBroadcastContent: v["liveBroadcastContent"]?.toString(),
+      savedAt: DateTime.tryParse(v["savedAt"] ?? ""),
+      locked: v["locked"] == true,
+    );
+  }).toList();
 
   // ------------------------------------------------------------
   // 内部ロード
@@ -75,6 +79,120 @@ class FavoritesService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final list = _cache.map((v) => json.encode(v)).toList();
     await prefs.setStringList(key, list);
+  }
+
+  // ------------------------------------------------------------
+  // 未確定の動画時間・ライブ状態を再取得
+  // ------------------------------------------------------------
+  Future<void> refreshIncompleteMetadata(
+    YouTubeApiService api, {
+    String regionCode = "JP",
+  }) async {
+    await _load();
+    if (_isRefreshingMetadata) return;
+
+    final now = DateTime.now();
+    final targetIds = _cache
+        .where(_needsMetadataRefresh)
+        .where((video) => _isMetadataRefreshDue(video, now))
+        .map((video) => video["id"]?.toString() ?? "")
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+
+    if (targetIds.isEmpty) return;
+
+    _isRefreshingMetadata = true;
+    var shouldSave = false;
+    var metadataChanged = false;
+
+    try {
+      for (final videoId in targetIds) {
+        YouTubeVideo? refreshed;
+        try {
+          refreshed = await api.fetchVideoById(videoId, regionCode: regionCode);
+        } catch (error) {
+          debugPrint(
+            'Favorite metadata refresh failed: video=$videoId error=$error',
+          );
+          continue;
+        }
+        if (refreshed == null) continue;
+
+        final index = _cache.indexWhere((video) => video["id"] == videoId);
+        if (index < 0) continue;
+
+        final current = _cache[index];
+        final nextDuration = refreshed.durationSeconds;
+        final nextIsLive = refreshed.isLive;
+        final nextLiveContent = refreshed.liveBroadcastContent;
+        final currentDuration = _parseDuration(current["durationSeconds"]);
+        final hasLiveMetadata = nextLiveContent?.trim().isNotEmpty == true;
+        final confirmsCompletedVideo = (nextDuration ?? 0) > 0;
+        final canReplaceLiveMetadata =
+            hasLiveMetadata || confirmsCompletedVideo;
+        final mergedDuration = (nextDuration ?? 0) > 0
+            ? nextDuration
+            : currentDuration;
+        final mergedIsLive = canReplaceLiveMetadata
+            ? nextIsLive
+            : current["isLive"] == true;
+        final mergedLiveContent = canReplaceLiveMetadata
+            ? nextLiveContent
+            : current["liveBroadcastContent"]?.toString();
+
+        metadataChanged =
+            metadataChanged ||
+            currentDuration != mergedDuration ||
+            current["isLive"] != mergedIsLive ||
+            current["liveBroadcastContent"] != mergedLiveContent;
+
+        current["durationSeconds"] = mergedDuration;
+        current["isLive"] = mergedIsLive;
+        current["liveBroadcastContent"] = mergedLiveContent;
+        current["metadataCheckedAt"] = DateTime.now().toIso8601String();
+        current["metadataVersion"] = _metadataVersion;
+        shouldSave = true;
+      }
+
+      if (shouldSave) {
+        await _save();
+      }
+      if (metadataChanged) {
+        notifyListeners();
+      }
+    } finally {
+      _isRefreshingMetadata = false;
+    }
+  }
+
+  bool _needsMetadataRefresh(Map<String, dynamic> video) {
+    final duration = _parseDuration(video["durationSeconds"]);
+    final liveContent = video["liveBroadcastContent"]
+        ?.toString()
+        .trim()
+        .toLowerCase();
+
+    return duration == null ||
+        duration <= 0 ||
+        video["isLive"] == true ||
+        liveContent == "live" ||
+        liveContent == "upcoming";
+  }
+
+  int? _parseDuration(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? "");
+  }
+
+  bool _isMetadataRefreshDue(Map<String, dynamic> video, DateTime now) {
+    if (video["metadataVersion"] != _metadataVersion) return true;
+
+    final checkedAt = DateTime.tryParse(
+      video["metadataCheckedAt"]?.toString() ?? "",
+    );
+    if (checkedAt == null) return true;
+
+    return now.difference(checkedAt) >= _metadataRefreshCooldown;
   }
 
   // ------------------------------------------------------------

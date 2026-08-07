@@ -13,9 +13,47 @@ import 'package:flutter/material.dart';
 const Color splashBack = Color(0xFF4F6BFF);
 const Color splashBack2 = Color(0xFF355CFF);
 
+class _HorizontalPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _HorizontalPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curvedAnimation = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).animate(curvedAnimation),
+      child: child,
+    );
+  }
+}
+
+const _appPageTransitionsTheme = PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: _HorizontalPageTransitionsBuilder(),
+    TargetPlatform.iOS: _HorizontalPageTransitionsBuilder(),
+    TargetPlatform.macOS: _HorizontalPageTransitionsBuilder(),
+    TargetPlatform.windows: _HorizontalPageTransitionsBuilder(),
+    TargetPlatform.linux: _HorizontalPageTransitionsBuilder(),
+    TargetPlatform.fuchsia: _HorizontalPageTransitionsBuilder(),
+  },
+);
+
 final ThemeData appLightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
+  pageTransitionsTheme: _appPageTransitionsTheme,
 
   scaffoldBackgroundColor: const Color(0xFFF2F2F6),
 
@@ -100,6 +138,7 @@ final ThemeData appLightTheme = ThemeData(
 final ThemeData appDarkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
+  pageTransitionsTheme: _appPageTransitionsTheme,
 
   // scaffoldBackgroundColor: const Color(0xFF282828),
   // scaffoldBackgroundColor: const Color(0xFF303030),

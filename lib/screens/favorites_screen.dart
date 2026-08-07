@@ -6,26 +6,34 @@ import 'package:provider/provider.dart';
 import '../data/youtube_video.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/iap_provider.dart';
+import '../providers/region_provider.dart';
 import '../services/favorites_service.dart';
+import '../services/iap_products.dart';
 import '../services/limit_service.dart';
 import '../services/watch_history_service.dart';
+import '../services/youtube_api_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/favorite_delete_helper.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/request_review.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/live_badge.dart';
 import '../widgets/play_button_overlay.dart';
+import '../widgets/thumbnail_playback_progress.dart';
 import '../widgets/top_bar.dart';
 
-enum _FavMenuAction {
-  lock,
-  delete,
-}
+enum _FavMenuAction { lock, delete }
 
 class FavoritesScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
+  final ValueChanged<List<YouTubeVideo>>? onVideosChanged;
 
-  const FavoritesScreen({super.key, this.onScrollChanged});
+  const FavoritesScreen({
+    super.key,
+    this.onScrollChanged,
+    this.onVideosChanged,
+  });
 
   @override
   State<FavoritesScreen> createState() => FavoritesScreenState();
@@ -35,6 +43,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
     with WidgetsBindingObserver {
   bool _isPushing = false;
   final ScrollController _scrollController = ScrollController();
+  String _lastPublishedVideoSignature = '';
 
   void scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -53,9 +62,20 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     // 初回ロード
     final favorites = context.read<FavoritesService>();
-    Future.microtask(() {
-      favorites.loadFavorites();
+    Future.microtask(() async {
+      await favorites.loadFavorites();
+      if (!mounted) return;
+      await refreshMetadata();
     });
+  }
+
+  Future<void> refreshMetadata() async {
+    if (!mounted) return;
+
+    await context.read<FavoritesService>().refreshIncompleteMetadata(
+      context.read<YouTubeApiService>(),
+      regionCode: context.read<RegionProvider>().regionCode,
+    );
   }
 
   @override
@@ -69,6 +89,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
       await maybeAskForReview();
+      await refreshMetadata();
     }
   }
 
@@ -123,16 +144,17 @@ class FavoritesScreenState extends State<FavoritesScreen>
   // -------------------------------------------------------------
   // YouTube再生
   // -------------------------------------------------------------
-  Future<void> _pushPlayerById(BuildContext context, String id) async {
+  Future<void> _pushPlayer(BuildContext context, YouTubeVideo video) async {
     if (_isPushing) return;
     _isPushing = true;
 
     try {
-      if (id.isEmpty) return;
+      if (video.id.isEmpty) return;
 
       await openYouTubeInInAppBrowser(
         context,
-        videoId: id,
+        videoId: video.id,
+        durationSeconds: video.durationSeconds,
       );
     } finally {
       _isPushing = false;
@@ -161,8 +183,9 @@ class FavoritesScreenState extends State<FavoritesScreen>
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              AppLocalizations.of(context)!
-                  .favoritesCountMessage(current, limit),
+              AppLocalizations.of(
+                context,
+              )!.favoritesCountMessage(current, limit),
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
@@ -178,10 +201,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
   // -------------------------------------------------------------
   // タイル
   // -------------------------------------------------------------
-  Widget _buildFavoriteTile(
-    BuildContext context,
-    YouTubeVideo video,
-  ) {
+  Widget _buildFavoriteTile(BuildContext context, YouTubeVideo video) {
     final favService = context.read<FavoritesService>();
     final isLocked = video.locked == true;
 
@@ -194,10 +214,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
     final t = AppLocalizations.of(context)!;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 2,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -205,7 +222,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
           InkWell(
             onTap: () {
               context.read<WatchHistoryService>().add(video);
-              _pushPlayerById(context, video.id);
+              _pushPlayer(context, video);
             },
             borderRadius: BorderRadius.circular(8),
             child: ClipRRect(
@@ -227,9 +244,26 @@ class FavoritesScreenState extends State<FavoritesScreen>
                     },
                   ),
                   const Positioned.fill(
-                    child: PlayButtonOverlay(
-                      sizeOverride: 30,
+                    child: PlayButtonOverlay(sizeOverride: 30),
+                  ),
+                  if (video.isLive)
+                    const Positioned(
+                      left: 5,
+                      bottom: 9,
+                      child: IgnorePointer(
+                        child: LiveBadge(
+                          fontSize: 11.5,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          backgroundColor: Color(0xFFF57C00),
+                        ),
+                      ),
                     ),
+                  ThumbnailPlaybackProgress(
+                    videoId: video.id,
+                    durationSeconds: video.durationSeconds,
                   ),
                 ],
               ),
@@ -300,8 +334,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
                                       break;
 
                                     case _FavMenuAction.delete:
-                                      await FavoriteDeleteHelper
-                                          .confirmOrDelete(
+                                      await FavoriteDeleteHelper.confirmOrDelete(
                                         context,
                                         video,
                                       );
@@ -365,42 +398,24 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     if (!isLandscape) {
       return SliverPadding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, i) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildFavoriteTile(
-                  context,
-                  list[i],
-                ),
-              );
-            },
-            childCount: list.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, i) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildFavoriteTile(context, list[i]),
+            );
+          }, childCount: list.length),
         ),
       );
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       sliver: SliverGrid(
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            return _buildFavoriteTile(
-              context,
-              list[i],
-            );
-          },
-          childCount: list.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          return _buildFavoriteTile(context, list[i]);
+        }, childCount: list.length),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           mainAxisSpacing: 12,
@@ -420,9 +435,24 @@ class FavoritesScreenState extends State<FavoritesScreen>
 
     final fav = context.watch<FavoritesService>();
     final list = fav.items;
+    final signature = list
+        .map(
+          (video) =>
+              '${video.id}:${video.durationSeconds}:${video.isLive}:'
+              '${video.liveBroadcastContent}',
+        )
+        .join('|');
+    if (signature != _lastPublishedVideoSignature) {
+      _lastPublishedVideoSignature = signature;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onVideosChanged?.call(List<YouTubeVideo>.unmodifiable(list));
+      });
+    }
 
     final iap = context.watch<IapProvider>();
     final favoritesLimit = LimitService.favoritesLimit(iap);
+    final adsRemoved = iap.isPurchased(IapProducts.removeAds.id);
+    final shouldShowAds = AdMobConfig.shouldShowAds(adsRemoved: adsRemoved);
 
     final currentCount = list.length;
 
@@ -451,7 +481,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
               height: UISpacing.bottomSpacer(
                 context,
                 hasFab: true,
-                hasAd: true,
+                hasAd: shouldShowAds,
               ),
             ),
           ),
@@ -480,9 +510,7 @@ class FavoritesScreenState extends State<FavoritesScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                AppLocalizations.of(context)!.favoriteUnlockCancel,
-              ),
+              child: Text(AppLocalizations.of(context)!.favoriteUnlockCancel),
             ),
             FilledButton(
               onPressed: () {

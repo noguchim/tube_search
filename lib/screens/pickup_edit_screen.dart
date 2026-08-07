@@ -17,7 +17,9 @@ import '../services/favorites_service.dart';
 import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
 import '../utils/app_logger.dart';
+import '../widgets/app_back_button.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/simple_tab_bar.dart';
 
 class PickupEditScreen extends StatefulWidget {
   const PickupEditScreen({super.key});
@@ -78,10 +80,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
   void initState() {
     super.initState();
 
-    _tabController = TabController(
-      length: 3,
-      vsync: this,
-    );
+    _tabController = TabController(length: 3, vsync: this);
 
     _genreScrollController = ScrollController(
       initialScrollOffset: _savedGenreOffset,
@@ -159,9 +158,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     }
   }
 
-  Future<void> _saveSelectedItems({
-    required Set<String> checkedKeys,
-  }) async {
+  Future<void> _saveSelectedItems({required Set<String> checkedKeys}) async {
     final prefs = await SharedPreferences.getInstance();
 
     final data = _selected.map((item) {
@@ -177,10 +174,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       };
     }).toList();
 
-    await prefs.setString(
-      _pickupSelectedPrefsKey,
-      jsonEncode(data),
-    );
+    await prefs.setString(_pickupSelectedPrefsKey, jsonEncode(data));
 
     await prefs.setString(
       _pickupPushDefaultsSignaturePrefsKey,
@@ -208,7 +202,8 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     }
 
     logger.i(
-        "[PickupEdit] didChangeDependencies region=$region loaded=$_loadedRegion");
+      "[PickupEdit] didChangeDependencies region=$region loaded=$_loadedRegion",
+    );
 
     if (_loadedRegion == region) return;
 
@@ -289,9 +284,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     });
 
     try {
-      final channels = await api.fetchPickupChannels(
-        regionCode: region,
-      );
+      final channels = await api.fetchPickupChannels(regionCode: region);
 
       if (!mounted) return;
 
@@ -314,10 +307,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     }
   }
 
-  void _restoreScrollOffset(
-    ScrollController controller,
-    double offset,
-  ) {
+  void _restoreScrollOffset(ScrollController controller, double offset) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!controller.hasClients) return;
@@ -344,10 +334,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(999),
@@ -367,9 +354,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
               const SizedBox(width: 6),
             ],
             ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: resolvedMaxTextWidth,
-              ),
+              constraints: BoxConstraints(maxWidth: resolvedMaxTextWidth),
               child: Text(
                 value,
                 maxLines: 1,
@@ -423,12 +408,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       final title = groupName != null && groupName.isNotEmpty
           ? groupName
           : categoryNameById[first.categoryId] ??
-              l.pickupEditCategoryFallback('${first.categoryId ?? "-"}');
+                l.pickupEditCategoryFallback('${first.categoryId ?? "-"}');
 
-      return PickupItemSection(
-        title: title,
-        items: entry.value,
-      );
+      return PickupItemSection(title: title, items: entry.value);
     }).toList();
 
     sections.sort((a, b) {
@@ -459,12 +441,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     return SingleChildScrollView(
       key: const PageStorageKey('pickup_channel_scroll'),
       controller: _channelScrollController,
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        14,
-        14,
-        32,
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: sections.map((section) {
@@ -540,9 +517,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       ..sort((a, b) => a.title.compareTo(b.title));
   }
 
-  Widget _buildFavoriteChannelSectionWrap(
-    List<PickupSelectableItem> channels,
-  ) {
+  Widget _buildFavoriteChannelSectionWrap(List<PickupSelectableItem> channels) {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
@@ -581,12 +556,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
 
     return SingleChildScrollView(
       key: const PageStorageKey('pickup_favorite_channel_scroll'),
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        14,
-        14,
-        32,
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -601,21 +571,25 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     );
   }
 
-  Widget _buildGenreSectionWrap(
-    List<GenreGroup> groups,
-  ) {
+  Widget _buildGenreSectionWrap(List<GenreGroup> groups) {
     const excludedCategoryIds = {-1, 12, 13};
 
-    final visibleGroups = groups.map((group) {
-      final items = group.items
-          .where((category) => !excludedCategoryIds.contains(category.id))
-          .toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+    final visibleGroups = groups
+        .map((group) {
+          final items =
+              group.items
+                  .where(
+                    (category) => !excludedCategoryIds.contains(category.id),
+                  )
+                  .toList()
+                ..sort((a, b) => a.name.compareTo(b.name));
 
-      return MapEntry(group, items);
-    }).where((entry) {
-      return entry.value.isNotEmpty;
-    }).toList();
+          return MapEntry(group, items);
+        })
+        .where((entry) {
+          return entry.value.isNotEmpty;
+        })
+        .toList();
 
     final l = AppLocalizations.of(context)!;
     final allItem = PickupSelectableItem(
@@ -627,12 +601,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     return SingleChildScrollView(
       key: const PageStorageKey('pickup_genre_scroll'),
       controller: _genreScrollController,
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        14,
-        14,
-        32,
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -727,11 +696,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
           child: Row(
             children: [
               if (leadingIcon != null) ...[
-                Icon(
-                  leadingIcon,
-                  size: 18,
-                  color: leadingColor,
-                ),
+                Icon(leadingIcon, size: 18, color: leadingColor),
                 const SizedBox(width: 6),
               ],
               Expanded(
@@ -809,9 +774,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                         },
                   child: Text(
                     l.commonCancel,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
                 FilledButton(
@@ -890,20 +853,22 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                                           checkColor: Colors.white,
                                           side:
                                               WidgetStateBorderSide.resolveWith(
-                                                  (states) {
-                                            if (states.contains(
-                                                WidgetState.selected)) {
-                                              return const BorderSide(
-                                                color: Colors.transparent,
-                                                width: 0,
-                                              );
-                                            }
+                                                (states) {
+                                                  if (states.contains(
+                                                    WidgetState.selected,
+                                                  )) {
+                                                    return const BorderSide(
+                                                      color: Colors.transparent,
+                                                      width: 0,
+                                                    );
+                                                  }
 
-                                            return const BorderSide(
-                                              color: Colors.white,
-                                              width: 2,
-                                            );
-                                          }),
+                                                  return const BorderSide(
+                                                    color: Colors.white,
+                                                    width: 2,
+                                                  );
+                                                },
+                                              ),
                                         ),
                                       ),
                                       Text(
@@ -922,8 +887,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                                         fontSize: 22,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 1.5,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.55),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.55,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -957,8 +923,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     final dialogNavigator = Navigator.of(dialogContext);
     final pageNavigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final saveFailedMessage =
-        AppLocalizations.of(context)!.pickupEditSaveFailed;
+    final saveFailedMessage = AppLocalizations.of(
+      context,
+    )!.pickupEditSaveFailed;
 
     try {
       await _saveSelectedItems(checkedKeys: checkedKeys);
@@ -972,17 +939,12 @@ class _PickupEditScreenState extends State<PickupEditScreen>
       }).toList();
 
       if (token != null && token.isNotEmpty) {
-        await api.replacePushSubscriptions(
-          token: token,
-          items: nextPushItems,
-        );
+        await api.replacePushSubscriptions(token: token, items: nextPushItems);
       }
 
       if (!context.mounted) return;
 
-      pushProvider.setEnabledKeys(
-        nextPushItems.map(_pushKeyOf),
-      );
+      pushProvider.setEnabledKeys(nextPushItems.map(_pushKeyOf));
 
       if (!context.mounted) return;
 
@@ -997,11 +959,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
         _isSaving = false;
       });
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(saveFailedMessage),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(saveFailedMessage)));
     }
   }
 
@@ -1032,8 +990,9 @@ class _PickupEditScreenState extends State<PickupEditScreen>
 
     return Scaffold(
       // backgroundColor: theme.scaffoldBackgroundColor,
-      backgroundColor:
-          isDark ? theme.scaffoldBackgroundColor : const Color(0xFFFFFFFF),
+      backgroundColor: isDark
+          ? theme.scaffoldBackgroundColor
+          : const Color(0xFFFFFFFF),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -1042,12 +1001,7 @@ class _PickupEditScreenState extends State<PickupEditScreen>
             // Header
             // =================================================
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                8,
-                4,
-                8,
-                0,
-              ),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
               child: SizedBox(
                 height: 48,
                 child: Stack(
@@ -1055,13 +1009,10 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: IconButton(
+                      child: AppBackButton(
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                        ),
                       ),
                     ),
                     Center(
@@ -1087,17 +1038,13 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                         children: [
                           SizedBox(
                             width: 250,
-                            child: _buildCurrentSelectionCard(
-                              theme,
-                              isDark,
-                              l,
-                            ),
+                            child: _buildCurrentSelectionCard(theme, isDark, l),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               children: [
-                                _buildTabBar(theme, l),
+                                _buildTabBar(l),
                                 const SizedBox(height: 12),
                                 Expanded(
                                   child: _buildTabContent(
@@ -1116,22 +1063,13 @@ class _PickupEditScreenState extends State<PickupEditScreen>
                   : Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            14,
-                            12,
-                            14,
-                            10,
-                          ),
-                          child: _buildCurrentSelectionCard(
-                            theme,
-                            isDark,
-                            l,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                          child: _buildCurrentSelectionCard(theme, isDark, l),
                         ),
                         const SizedBox(height: 4),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: _buildTabBar(theme, l),
+                          child: _buildTabBar(l),
                         ),
                         const SizedBox(height: 12),
                         Expanded(
@@ -1290,36 +1228,14 @@ class _PickupEditScreenState extends State<PickupEditScreen>
     );
   }
 
-  Widget _buildTabBar(ThemeData theme, AppLocalizations l) {
-    return SizedBox(
-      height: 42,
-      child: TabBar(
-        controller: _tabController,
-        dividerColor: Colors.transparent,
-        indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(
-            width: 3,
-            color: theme.colorScheme.primary,
-          ),
-          insets: EdgeInsets.zero,
-        ),
-        labelColor: theme.colorScheme.onSurface,
-        unselectedLabelColor:
-            theme.colorScheme.onSurface.withValues(alpha: 0.55),
-        labelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
-        tabs: [
-          Tab(text: l.pickupEditGenreTab),
-          Tab(text: l.pickupEditChannelTab),
-          Tab(text: l.pickupEditFavoriteTab),
-        ],
-      ),
+  Widget _buildTabBar(AppLocalizations l) {
+    return SimpleTabBar(
+      controller: _tabController,
+      tabs: [
+        Tab(text: l.pickupEditGenreTab),
+        Tab(text: l.pickupEditChannelTab),
+        Tab(text: l.pickupEditFavoriteTab),
+      ],
     );
   }
 

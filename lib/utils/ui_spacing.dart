@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 
+import 'admob_config.dart';
+
 class UISpacing {
-  static double fabBottomOffset(
-    BuildContext context, {
-    bool hasAd = false,
-  }) {
+  static double fabBottomOffset(BuildContext context, {bool hasAd = false}) {
     final media = MediaQuery.of(context);
     final isTablet = media.size.shortestSide >= 600;
+    final isLandscape = media.orientation == Orientation.landscape;
 
     if (!hasAd) {
       return 15.0;
     }
 
-    return isTablet ? 120.0 : 45.0;
+    if (!isTablet) {
+      return 45.0;
+    }
+
+    // 縦向きは従来位置を維持し、画面高が低い横向きだけ広告側へ寄せる。
+    if (!isLandscape) {
+      return 120.0;
+    }
+
+    // Debug/Profileのダミーは50px固定。Releaseでは90px前後の
+    // Anchored Adaptive Bannerと重ならない位置を確保する。
+    return AdMobConfig.useDummyBanner ? 45.0 : 86.0;
   }
 
   static double bottomSpacer(

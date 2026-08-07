@@ -19,16 +19,13 @@ import '../utils/ui_scale.dart';
 import '../utils/view_count_formatter.dart';
 import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoOverlayCard extends StatelessWidget {
   final YouTubeVideo video;
   final int rank;
 
-  const VideoOverlayCard({
-    super.key,
-    required this.video,
-    required this.rank,
-  });
+  const VideoOverlayCard({super.key, required this.video, required this.rank});
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +47,7 @@ class VideoOverlayCard extends StatelessWidget {
     final infoSeparator = '$viewText${separator(context)}$timeAgo';
 
     final isFav = fav.isFavoriteSync(id);
-    final isWatched = context.watch<WatchHistoryService>().isWatchedSync(id);
-    final overlayTitleColor =
-        isWatched ? Colors.white.withValues(alpha: 0.46) : Colors.white;
+    const overlayTitleColor = Colors.white;
 
     bool isPushing = false;
 
@@ -62,7 +57,11 @@ class VideoOverlayCard extends StatelessWidget {
       try {
         if (id.isEmpty) return;
         logger.w("🚨 OPEN CCT id=$id");
-        await openYouTubeInInAppBrowser(context, videoId: id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isPushing = false;
       }
@@ -116,7 +115,8 @@ class VideoOverlayCard extends StatelessWidget {
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
-                                          strokeWidth: 2),
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -135,10 +135,7 @@ class VideoOverlayCard extends StatelessWidget {
                       // =====================================================
                       // ② 中央再生ボタン
                       // =====================================================
-                      PlayButtonOverlay(
-                        pressed: isPressed,
-                        sizeOverride: 36,
-                      ),
+                      PlayButtonOverlay(pressed: isPressed, sizeOverride: 36),
 
                       // =====================================================
                       // ③ 情報カード（NEW）
@@ -203,11 +200,12 @@ class VideoOverlayCard extends StatelessWidget {
                           key: ValueKey('overlay_favorite_${video.id}'),
                           isFavorite: isFav,
                           scale: 1.0,
-                          onTap: () => handleFavoriteTap(
-                            context,
-                            video: video,
-                          ),
+                          onTap: () => handleFavoriteTap(context, video: video),
                         ),
+                      ),
+                      ThumbnailPlaybackProgress(
+                        videoId: video.id,
+                        durationSeconds: video.durationSeconds,
                       ),
                     ],
                   ),
@@ -240,9 +238,7 @@ class VideoOverlayCard extends StatelessWidget {
           bottomRight: Radius.circular(12),
         ),
 
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,10 +258,7 @@ class VideoOverlayCard extends StatelessWidget {
             channel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 4),
           Text(

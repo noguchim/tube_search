@@ -5,6 +5,7 @@ import 'package:tube_search/utils/rank_badge.dart';
 import '../data/youtube_video.dart';
 import '../services/expanded_video_controller.dart';
 import 'new_video_badge.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoGridTile extends StatelessWidget {
   final YouTubeVideo video;
@@ -53,10 +54,7 @@ class VideoGridTile extends StatelessWidget {
                     ),
                     fadeInDuration: const Duration(milliseconds: 200),
                   )
-                : Image.asset(
-                    'assets/images/no_image.png',
-                    fit: BoxFit.cover,
-                  ),
+                : Image.asset('assets/images/no_image.png', fit: BoxFit.cover),
           ),
           if (showNewBadge || showRankingInfo)
             Positioned(
@@ -66,6 +64,10 @@ class VideoGridTile extends StatelessWidget {
                   ? const NewVideoBadge()
                   : rankBadge(context, rank),
             ),
+          ThumbnailPlaybackProgress(
+            videoId: video.id,
+            durationSeconds: video.durationSeconds,
+          ),
         ],
       ),
     );

@@ -9,12 +9,14 @@ import '../providers/iap_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/watch_history_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/handle_favorite_tap.dart';
 import '../utils/open_in_custom_tabs.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/favorite_button_overlay.dart';
 import '../widgets/play_button_overlay.dart';
+import '../widgets/thumbnail_playback_progress.dart';
 import '../widgets/top_bar_back.dart';
 
 class WatchHistoryScreen extends StatefulWidget {
@@ -75,8 +77,12 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
-    final bool adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final bool adsRemoved = context.watch<IapProvider>().isPurchased(
+      IapProducts.removeAds.id,
+    );
+    final bool shouldShowAds = AdMobConfig.shouldShowAds(
+      adsRemoved: adsRemoved,
+    );
 
     final double safeTop = MediaQuery.of(context).padding.top;
     final media = MediaQuery.of(context);
@@ -98,10 +104,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
               ? Center(
                   child: Text(
                     l.watchHistoryEmpty,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 )
               : RefreshIndicator(
@@ -112,39 +115,36 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                     controller: _scrollController,
                     slivers: [
                       // 👇 TopBarスペーサ（絶対必要）
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: 55 + safeTop),
-                      ),
+                      SliverToBoxAdapter(child: SizedBox(height: 55 + safeTop)),
 
                       // 👇 履歴リスト
                       SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final date = dates[index];
-                            final items = grouped[date]!;
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final date = dates[index];
+                          final items = grouped[date]!;
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 日付
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  child: Text(
-                                    date,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 日付
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                child: Text(
+                                  date,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                              ),
 
-                                _buildDateItems(items, useGrid: useGrid),
-                              ],
-                            );
-                          },
-                          childCount: dates.length,
-                        ),
+                              _buildDateItems(items, useGrid: useGrid),
+                            ],
+                          );
+                        }, childCount: dates.length),
                       ),
 
                       // 👇 下余白
@@ -153,7 +153,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                           height: UISpacing.bottomSpacer(
                             context,
                             hasFab: false,
-                            hasAd: !adsRemoved,
+                            hasAd: shouldShowAds,
                           ),
                         ),
                       ),
@@ -175,6 +175,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
               child: TopBarBack(
                 title: l.watchHistoryTitle,
                 showSort: false,
+                showContinueWatch: false,
                 onBack: () => Navigator.of(context).pop(),
               ),
             ),
@@ -183,7 +184,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
           // =============================
           // Ad
           // =============================
-          if (!adsRemoved)
+          if (shouldShowAds)
             const Positioned(
               left: 0,
               right: 0,
@@ -203,9 +204,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
     required bool useGrid,
   }) {
     if (!useGrid) {
-      return Column(
-        children: items.map(_item).toList(),
-      );
+      return Column(children: items.map(_item).toList());
     }
 
     return GridView.builder(
@@ -237,7 +236,11 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
           final id = video.id;
           if (id.isEmpty) return;
 
-          await openYouTubeInInAppBrowser(context, videoId: id);
+          await openYouTubeInInAppBrowser(
+            context,
+            videoId: id,
+            durationSeconds: video.durationSeconds,
+          );
         } finally {
           isPushing = false;
         }
@@ -270,9 +273,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
 
                   // ▶ 再生ボタン
                   const Positioned.fill(
-                    child: PlayButtonOverlay(
-                      sizeOverride: 30,
-                    ),
+                    child: PlayButtonOverlay(sizeOverride: 30),
                   ),
 
                   // ❤️ お気に入り
@@ -286,6 +287,10 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                       scale: 0.9,
                       onTap: () => handleFavoriteTap(context, video: video),
                     ),
+                  ),
+                  ThumbnailPlaybackProgress(
+                    videoId: video.id,
+                    durationSeconds: video.durationSeconds,
                   ),
                 ],
               ),
@@ -302,9 +307,7 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                     video.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                    ),
+                    style: const TextStyle(fontSize: 17),
                   ),
                   const SizedBox(height: 10),
 

@@ -20,6 +20,7 @@ import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/app_dialog.dart';
@@ -30,8 +31,9 @@ import '../widgets/top_bar.dart';
 
 class TopicScreen extends StatefulWidget {
   final ValueChanged<bool>? onScrollChanged;
+  final ValueChanged<List<YouTubeVideo>>? onVideosChanged;
 
-  const TopicScreen({super.key, this.onScrollChanged});
+  const TopicScreen({super.key, this.onScrollChanged, this.onVideosChanged});
 
   @override
   State<TopicScreen> createState() => TopicScreenState();
@@ -190,11 +192,7 @@ class TopicScreenState extends State<TopicScreen>
                 color: baseColor,
               ),
               child: const Center(
-                child: Icon(
-                  Icons.edit_outlined,
-                  color: Colors.white,
-                  size: 26,
-                ),
+                child: Icon(Icons.edit_outlined, color: Colors.white, size: 26),
               ),
             ),
           ),
@@ -230,7 +228,6 @@ class TopicScreenState extends State<TopicScreen>
         widget.onScrollChanged?.call(true);
       }
     }
-
     // 🔼 上スクロール
     else if (delta < -5) {
       if (_isScrollingDown) {
@@ -261,20 +258,23 @@ class TopicScreenState extends State<TopicScreen>
     final expanded = context.watch<ExpandedVideoController>();
     final expandedController = context.read<ExpandedVideoController>();
     final searchIsOpen = context.watch<SearchUIProvider>().isOpen;
-    final adsRemoved =
-        context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
+    final adsRemoved = context.watch<IapProvider>().isPurchased(
+      IapProducts.removeAds.id,
+    );
+    final shouldShowAds = AdMobConfig.shouldShowAds(adsRemoved: adsRemoved);
 
     context.watch<FavoritesService>();
 
     return Scaffold(
-      backgroundColor:
-          isDark ? theme.scaffoldBackgroundColor : const Color(0xFFFFFFFF),
+      backgroundColor: isDark
+          ? theme.scaffoldBackgroundColor
+          : const Color(0xFFFFFFFF),
       floatingActionButton: expanded.video == null && !searchIsOpen
           ? Padding(
               padding: EdgeInsets.only(
                 bottom: UISpacing.fabBottomOffset(
                   context,
-                  hasAd: !adsRemoved,
+                  hasAd: shouldShowAds,
                 ),
               ),
               child: _buildEditFab(),
@@ -298,6 +298,7 @@ class TopicScreenState extends State<TopicScreen>
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
                     child: NewArrivalSection(
                       revision: pickupRevision,
+                      onVideosChanged: widget.onVideosChanged,
                     ),
                   ),
                 ),
@@ -306,7 +307,7 @@ class TopicScreenState extends State<TopicScreen>
                     height: UISpacing.bottomSpacer(
                       context,
                       hasFab: false,
-                      hasAd: true,
+                      hasAd: shouldShowAds,
                     ),
                   ),
                 ),
@@ -332,11 +333,9 @@ class TopicScreenState extends State<TopicScreen>
 
 class NewArrivalSection extends StatefulWidget {
   final int revision;
+  final ValueChanged<List<YouTubeVideo>>? onVideosChanged;
 
-  const NewArrivalSection({
-    super.key,
-    this.revision = 0,
-  });
+  const NewArrivalSection({super.key, this.revision = 0, this.onVideosChanged});
 
   @override
   State<NewArrivalSection> createState() => _NewArrivalSectionState();
@@ -363,6 +362,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
   final Map<String, DateTime> _latestPickupAt = {};
   Map<String, DateTime> _seenPickupAt = {};
   bool _isResumingRefresh = false;
+  String _lastPublishedVideoSignature = '';
 
   List<PickupSelectableItem> _pickupItems = [];
   bool _didInitPickup = false;
@@ -453,10 +453,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
       return MapEntry(key, value.toIso8601String());
     });
 
-    await prefs.setString(
-      _pickupSeenAtPrefsKey,
-      jsonEncode(data),
-    );
+    await prefs.setString(_pickupSeenAtPrefsKey, jsonEncode(data));
   }
 
   DateTime? _latestPublishedAt(List<YouTubeVideo> list) {
@@ -474,10 +471,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     return latest;
   }
 
-  void _applyLatestPickupAt({
-    required String type,
-    required DateTime? latest,
-  }) {
+  void _applyLatestPickupAt({required String type, required DateTime? latest}) {
     if (latest == null) {
       _unreadPickupKeys.remove(type);
       return;
@@ -527,10 +521,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
         cache[cacheKey] = list;
         cacheTime[cacheKey] = now;
 
-        _applyLatestPickupAt(
-          type: type,
-          latest: _latestPublishedAt(list),
-        );
+        _applyLatestPickupAt(type: type, latest: _latestPublishedAt(list));
       }
 
       if (!mounted) return;
@@ -542,7 +533,8 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
   }
 
   ({String type, String value})? _pushSubscriptionOf(
-      PickupSelectableItem item) {
+    PickupSelectableItem item,
+  ) {
     if (!item.pushEnabled) return null;
 
     if (item.type == PickupTargetType.channel &&
@@ -616,10 +608,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     await _saveSeenPickupAt();
 
     if (item.key.isNotEmpty) {
-      unawaited(_markPickupSeenInApp(
-        item: item,
-        seenVideos: videos,
-      ));
+      unawaited(_markPickupSeenInApp(item: item, seenVideos: videos));
     }
   }
 
@@ -813,9 +802,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     return "$date $time updated";
   }
 
-  Future<void> _refreshPickup({
-    bool suppressTapAfterRefresh = false,
-  }) async {
+  Future<void> _refreshPickup({bool suppressTapAfterRefresh = false}) async {
     if (_isRefreshingPickup) return;
 
     setState(() {
@@ -866,9 +853,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
     final now = DateTime.now();
     final key = "${region}_$type";
 
-    logger.i(
-      "[Pickup fetch] type=$type title=${item.title} region=$region",
-    );
+    logger.i("[Pickup fetch] type=$type title=${item.title} region=$region");
 
     // =========================
     // 🔥 キャッシュ（UI側）
@@ -930,10 +915,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
         cache[key] = list;
         cacheTime[key] = DateTime.now();
 
-        _applyLatestPickupAt(
-          type: type,
-          latest: latest,
-        );
+        _applyLatestPickupAt(type: type, latest: latest);
       });
     } catch (e) {
       logger.e("Pickup fetch error: $e");
@@ -969,10 +951,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
       return list;
     }
 
-    final video = await api.fetchVideoById(
-      pendingVideoId,
-      regionCode: region,
-    );
+    final video = await api.fetchVideoById(pendingVideoId, regionCode: region);
     if (video == null) {
       return list;
     }
@@ -1043,8 +1022,9 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
                         _pickupTimestamp,
                         style: TextStyle(
                           fontSize: 14,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                     ),
@@ -1058,14 +1038,16 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : Icon(
                                 Icons.refresh,
                                 size: 22,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.8),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                       ),
                     ),
@@ -1101,7 +1083,8 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
           final item = _pickupItems[index];
           final type = _pickupTypeOf(item);
           final isSelected = index == _selectedIndex;
-          final hasBadge = _unreadPickupKeys.contains(type) ||
+          final hasBadge =
+              _unreadPickupKeys.contains(type) ||
               pendingPickupKey == type ||
               pendingPickupKeys.contains(type);
 
@@ -1142,13 +1125,14 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
                         return;
                       }
 
-                      final currentType =
-                          _pickupTypeOf(_pickupItems[_selectedIndex]);
+                      final currentType = _pickupTypeOf(
+                        _pickupItems[_selectedIndex],
+                      );
 
                       _markPickupRead(currentType);
 
-                      final pickupSettings =
-                          context.read<PickupSettingsProvider>();
+                      final pickupSettings = context
+                          .read<PickupSettingsProvider>();
                       if (pickupSettings.pendingPickupKeys.contains(
                         currentType,
                       )) {
@@ -1187,12 +1171,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
                       ),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 120),
-                        padding: const EdgeInsets.fromLTRB(
-                          12,
-                          6,
-                          12,
-                          6,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
                         child: Text(
                           item.title,
                           maxLines: 1,
@@ -1211,11 +1190,7 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
                 ),
               ),
               if (hasBadge)
-                const Positioned(
-                  top: -4,
-                  right: -4,
-                  child: _UnreadBadge(),
-                ),
+                const Positioned(top: -4, right: -4, child: _UnreadBadge()),
             ],
           );
         }),
@@ -1275,6 +1250,13 @@ class _NewArrivalSectionState extends State<NewArrivalSection>
   }
 
   Widget _buildInner() {
+    final signature = videos.map((video) => video.id).join('|');
+    if (signature != _lastPublishedVideoSignature) {
+      _lastPublishedVideoSignature = signature;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onVideosChanged?.call(List<YouTubeVideo>.unmodifiable(videos));
+      });
+    }
     if (isLoading) {
       return const SizedBox(
         height: 255,
@@ -1338,10 +1320,7 @@ class _UnreadBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF3B82F6),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white,
-          width: 1.5,
-        ),
+        border: Border.all(color: Colors.white, width: 1.5),
       ),
     );
   }

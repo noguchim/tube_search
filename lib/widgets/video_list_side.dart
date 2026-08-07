@@ -17,6 +17,7 @@ import 'favorite_button_overlay.dart';
 import 'live_badge.dart';
 import 'new_video_badge.dart';
 import 'popularity_chip.dart';
+import 'thumbnail_playback_progress.dart';
 
 class VideoListSide extends StatelessWidget {
   final YouTubeVideo video;
@@ -39,19 +40,15 @@ class VideoListSide extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fav = context.watch<FavoritesService>();
-    final history = context.watch<WatchHistoryService>();
     final isFav = fav.isFavoriteSync(video.id);
-    final isWatched = history.isWatchedSync(video.id);
-    final titleColor = isWatched
-        ? theme.colorScheme.onSurface.withValues(alpha: 0.46)
-        : theme.colorScheme.onSurface;
+    final titleColor = theme.colorScheme.onSurface;
     final titleChannelGap = showPopularityScore ? 8.0 : 8.0;
     final channelMetaGap = showPopularityScore ? 8.0 : 6.0;
 
     final duration =
         (video.durationSeconds != null && video.durationSeconds! > 0)
-            ? formatDuration(video.durationSeconds!)
-            : null;
+        ? formatDuration(video.durationSeconds!)
+        : null;
     final viewText = formatViewCount(
       context,
       (video.viewCount ?? 0).toString(),
@@ -67,7 +64,11 @@ class VideoListSide extends StatelessWidget {
       isPushing = true;
       try {
         if (video.id.isEmpty) return;
-        await openYouTubeInInAppBrowser(context, videoId: video.id);
+        await openYouTubeInInAppBrowser(
+          context,
+          videoId: video.id,
+          durationSeconds: video.durationSeconds,
+        );
       } finally {
         isPushing = false;
       }
@@ -78,11 +79,11 @@ class VideoListSide extends StatelessWidget {
       context.read<WatchHistoryService>().add(video);
       unawaited(
         context.read<RecommendationHistoryProvider>().recordVideoTap(
-              videoId: video.id,
-              title: video.title,
-              channelId: video.channelId,
-              channelTitle: video.channelTitle,
-            ),
+          videoId: video.id,
+          title: video.title,
+          channelId: video.channelId,
+          channelTitle: video.channelTitle,
+        ),
       );
       await pushPlayer();
     }
@@ -132,13 +133,13 @@ class VideoListSide extends StatelessWidget {
                           if (duration != null)
                             Positioned(
                               right: 4,
-                              bottom: 4,
+                              bottom: 8,
                               child: _DurationPill(duration: duration),
                             ),
                           if (video.isLive)
                             const Positioned(
                               left: 5,
-                              bottom: 7,
+                              bottom: 9,
                               child: IgnorePointer(
                                 child: LiveBadge(
                                   fontSize: 11.5,
@@ -158,10 +159,8 @@ class VideoListSide extends StatelessWidget {
                               isFavorite: isFav,
                               showBackground: true,
                               scale: 0.9,
-                              onTap: () => handleFavoriteTap(
-                                context,
-                                video: video,
-                              ),
+                              onTap: () =>
+                                  handleFavoriteTap(context, video: video),
                             ),
                           ),
                           if (showNewBadge || rank != null)
@@ -180,6 +179,10 @@ class VideoListSide extends StatelessWidget {
                                 ),
                               ),
                             ),
+                          ThumbnailPlaybackProgress(
+                            videoId: video.id,
+                            durationSeconds: video.durationSeconds,
+                          ),
                         ],
                       ),
                     ),
@@ -207,10 +210,7 @@ class VideoListSide extends StatelessWidget {
                             video.channelTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              height: 1.1,
-                            ),
+                            style: const TextStyle(fontSize: 14, height: 1.1),
                           ),
                           SizedBox(height: channelMetaGap),
                           Row(

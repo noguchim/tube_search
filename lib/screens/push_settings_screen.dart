@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/push_subscription_provider.dart';
 import '../services/push_token_store.dart';
 import '../services/youtube_api_service.dart';
+import '../widgets/app_back_button.dart';
 
 class PushSettingsScreen extends StatefulWidget {
   const PushSettingsScreen({super.key});
@@ -63,29 +64,32 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
 
       if (decoded is! List) return;
 
-      final items = decoded.map<PickupSelectableItem>((e) {
-        final json = Map<String, dynamic>.from(e as Map);
+      final items = decoded
+          .map<PickupSelectableItem>((e) {
+            final json = Map<String, dynamic>.from(e as Map);
 
-        final type = json['type'] == PickupTargetType.channel.name
-            ? PickupTargetType.channel
-            : PickupTargetType.category;
+            final type = json['type'] == PickupTargetType.channel.name
+                ? PickupTargetType.channel
+                : PickupTargetType.category;
 
-        final itemKey = json['key']?.toString() == 'category:all'
-            ? 'category:recommended'
-            : json['key']?.toString() ?? '';
+            final itemKey = json['key']?.toString() == 'category:all'
+                ? 'category:recommended'
+                : json['key']?.toString() ?? '';
 
-        return PickupSelectableItem(
-          type: type,
-          key: itemKey,
-          title: itemKey == 'category:recommended'
-              ? l.pickupRecommended
-              : json['title']?.toString() ?? '',
-          channelId: json['channelId']?.toString(),
-          categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
-        );
-      }).where((item) {
-        return item.key.isNotEmpty && item.title.isNotEmpty;
-      }).toList();
+            return PickupSelectableItem(
+              type: type,
+              key: itemKey,
+              title: itemKey == 'category:recommended'
+                  ? l.pickupRecommended
+                  : json['title']?.toString() ?? '',
+              channelId: json['channelId']?.toString(),
+              categoryId: int.tryParse('${json['categoryId'] ?? ''}'),
+            );
+          })
+          .where((item) {
+            return item.key.isNotEmpty && item.title.isNotEmpty;
+          })
+          .toList();
 
       if (!mounted) return;
 
@@ -142,8 +146,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
     if (items.isEmpty) return;
 
     final signature = _pickupSignature(items);
-    final initializedSignature =
-        prefs.getString(_pickupPushDefaultsSignaturePrefsKey);
+    final initializedSignature = prefs.getString(
+      _pickupPushDefaultsSignaturePrefsKey,
+    );
 
     if (initializedSignature == signature) return;
 
@@ -153,8 +158,8 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
     if (!mounted) return;
 
     context.read<PushSubscriptionProvider>().setEnabledKeys(
-          enabledItems.map(_pushKeyOf),
-        );
+      enabledItems.map(_pushKeyOf),
+    );
 
     await prefs.setString(_pickupPushDefaultsSignaturePrefsKey, signature);
 
@@ -165,10 +170,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
 
     final api = context.read<YouTubeApiService>();
     try {
-      await api.replacePushSubscriptions(
-        token: token,
-        items: enabledItems,
-      );
+      await api.replacePushSubscriptions(token: token, items: enabledItems);
     } catch (_) {
       // 表示初期化は維持し、個別スイッチ操作時の保存で再同期する。
     }
@@ -207,7 +209,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                     height: 1.4,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
-                )
+                ),
               // else
               //   Text.rich(
               //     TextSpan(
@@ -302,8 +304,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
   Future<void> _updateTrendPushEnabled(bool enabled) async {
     final api = context.read<YouTubeApiService>();
     final messenger = ScaffoldMessenger.of(context);
-    final updateFailedMessage =
-        AppLocalizations.of(context)!.pushSettingsUpdateFailed;
+    final updateFailedMessage = AppLocalizations.of(
+      context,
+    )!.pushSettingsUpdateFailed;
 
     try {
       final token = await PushTokenStore.getToken();
@@ -312,10 +315,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
         throw Exception("FCM token not found");
       }
 
-      await api.updatePushStatus(
-        token: token,
-        enabled: enabled,
-      );
+      await api.updatePushStatus(token: token, enabled: enabled);
 
       if (!mounted) return;
 
@@ -325,11 +325,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(updateFailedMessage),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(updateFailedMessage)));
     }
   }
 
@@ -341,8 +337,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
 
     final api = context.read<YouTubeApiService>();
     final messenger = ScaffoldMessenger.of(context);
-    final updateFailedMessage =
-        AppLocalizations.of(context)!.pushSettingsUpdateFailed;
+    final updateFailedMessage = AppLocalizations.of(
+      context,
+    )!.pushSettingsUpdateFailed;
     final pushProvider = context.read<PushSubscriptionProvider>();
 
     final nextKeys = Set<String>.from(pushProvider.enabledKeys);
@@ -367,24 +364,17 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
         throw Exception("FCM token not found");
       }
 
-      await api.replacePushSubscriptions(
-        token: token,
-        items: enabledItems,
-      );
+      await api.replacePushSubscriptions(token: token, items: enabledItems);
 
       if (!mounted) return;
 
       context.read<PushSubscriptionProvider>().setEnabledKeys(
-            enabledItems.map(_pushKeyOf),
-          );
+        enabledItems.map(_pushKeyOf),
+      );
     } catch (e) {
       if (!mounted) return;
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(updateFailedMessage),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(updateFailedMessage)));
     }
   }
 
@@ -424,13 +414,9 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               children: [
-                TextSpan(
-                  text: l.pushPickupDescription,
-                ),
+                TextSpan(text: l.pushPickupDescription),
                 if (!_hasCustomPickupItems) ...[
-                  TextSpan(
-                    text: l.pushPickupInitialWarningPrefix,
-                  ),
+                  TextSpan(text: l.pushPickupInitialWarningPrefix),
                   TextSpan(
                     text: l.pushPickupEditLink,
                     style: const TextStyle(
@@ -454,9 +440,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                         }
                       },
                   ),
-                  TextSpan(
-                    text: l.pushPickupInitialWarningSuffix,
-                  ),
+                  TextSpan(text: l.pushPickupInitialWarningSuffix),
                 ],
               ],
             ),
@@ -491,12 +475,7 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                8,
-                4,
-                8,
-                0,
-              ),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
               child: SizedBox(
                 height: 48,
                 child: Stack(
@@ -504,13 +483,10 @@ class _PushSettingsScreenState extends State<PushSettingsScreen> {
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: IconButton(
+                      child: AppBackButton(
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                        ),
                       ),
                     ),
                     Center(

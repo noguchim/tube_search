@@ -7,6 +7,7 @@ import '../services/expanded_video_controller.dart';
 import '../services/favorites_service.dart';
 import '../services/iap_products.dart';
 import '../services/youtube_api_service.dart';
+import '../utils/admob_config.dart';
 import '../utils/app_logger.dart';
 import '../utils/ui_spacing.dart';
 import '../widgets/ad_banner.dart';
@@ -88,7 +89,10 @@ class VideoDetailScreenState extends State<VideoDetailScreen> {
 
     final adsRemoved =
         context.watch<IapProvider>().isPurchased(IapProducts.removeAds.id);
-    final bool shouldShowBanner = !adsRemoved;
+    final bool shouldShowAds = AdMobConfig.shouldShowAds(
+      adsRemoved: adsRemoved,
+    );
+    final bool shouldShowBanner = shouldShowAds;
     final controller = context.read<ExpandedVideoController>();
 
     return Scaffold(
@@ -135,7 +139,7 @@ class VideoDetailScreenState extends State<VideoDetailScreen> {
                       height: UISpacing.bottomSpacer(
                         context,
                         hasFab: true,
-                        hasAd: !adsRemoved,
+                        hasAd: shouldShowAds,
                       ),
                     ),
                   ),

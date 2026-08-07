@@ -63,7 +63,7 @@ import 'app_localizations_ja.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -86,16 +86,16 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('ja')
+    Locale('ja'),
   ];
 
   /// No description provided for @newPickupTitle.
@@ -350,6 +350,18 @@ abstract class AppLocalizations {
   /// **'Greatly increases the limit for trending videos and favorites'**
   String get shopDescLimit;
 
+  /// No description provided for @shopTitleContinueWatchPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Watching Pro'**
+  String get shopTitleContinueWatchPro;
+
+  /// No description provided for @shopDescContinueWatchPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand saved playlists from 10 to 30'**
+  String get shopDescContinueWatchPro;
+
   /// No description provided for @shopTitleAutoplay.
   ///
   /// In en, this message translates to:
@@ -373,6 +385,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Limits have been upgraded'**
   String get shopPurchasedLimit;
+
+  /// No description provided for @shopPurchasedContinueWatchPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Watching Pro is now active'**
+  String get shopPurchasedContinueWatchPro;
 
   /// No description provided for @shopPurchased.
   ///
@@ -937,6 +955,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The link URL is not set yet'**
   String get animeLinkPending;
+
+  /// No description provided for @continueWatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue watching'**
+  String get continueWatchTitle;
+
+  /// No description provided for @continueWatchHeaderLine1.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueWatchHeaderLine1;
+
+  /// No description provided for @continueWatchHeaderLine2.
+  ///
+  /// In en, this message translates to:
+  /// **'watching'**
+  String get continueWatchHeaderLine2;
+
+  /// No description provided for @continueWatchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue watching'**
+  String get continueWatchTooltip;
+
+  /// No description provided for @continueWatchCurrentTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing'**
+  String get continueWatchCurrentTab;
+
+  /// No description provided for @continueWatchHistoryTab.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get continueWatchHistoryTab;
+
+  /// No description provided for @continueWatchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no videos available to continue watching'**
+  String get continueWatchEmpty;
+
+  /// No description provided for @continueWatchHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved playlists'**
+  String get continueWatchHistoryEmpty;
+
+  /// No description provided for @continueWatchLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved playlist limit'**
+  String get continueWatchLimitTitle;
+
+  /// No description provided for @continueWatchFreeLimitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can save up to {freeLimit} playlists.\nContinue Watching Pro increases the limit to {proLimit}.'**
+  String continueWatchFreeLimitMessage(int freeLimit, int proLimit);
+
+  /// No description provided for @continueWatchProLimitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can save up to {proLimit} playlists.\nDelete an unneeded playlist from History to save another.'**
+  String continueWatchProLimitMessage(int proLimit);
+
+  /// No description provided for @continueWatchOpenShop.
+  ///
+  /// In en, this message translates to:
+  /// **'View shop'**
+  String get continueWatchOpenShop;
+
+  /// No description provided for @continueWatchOpenHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View history'**
+  String get continueWatchOpenHistory;
+
+  /// No description provided for @continueWatchExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get continueWatchExcluded;
+
+  /// No description provided for @continueWatchStartCurrentList.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with this list'**
+  String get continueWatchStartCurrentList;
+
+  /// No description provided for @continueWatchPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get continueWatchPrevious;
+
+  /// No description provided for @continueWatchNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get continueWatchNext;
+
+  /// No description provided for @continueWatchHowTo.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use'**
+  String get continueWatchHowTo;
+
+  /// No description provided for @continueWatchHowToTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use Continue Watching'**
+  String get continueWatchHowToTitle;
+
+  /// No description provided for @continueWatchSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get continueWatchSelectAll;
+
+  /// No description provided for @continueWatchClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get continueWatchClearAll;
+
+  /// No description provided for @continueWatchSelectionMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Selection menu'**
+  String get continueWatchSelectionMenu;
+
+  /// No description provided for @continueWatchCompactView.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact view'**
+  String get continueWatchCompactView;
+
+  /// No description provided for @continueWatchLargeView.
+  ///
+  /// In en, this message translates to:
+  /// **'Large view'**
+  String get continueWatchLargeView;
+
+  /// No description provided for @continueWatchPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get continueWatchPlay;
+
+  /// No description provided for @continueWatchPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get continueWatchPaused;
+
+  /// No description provided for @continueWatchPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get continueWatchPin;
+
+  /// No description provided for @continueWatchUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsave'**
+  String get continueWatchUnpin;
+
+  /// No description provided for @continueWatchRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch again'**
+  String get continueWatchRestart;
+
+  /// No description provided for @continueWatchRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get continueWatchRename;
+
+  /// No description provided for @continueWatchQueueName.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist name'**
+  String get continueWatchQueueName;
+
+  /// No description provided for @continueWatchSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get continueWatchSave;
+
+  /// No description provided for @continueWatchDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get continueWatchDelete;
+
+  /// No description provided for @continueWatchDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this playlist?'**
+  String get continueWatchDeleteTitle;
+
+  /// No description provided for @continueWatchCompletedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback complete'**
+  String get continueWatchCompletedTitle;
+
+  /// No description provided for @continueWatchCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'You have finished the entire playlist. Thanks for watching.'**
+  String get continueWatchCompleted;
+
+  /// No description provided for @continueWatchNextCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Next video starts in {seconds} seconds'**
+  String continueWatchNextCountdown(int seconds);
+
+  /// No description provided for @continueWatchStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get continueWatchStop;
+
+  /// No description provided for @continueWatchUpNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Up next'**
+  String get continueWatchUpNext;
+
+  /// No description provided for @continueWatchPlayNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Play now'**
+  String get continueWatchPlayNow;
 }
 
 class _AppLocalizationsDelegate
@@ -966,8 +1224,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

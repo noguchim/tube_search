@@ -12,10 +12,7 @@ import 'consent_manager.dart';
 class AdBanner extends StatefulWidget {
   final bool isMain;
 
-  const AdBanner({
-    super.key,
-    required this.isMain,
-  });
+  const AdBanner({super.key, required this.isMain});
 
   @override
   State<AdBanner> createState() => _AdBannerState();
@@ -25,13 +22,15 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   BannerAd? _banner;
   AdSize? _adSize; // ★ AdSize? にする（Adaptiveもbannerも入る）
   bool _isLoaded = false;
-  late StreamSubscription<List<ConnectivityResult>> _connSub;
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
   Timer? _refreshTimer;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+
+    if (AdMobConfig.useDummyBanner) return;
 
     WidgetsBinding.instance.addObserver(this);
 
@@ -52,6 +51,8 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (AdMobConfig.useDummyBanner) return;
+
     if (state == AppLifecycleState.resumed) {
       logger.i('🔄 App resumed → reload banner');
       _reloadBanner();
@@ -59,6 +60,8 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   }
 
   void _startAutoRefresh() {
+    if (AdMobConfig.useDummyBanner) return;
+
     _refreshTimer?.cancel();
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 90), (_) {
@@ -69,6 +72,7 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   }
 
   Future<void> _loadBanner() async {
+    if (AdMobConfig.useDummyBanner) return;
     if (_isLoading) return;
     _isLoading = true;
 
@@ -76,12 +80,11 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
       final width = MediaQuery.of(context).size.width.toInt();
       final adaptive =
           await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
-
       final adSize = adaptive ?? AdSize.banner;
 
       final adUnitId = AdMobConfig.bannerId(isMain: widget.isMain);
 
-      logger.i('🧪 AdUnitId: $adUnitId');
+      logger.i('🧪 AdUnitId: $adUnitId size=${adSize.width}x${adSize.height}');
 
       _banner?.dispose();
 
@@ -121,6 +124,8 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   }
 
   void _reloadBanner() {
+    if (AdMobConfig.useDummyBanner) return;
+
     setState(() {
       _isLoaded = false;
       _banner?.dispose();
@@ -134,7 +139,7 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
-    _connSub.cancel();
+    _connSub?.cancel();
     _banner?.dispose();
     super.dispose();
   }
@@ -142,14 +147,12 @@ class _AdBannerState extends State<AdBanner> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final banner = _banner;
+    final showAd = !AdMobConfig.useDummyBanner && _isLoaded && banner != null;
 
     return SizedBox(
       width: double.infinity,
-      height: _isLoaded && _adSize != null ? _adSize!.height.toDouble() : 50,
-      child: (_isLoaded && banner != null) && !AdMobConfig.useTestAds
-          ? AdWidget(ad: banner)
-          : _buildDummyBannerGlass(context),
-      // child: _buildDummyBannerGlass(context),
+      height: showAd && _adSize != null ? _adSize!.height.toDouble() : 50,
+      child: showAd ? AdWidget(ad: banner) : _buildDummyBannerGlass(context),
     );
   }
 
